@@ -26,7 +26,7 @@ const PASSWORD_RULES: { test: (s: string) => boolean; label: string }[] = [
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>('login');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
 
@@ -85,13 +85,12 @@ export default function AuthScreen() {
             <View style={styles.form}>
               <TextInput
                 style={styles.input}
-                placeholder="Email"
+                placeholder="Username"
                 placeholderTextColor="rgba(255,255,255,0.6)"
-                keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                value={email}
-                onChangeText={setEmail}
+                value={username}
+                onChangeText={setUsername}
               />
               <View>
                 <TextInput
