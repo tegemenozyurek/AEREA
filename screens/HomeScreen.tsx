@@ -3,6 +3,7 @@ import {
   Animated,
   Easing,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -20,6 +21,8 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
   const r = useResponsive();
   const [menuOpen, setMenuOpen] = useState(false);
+  const greetingName =
+    user?.email?.split('@')[0] ?? user?.displayName ?? 'there';
 
   const drawerWidth = r.isTablet ? 340 : Math.min(r.width * 0.78, 300);
   const drawerX = useRef(new Animated.Value(drawerWidth)).current;
@@ -45,7 +48,9 @@ export default function HomeScreen() {
 
   const handleLogout = () => {
     setMenuOpen(false);
-    setTimeout(() => logout(), DRAWER_ANIMATION_MS);
+    setTimeout(() => {
+      void logout();
+    }, DRAWER_ANIMATION_MS);
   };
 
   return (
@@ -81,7 +86,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.welcome}>Welcome, {user?.username}</Text>
+        <Text style={styles.welcome}>Welcome, {greetingName}</Text>
       </View>
 
       <View
@@ -107,7 +112,7 @@ export default function HomeScreen() {
             <View style={styles.drawerContent}>
               <View style={styles.drawerHeader}>
                 <Text style={styles.drawerLabel}>Signed in as</Text>
-                <Text style={styles.drawerUsername}>{user?.username}</Text>
+                <Text style={styles.drawerUsername}>{greetingName}</Text>
               </View>
 
               <TouchableOpacity
@@ -117,6 +122,14 @@ export default function HomeScreen() {
               >
                 <Text style={styles.drawerItemText}>Logout</Text>
               </TouchableOpacity>
+
+              <View style={styles.drawerSpacer} />
+
+              {user ? (
+                <Text style={styles.drawerUid} selectable>
+                  #{user.uid}
+                </Text>
+              ) : null}
             </View>
           </SafeAreaView>
         </Animated.View>
@@ -187,6 +200,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 16,
+  },
+  drawerSpacer: {
+    flex: 1,
+    minHeight: 16,
   },
   drawerHeader: {
     paddingVertical: 16,
@@ -216,5 +234,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  drawerUid: {
+    alignSelf: 'flex-start',
+    color: 'rgba(255,255,255,0.42)',
+    fontSize: 10,
+    letterSpacing: 0.2,
+    fontFamily: Platform.select({
+      ios: 'Menlo',
+      android: 'monospace',
+      default: 'monospace',
+    }),
   },
 });

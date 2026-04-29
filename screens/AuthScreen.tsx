@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -27,12 +28,13 @@ const PASSWORD_RULES: { test: (s: string) => boolean; label: string }[] = [
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>('login');
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const r = useResponsive();
   const isLogin = mode === 'login';
 
@@ -41,18 +43,41 @@ export default function AuthScreen() {
     setError(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError(null);
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setError('Enter your email.');
+      return;
+    }
 
     if (isLogin) {
-      const ok = login(username, password);
-      if (!ok) {
-        setError('Invalid username or password');
+      setLoading(true);
+      const result = await login(trimmedEmail, password);
+      setLoading(false);
+      if (!result.ok) {
+        setError(result.error);
       }
       return;
     }
 
-    // TODO: connect register to backend
+    if (password !== passwordConfirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    if (!PASSWORD_RULES.every((rule) => rule.test(password))) {
+      setError('Password does not meet the requirements.');
+      return;
+    }
+
+    setLoading(true);
+    const result = await register(trimmedEmail, password);
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error);
+    }
   };
 
   return (
@@ -84,6 +109,7 @@ export default function AuthScreen() {
                 style={[styles.tab, isLogin && styles.tabActive]}
                 activeOpacity={0.8}
                 onPress={() => handleModeChange('login')}
+                disabled={loading}
               >
                 <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>
                   Sign In
@@ -93,6 +119,7 @@ export default function AuthScreen() {
                 style={[styles.tab, !isLogin && styles.tabActive]}
                 activeOpacity={0.8}
                 onPress={() => handleModeChange('register')}
+                disabled={loading}
               >
                 <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>
                   Sign Up
@@ -103,12 +130,14 @@ export default function AuthScreen() {
             <View style={styles.form}>
               <TextInput
                 style={styles.input}
-                placeholder="Username"
+                placeholder="Email"
                 placeholderTextColor="rgba(255,255,255,0.6)"
+                keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                value={username}
-                onChangeText={setUsername}
+                value={email}
+                onChangeText={setEmail}
+                editable={!loading}
               />
               <View>
                 <TextInput
@@ -118,6 +147,7 @@ export default function AuthScreen() {
                   secureTextEntry
                   value={password}
                   onChangeText={setPassword}
+                  editable={!loading}
                 />
                 {!isLogin && (
                   <View style={styles.rules}>
@@ -143,19 +173,25 @@ export default function AuthScreen() {
                   secureTextEntry
                   value={passwordConfirm}
                   onChangeText={setPasswordConfirm}
+                  editable={!loading}
                 />
               )}
 
               {error && <Text style={styles.errorText}>{error}</Text>}
 
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
                 activeOpacity={0.85}
-                onPress={handleSubmit}
+                onPress={() => void handleSubmit()}
+                disabled={loading}
               >
-                <Text style={styles.submitText}>
-                  {isLogin ? 'Sign In' : 'Create Account'}
-                </Text>
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.submitText}>
+                    {isLogin ? 'Sign In' : 'Create Account'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -263,6 +299,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
+  },
+  submitButtonDisabled: {
+    opacity: 0.75,
   },
   submitText: {
     color: '#fff',

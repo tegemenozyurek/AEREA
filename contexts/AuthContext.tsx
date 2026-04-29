@@ -1,48 +1,58 @@
+import type { User } from 'firebase/auth';
 import React, {
   createContext,
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
+import {
+  signInWithEmail,
+  signOutUser,
+  signUpWithEmail,
+  subscribeToAuthState,
+} from '../services/auth';
+import { getFirebaseAuthErrorMessage } from '../services/authErrors';
 
-export type User = {
-  username: string;
-};
+export type AuthResult = { ok: true } | { ok: false; error: string };
 
 type AuthContextValue = {
   user: User | null;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<AuthResult>;
+  register: (email: string, password: string) => Promise<AuthResult>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// TEMPORARY hardcoded users — replace with real backend later.
-const VALID_CREDENTIALS: { username: string; password: string }[] = [
-  { username: 'ali', password: '12345' },
-  { username: 'egemen', password: '12345' },
-];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = useCallback((username: string, password: string): boolean => {
-    const normalized = username.trim().toLowerCase();
-    const match = VALID_CREDENTIALS.find(
-      (c) => c.username === normalized && c.password === password,
-    );
-    if (match) {
-      setUser({ username: match.username });
-      return true;
+  useEffect(() => subscribeToAuthState(setUser), []);
+
+  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      await signInWithEmail(email.trim(), password);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: getFirebaseAuthErrorMessage(e) };
     }
-    return false;
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
+  const register = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      await signUpWithEmail(email.trim(), password);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: getFirebaseAuthErrorMessage(e) };
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    await signOutUser();
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -50,9 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isAuthenticated: user !== null,
       login,
+      register,
       logout,
     }),
-    [user, login, logout],
+    [user, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
