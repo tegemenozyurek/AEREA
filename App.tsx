@@ -1,20 +1,34 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import GradientBackground from './components/GradientBackground';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <GradientBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
+          <Text style={styles.logo}>AEREA</Text>
+        </View>
+      </SafeAreaView>
+      <StatusBar style="light" />
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
+  },
+  content: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logo: {
+    color: '#008D41',
+    fontSize: 64,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
 });
