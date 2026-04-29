@@ -4,7 +4,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthScreen from './screens/AuthScreen';
+import HomeScreen from './screens/HomeScreen';
 import { useResponsive } from './utils/responsive';
 
 const SPLASH_DURATION_MS = 1500;
@@ -13,10 +15,15 @@ const SHOW_SPLASH = Platform.OS !== 'web';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+function Routes() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <HomeScreen /> : <AuthScreen />;
+}
+
 export default function App() {
   const [showSplash, setShowSplash] = useState(SHOW_SPLASH);
   const splashOpacity = useRef(new Animated.Value(SHOW_SPLASH ? 1 : 0)).current;
-  const authOpacity = useRef(new Animated.Value(SHOW_SPLASH ? 0 : 1)).current;
+  const contentOpacity = useRef(new Animated.Value(SHOW_SPLASH ? 0 : 1)).current;
   const r = useResponsive();
 
   useEffect(() => {
@@ -33,7 +40,7 @@ export default function App() {
           duration: FADE_DURATION_MS,
           useNativeDriver: true,
         }),
-        Animated.timing(authOpacity, {
+        Animated.timing(contentOpacity, {
           toValue: 1,
           duration: FADE_DURATION_MS,
           useNativeDriver: true,
@@ -42,32 +49,34 @@ export default function App() {
     }, SPLASH_DURATION_MS);
 
     return () => clearTimeout(timer);
-  }, [authOpacity, splashOpacity]);
+  }, [contentOpacity, splashOpacity]);
 
   return (
     <SafeAreaProvider>
-      <GradientBackground>
-        <Animated.View style={[styles.fill, { opacity: authOpacity }]}>
-          <AuthScreen />
-        </Animated.View>
-
-        {showSplash && (
-          <Animated.View
-            style={[StyleSheet.absoluteFill, { opacity: splashOpacity }]}
-            pointerEvents="none"
-          >
-            <View style={styles.splashContent}>
-              <Image
-                source={require('./assets/aerea-logo.png')}
-                style={[styles.splashLogo, { maxWidth: r.splashLogoMaxWidth }]}
-                resizeMode="contain"
-              />
-            </View>
+      <AuthProvider>
+        <GradientBackground>
+          <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
+            <Routes />
           </Animated.View>
-        )}
 
-        <StatusBar style="light" />
-      </GradientBackground>
+          {showSplash && (
+            <Animated.View
+              style={[StyleSheet.absoluteFill, { opacity: splashOpacity }]}
+              pointerEvents="none"
+            >
+              <View style={styles.splashContent}>
+                <Image
+                  source={require('./assets/aerea-logo.png')}
+                  style={[styles.splashLogo, { maxWidth: r.splashLogoMaxWidth }]}
+                  resizeMode="contain"
+                />
+              </View>
+            </Animated.View>
+          )}
+
+          <StatusBar style="light" />
+        </GradientBackground>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

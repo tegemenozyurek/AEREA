@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 import { useResponsive } from '../utils/responsive';
 
 type AuthMode = 'login' | 'register';
@@ -29,12 +30,29 @@ export default function AuthScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
+  const { login } = useAuth();
   const r = useResponsive();
   const isLogin = mode === 'login';
 
+  const handleModeChange = (next: AuthMode) => {
+    setMode(next);
+    setError(null);
+  };
+
   const handleSubmit = () => {
-    // TODO: connect to auth backend
+    setError(null);
+
+    if (isLogin) {
+      const ok = login(username, password);
+      if (!ok) {
+        setError('Invalid username or password');
+      }
+      return;
+    }
+
+    // TODO: connect register to backend
   };
 
   return (
@@ -65,7 +83,7 @@ export default function AuthScreen() {
               <TouchableOpacity
                 style={[styles.tab, isLogin && styles.tabActive]}
                 activeOpacity={0.8}
-                onPress={() => setMode('login')}
+                onPress={() => handleModeChange('login')}
               >
                 <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>
                   Sign In
@@ -74,7 +92,7 @@ export default function AuthScreen() {
               <TouchableOpacity
                 style={[styles.tab, !isLogin && styles.tabActive]}
                 activeOpacity={0.8}
-                onPress={() => setMode('register')}
+                onPress={() => handleModeChange('register')}
               >
                 <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>
                   Sign Up
@@ -127,6 +145,8 @@ export default function AuthScreen() {
                   onChangeText={setPasswordConfirm}
                 />
               )}
+
+              {error && <Text style={styles.errorText}>{error}</Text>}
 
               <TouchableOpacity
                 style={styles.submitButton}
@@ -249,5 +269,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  errorText: {
+    color: '#FFB4B4',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: -2,
   },
 });
