@@ -17,6 +17,13 @@ type AuthMode = 'login' | 'register';
 
 const LOGO_ASPECT_RATIO = 1390 / 694;
 
+const PASSWORD_RULES: { test: (s: string) => boolean; label: string }[] = [
+  { test: (s) => s.length >= 8, label: 'At least 8 characters' },
+  { test: (s) => /[A-Z]/.test(s), label: 'One uppercase letter' },
+  { test: (s) => /[a-z]/.test(s), label: 'One lowercase letter' },
+  { test: (s) => /\d/.test(s), label: 'One number' },
+];
+
 export default function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -86,14 +93,31 @@ export default function AuthScreen() {
                 value={email}
                 onChangeText={setEmail}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="rgba(255,255,255,0.6)"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
+              <View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="rgba(255,255,255,0.6)"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                {!isLogin && (
+                  <View style={styles.rules}>
+                    {PASSWORD_RULES.map(({ test, label }) => {
+                      const ok = test(password);
+                      return (
+                        <View key={label} style={styles.ruleRow}>
+                          <View style={[styles.ruleDot, ok && styles.ruleDotActive]} />
+                          <Text style={[styles.ruleText, ok && styles.ruleTextActive]}>
+                            {label}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
               {!isLogin && (
                 <TextInput
                   style={styles.input}
@@ -181,6 +205,33 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     color: '#fff',
     fontSize: 15,
+  },
+  rules: {
+    marginTop: 10,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  ruleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ruleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  ruleDotActive: {
+    backgroundColor: '#3CCB7F',
+  },
+  ruleText: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  ruleTextActive: {
+    color: '#fff',
   },
   submitButton: {
     backgroundColor: '#008D41',
