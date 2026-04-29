@@ -62,7 +62,7 @@ export default function HomeScreen() {
           source={require('../assets/aerea-logo.png')}
           style={[
             styles.headerLogo,
-            { width: r.isTablet ? 130 : 110 },
+            { width: r.isTablet ? 90 : 75 },
           ]}
           resizeMode="contain"
         />
