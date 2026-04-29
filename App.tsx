@@ -7,6 +7,7 @@ import GradientBackground from './components/GradientBackground';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
+import { pingFirebaseAuth } from './services/firebasePing';
 import { useResponsive } from './utils/responsive';
 
 const SPLASH_DURATION_MS = 1500;
@@ -28,6 +29,16 @@ export default function App() {
 
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
+
+    if (__DEV__) {
+      pingFirebaseAuth().then((result) => {
+        if (result.ok) {
+          console.log('[Firebase Ping] OK —', result.message);
+        } else {
+          console.warn('[Firebase Ping] FAILED —', result.message);
+        }
+      });
+    }
 
     if (!SHOW_SPLASH) {
       return;
