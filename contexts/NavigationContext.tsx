@@ -7,7 +7,13 @@ import React, {
   useState,
 } from 'react';
 
-export type AppRoute = 'home' | 'rooms' | 'machines' | 'analysis';
+export type AppRoute =
+  | 'home'
+  | 'rooms'
+  | 'machines'
+  | 'analysis'
+  | 'account'
+  | 'settings';
 
 type NavigationContextValue = {
   route: AppRoute;

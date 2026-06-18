@@ -6,11 +6,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
+import AccountScreen from './screens/AccountScreen';
 import AnalysisScreen from './screens/AnalysisScreen';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
 import MachinesScreen from './screens/MachinesScreen';
 import RoomsScreen from './screens/RoomsScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import { useResponsive } from './utils/responsive';
 
 const SPLASH_DURATION_MS = 1500;
@@ -28,6 +30,10 @@ function AuthenticatedRoutes() {
       return <MachinesScreen />;
     case 'analysis':
       return <AnalysisScreen />;
+    case 'account':
+      return <AccountScreen />;
+    case 'settings':
+      return <SettingsScreen />;
     case 'home':
     default:
       return <HomeScreen />;

@@ -1,4 +1,5 @@
-import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '../contexts/NavigationContext';
@@ -6,9 +7,10 @@ import { useResponsive } from '../utils/responsive';
 
 type Props = {
   title: string;
+  children?: ReactNode;
 };
 
-export default function PlaceholderScreen({ title }: Props) {
+export default function PlaceholderScreen({ title, children }: Props) {
   const { goHome } = useNavigation();
   const r = useResponsive();
 
@@ -21,14 +23,16 @@ export default function PlaceholderScreen({ title }: Props) {
           onPress={goHome}
           accessibilityRole="button"
           accessibilityLabel="Go back"
+          hitSlop={8}
         >
-          <Text style={styles.backIcon}>‹</Text>
+          <Ionicons name="chevron-back" size={26} color="#fff" />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
+        {children}
       </View>
     </SafeAreaView>
   );
@@ -49,13 +53,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     paddingRight: 12,
-  },
-  backIcon: {
-    color: '#fff',
-    fontSize: 30,
-    lineHeight: 30,
-    marginRight: 4,
-    marginTop: -2,
+    gap: 2,
   },
   backText: {
     color: '#fff',
