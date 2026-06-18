@@ -1,116 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import DraggableFlatList, {
-  RenderItemParams,
-  ShadowDecorator,
-} from 'react-native-draggable-flatlist';
+import React, { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MachineCard from '../components/MachineCard';
-import { MOCK_MACHINES } from '../data/mockMachines';
+import RoomSection from '../components/RoomSection';
+import { MOCK_ROOMS } from '../data/mockMachines';
 import type { Machine } from '../types/machine';
+import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
-
-const COLLAPSE_MS = 220;
-
-const DRAG_HOLD_MS = 2000;
-
-const DRAG_SPRING = {
-  damping: 22,
-  stiffness: 180,
-  mass: 0.18,
-  overshootClamping: true,
-};
 
 export default function MachinesScreen() {
   const r = useResponsive();
-  const [machines, setMachines] = useState<Machine[]>(MOCK_MACHINES);
-  const [roomExpanded, setRoomExpanded] = useState(true);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [cardsHeight, setCardsHeight] = useState(0);
-  const isDraggingRef = useRef(false);
-  const expandAnim = useRef(new Animated.Value(1)).current;
+  const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
-  const showMachines = roomExpanded || isAnimating;
-
-  const toggleRoom = () => {
-    const next = !roomExpanded;
-    setIsAnimating(true);
-    setRoomExpanded(next);
-
-    Animated.timing(expandAnim, {
-      toValue: next ? 1 : 0,
-      duration: COLLAPSE_MS,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished) {
-        setIsAnimating(false);
-      }
-    });
-  };
-
-  const arrowRotate = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['180deg', '0deg'],
-  });
-
-  const cardsMaxHeight = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, cardsHeight],
-  });
-
-  const cardsOpacity = expandAnim.interpolate({
-    inputRange: [0, 0.4, 1],
-    outputRange: [0, 0.6, 1],
-  });
-
-  const cardsScale = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.96, 1],
-  });
-
-  const constrainHeight = isAnimating || !roomExpanded;
-
-  const renderMachine = useCallback(
-    ({ item, drag, isActive }: RenderItemParams<Machine>) => (
-      <ShadowDecorator elevation={12} radius={10} opacity={0.3}>
-        <MachineCard
-          machine={item}
-          onLongPressDrag={drag}
-          isDragging={isActive}
-          dragHoldMs={DRAG_HOLD_MS}
-        />
-      </ShadowDecorator>
-    ),
-    [],
-  );
-
-  const handleDragBegin = useCallback(() => {
-    isDraggingRef.current = true;
+  const handleMachinesChange = useCallback((roomId: string, machines: Machine[]) => {
+    setRooms((prev) =>
+      prev.map((room) => (room.id === roomId ? { ...room, machines } : room)),
+    );
   }, []);
 
-  const handleDragEnd = useCallback(({ data }: { data: Machine[] }) => {
-    isDraggingRef.current = false;
-    setMachines(data);
+  const handleDragActiveChange = useCallback((active: boolean) => {
+    setScrollEnabled(!active);
   }, []);
-
-  const handleListContentSizeChange = useCallback((_w: number, h: number) => {
-    if (isDraggingRef.current) {
-      return;
-    }
-    const height = Math.ceil(h);
-    if (height > 0 && height !== cardsHeight) {
-      setCardsHeight(height);
-    }
-  }, [cardsHeight]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -137,76 +48,51 @@ export default function MachinesScreen() {
         </View>
       </View>
 
-      <View
-        style={[
-          styles.body,
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
           {
             paddingHorizontal: r.horizontalPadding,
             maxWidth: r.contentMaxWidth,
             alignSelf: 'center',
             width: '100%',
+            paddingBottom: r.scale(24),
           },
         ]}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
       >
-        <View style={styles.roomHeader}>
-          <Text style={[styles.roomTitle, { fontSize: r.scale(26) }]}>Room #1</Text>
+        {rooms.map((room) => (
+          <RoomSection
+            key={room.id}
+            room={room}
+            onMachinesChange={handleMachinesChange}
+            onDragActiveChange={handleDragActiveChange}
+          />
+        ))}
+
+        <View style={[styles.addRoomWrap, { marginTop: r.scale(8) }]}>
           <TouchableOpacity
-            style={[styles.roomToggle, { width: r.scale(32), height: r.scale(32) }]}
+            style={[
+              styles.addRoomButton,
+              {
+                paddingVertical: r.scale(12),
+                paddingHorizontal: r.scale(20),
+                borderRadius: r.scale(22),
+                gap: r.scale(8),
+              },
+            ]}
             activeOpacity={0.7}
-            onPress={toggleRoom}
-            hitSlop={8}
+            onPress={() => {}}
             accessibilityRole="button"
-            accessibilityLabel={roomExpanded ? 'Collapse room' : 'Expand room'}
+            accessibilityLabel="Add room"
           >
-            <Animated.View style={{ transform: [{ rotate: arrowRotate }] }}>
-              <Ionicons name="chevron-up" size={r.scale(22)} color="rgba(255,255,255,0.85)" />
-            </Animated.View>
+            <Ionicons name="add" size={r.scale(20)} color="#fff" />
+            <Text style={[styles.addRoomLabel, { fontSize: r.scale(15) }]}>Add Room</Text>
           </TouchableOpacity>
         </View>
-
-        <Animated.View
-          style={[
-            styles.listWrap,
-            {
-              marginTop: r.scale(20),
-              marginLeft: r.cardInsetLeft,
-              marginRight: r.cardInsetRight,
-            },
-            constrainHeight &&
-              cardsHeight > 0 && {
-                maxHeight: cardsMaxHeight,
-                overflow: 'hidden',
-              },
-            isAnimating && {
-              opacity: cardsOpacity,
-              transform: [{ scaleY: cardsScale }],
-            },
-            !showMachines && {
-              height: 0,
-              overflow: 'hidden',
-              opacity: 0,
-            },
-          ]}
-        >
-          {showMachines && (
-            <DraggableFlatList
-              data={machines}
-              keyExtractor={(item) => item.id}
-              renderItem={renderMachine}
-              onDragBegin={handleDragBegin}
-              onDragEnd={handleDragEnd}
-              onContentSizeChange={handleListContentSizeChange}
-              scrollEnabled
-              activationDistance={10}
-              dragItemOverflow
-              animationConfig={DRAG_SPRING}
-              ItemSeparatorComponent={() => (
-                <View style={{ height: r.cardGap }} />
-              )}
-            />
-          )}
-        </Animated.View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -239,28 +125,27 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  body: {
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingTop: 8,
-    paddingBottom: 16,
   },
-  listWrap: {
-    flex: 1,
+  addRoomWrap: {
+    alignItems: 'center',
   },
-  roomHeader: {
+  addRoomButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  roomTitle: {
-    color: '#fff',
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    flex: 1,
-    marginRight: 8,
-  },
-  roomToggle: {
-    alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  addRoomLabel: {
+    color: '#fff',
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });
