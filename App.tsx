@@ -5,8 +5,12 @@ import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
+import AnalysisScreen from './screens/AnalysisScreen';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
+import MachinesScreen from './screens/MachinesScreen';
+import RoomsScreen from './screens/RoomsScreen';
 import { useResponsive } from './utils/responsive';
 
 const SPLASH_DURATION_MS = 1500;
@@ -15,9 +19,24 @@ const SHOW_SPLASH = Platform.OS !== 'web';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+function AuthenticatedRoutes() {
+  const { route } = useNavigation();
+  switch (route) {
+    case 'rooms':
+      return <RoomsScreen />;
+    case 'machines':
+      return <MachinesScreen />;
+    case 'analysis':
+      return <AnalysisScreen />;
+    case 'home':
+    default:
+      return <HomeScreen />;
+  }
+}
+
 function Routes() {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <HomeScreen /> : <AuthScreen />;
+  return isAuthenticated ? <AuthenticatedRoutes /> : <AuthScreen />;
 }
 
 export default function App() {
@@ -54,6 +73,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
+        <NavigationProvider>
         <GradientBackground>
           <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
             <Routes />
@@ -76,6 +96,7 @@ export default function App() {
 
           <StatusBar style="light" />
         </GradientBackground>
+        </NavigationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

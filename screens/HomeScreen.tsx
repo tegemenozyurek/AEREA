@@ -12,13 +12,21 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
+import { AppRoute, useNavigation } from '../contexts/NavigationContext';
 import { useResponsive } from '../utils/responsive';
 
 const DRAWER_ANIMATION_MS = 260;
 const LOGO_ASPECT_RATIO = 1390 / 694;
 
+const MENU_ITEMS: { label: string; route: AppRoute }[] = [
+  { label: 'Rooms', route: 'rooms' },
+  { label: 'Machines', route: 'machines' },
+  { label: 'Analysis', route: 'analysis' },
+];
+
 export default function HomeScreen() {
   const { user, logout } = useAuth();
+  const { navigate } = useNavigation();
   const r = useResponsive();
   const [menuOpen, setMenuOpen] = useState(false);
   const greetingName =
@@ -50,6 +58,13 @@ export default function HomeScreen() {
     setMenuOpen(false);
     setTimeout(() => {
       void logout();
+    }, DRAWER_ANIMATION_MS);
+  };
+
+  const handleNavigate = (route: AppRoute) => {
+    setMenuOpen(false);
+    setTimeout(() => {
+      navigate(route);
     }, DRAWER_ANIMATION_MS);
   };
 
@@ -114,6 +129,19 @@ export default function HomeScreen() {
                 <Text style={styles.drawerLabel}>Signed in as</Text>
                 <Text style={styles.drawerUsername}>{greetingName}</Text>
               </View>
+
+              {MENU_ITEMS.map((item) => (
+                <TouchableOpacity
+                  key={item.route}
+                  style={styles.drawerItem}
+                  activeOpacity={0.75}
+                  onPress={() => handleNavigate(item.route)}
+                >
+                  <Text style={styles.drawerItemText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <View style={styles.drawerDivider} />
 
               <TouchableOpacity
                 style={styles.drawerItem}
@@ -234,6 +262,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginVertical: 12,
+    marginHorizontal: 12,
   },
   drawerUid: {
     alignSelf: 'flex-start',
