@@ -15,12 +15,16 @@ type IconSpec =
 
 const NAV_ITEMS: { label: string; route: AppRoute; icon: IconSpec }[] = [
   { label: 'Home', route: 'home', icon: { lib: 'ion', name: 'home-outline' } },
-  { label: 'Rooms', route: 'rooms', icon: { lib: 'ion', name: 'grid-outline' } },
   { label: 'Machines', route: 'machines', icon: { lib: 'fa5', name: 'seedling' } },
   {
     label: 'Analysis',
     route: 'analysis',
     icon: { lib: 'ion', name: 'analytics-outline' },
+  },
+  {
+    label: 'Community',
+    route: 'community',
+    icon: { lib: 'ion', name: 'people-outline' },
   },
   {
     label: 'Profile',
@@ -50,7 +54,7 @@ export default function NavBar() {
   const r = useResponsive();
 
   const iconSize = r.isTablet ? 24 : 22;
-  const labelSize = r.isTablet ? 12 : 11;
+  const labelSize = r.isTablet ? 11 : 10;
 
   return (
     <View

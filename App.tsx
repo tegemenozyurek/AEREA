@@ -10,9 +10,9 @@ import { NavigationProvider, useNavigation } from './contexts/NavigationContext'
 import AccountScreen from './screens/AccountScreen';
 import AnalysisScreen from './screens/AnalysisScreen';
 import AuthScreen from './screens/AuthScreen';
+import CommunityScreen from './screens/CommunityScreen';
 import HomeScreen from './screens/HomeScreen';
 import MachinesScreen from './screens/MachinesScreen';
-import RoomsScreen from './screens/RoomsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import { useResponsive } from './utils/responsive';
 
@@ -25,8 +25,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 function CurrentScreen() {
   const { route } = useNavigation();
   switch (route) {
-    case 'rooms':
-      return <RoomsScreen />;
+    case 'community':
+      return <CommunityScreen />;
     case 'machines':
       return <MachinesScreen />;
     case 'analysis':

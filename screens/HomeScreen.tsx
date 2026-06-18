@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useResponsive } from '../utils/responsive';
@@ -30,6 +31,18 @@ export default function HomeScreen() {
           ]}
           resizeMode="contain"
         />
+        <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
+          <TouchableOpacity
+            style={styles.inboxButton}
+            activeOpacity={0.7}
+            onPress={() => {}}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Inbox"
+          >
+            <Ionicons name="file-tray-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.body}>
@@ -45,12 +58,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   header: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
     paddingVertical: 12,
   },
   headerLogo: {
     height: undefined,
     aspectRatio: LOGO_ASPECT_RATIO,
+  },
+  headerActionWrap: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  inboxButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   body: {
     flex: 1,

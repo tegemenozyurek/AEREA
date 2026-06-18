@@ -9,7 +9,7 @@ import React, {
 
 export type AppRoute =
   | 'home'
-  | 'rooms'
+  | 'community'
   | 'machines'
   | 'analysis'
   | 'account'
