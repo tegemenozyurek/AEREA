@@ -86,14 +86,18 @@ export default function MachineCard({ machine }: Props) {
   });
 
   return (
-    <View style={styles.wrapper}>
-      <Pressable
-        style={styles.card}
-        onPress={toggle}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={`${machine.name}, ${expanded ? 'collapse' : 'expand'} details`}
-      >
+    <Pressable
+      style={[
+        styles.card,
+        {
+          borderRightColor: machine.online ? '#34D399' : '#F87171',
+        },
+      ]}
+      onPress={toggle}
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      accessibilityLabel={`${machine.name}, ${expanded ? 'collapse' : 'expand'} details`}
+    >
         <Text style={styles.cardTitle} numberOfLines={1}>
           {machine.name}
         </Text>
@@ -154,28 +158,18 @@ export default function MachineCard({ machine }: Props) {
             </Text>
           </View>
         </Animated.View>
-      </Pressable>
-
-      <View style={styles.statusDotWrap}>
-        <View
-          style={[
-            styles.statusDot,
-            { backgroundColor: machine.online ? '#34D399' : '#F87171' },
-          ]}
-        />
-      </View>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    position: 'relative',
-  },
   card: {
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: 3,
     borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 16,
     paddingTop: 14,
@@ -232,18 +226,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.2,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  statusDotWrap: {
-    position: 'absolute',
-    right: -34,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
