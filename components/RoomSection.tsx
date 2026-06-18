@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Animated,
@@ -86,16 +86,27 @@ export default function RoomSection({
 
   const renderMachine = useCallback(
     ({ item, drag, isActive }: RenderItemParams<Machine>) => (
-      <ShadowDecorator elevation={12} radius={10} opacity={0.3}>
-        <MachineCard
-          machine={item}
-          onLongPressDrag={drag}
-          isDragging={isActive}
-          dragHoldMs={DRAG_HOLD_MS}
-        />
-      </ShadowDecorator>
+      <View style={styles.machineRow}>
+        <View style={styles.machineCardCol}>
+          <ShadowDecorator elevation={12} radius={10} opacity={0.3}>
+            <MachineCard
+              machine={item}
+              onLongPressDrag={drag}
+              isDragging={isActive}
+              dragHoldMs={DRAG_HOLD_MS}
+            />
+          </ShadowDecorator>
+        </View>
+        <View style={[styles.machineChevronCol, { width: r.cardInsetRight, paddingRight: r.scale(2) }]}>
+          <Ionicons
+            name="chevron-forward"
+            size={r.scale(22)}
+            color="rgba(255,255,255,0.55)"
+          />
+        </View>
+      </View>
     ),
-    [],
+    [r],
   );
 
   const handleDragBegin = useCallback(() => {
@@ -154,7 +165,11 @@ export default function RoomSection({
           accessibilityRole="button"
           accessibilityLabel={`Edit ${room.name}`}
         >
-          <Ionicons name="pencil-outline" size={r.scale(18)} color="rgba(255,255,255,0.85)" />
+          <MaterialCommunityIcons
+            name="pencil-outline"
+            size={r.scale(18)}
+            color="rgba(255,255,255,0.85)"
+          />
         </TouchableOpacity>
       </View>
 
@@ -163,7 +178,6 @@ export default function RoomSection({
           {
             marginTop: r.scale(20),
             marginLeft: r.cardInsetLeft,
-            marginRight: r.cardInsetRight,
           },
           constrainHeight &&
             cardsHeight > 0 && {
@@ -222,5 +236,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  machineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  machineCardCol: {
+    flex: 1,
+  },
+  machineChevronCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
 });
