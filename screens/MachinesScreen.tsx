@@ -189,7 +189,8 @@ const styles = StyleSheet.create({
   },
   cards: {
     marginTop: 20,
-    marginHorizontal: 10,
+    marginLeft: 4,
+    marginRight: 32,
     gap: 12,
   },
 });
