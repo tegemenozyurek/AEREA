@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -64,26 +65,45 @@ export default function MachinesScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
-        <Text style={styles.headerTitle}>Machines</Text>
+        <Text style={[styles.headerTitle, { fontSize: r.scale(22) }]}>Machines</Text>
         <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
           <TouchableOpacity
-            style={styles.addButton}
+            style={[
+              styles.addButton,
+              {
+                width: r.scale(36),
+                height: r.scale(36),
+                borderRadius: r.scale(18),
+              },
+            ]}
             activeOpacity={0.7}
             onPress={() => {}}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Add machine"
           >
-            <Ionicons name="add" size={24} color="#fff" />
+            <Ionicons name="add" size={r.scale(24)} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={[styles.body, { paddingHorizontal: r.horizontalPadding }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingHorizontal: r.horizontalPadding,
+            maxWidth: r.contentMaxWidth,
+            alignSelf: 'center',
+            width: '100%',
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.roomHeader}>
-          <Text style={styles.roomTitle}>Room #1</Text>
+          <Text style={[styles.roomTitle, { fontSize: r.scale(26) }]}>Room #1</Text>
           <TouchableOpacity
-            style={styles.roomToggle}
+            style={[styles.roomToggle, { width: r.scale(32), height: r.scale(32) }]}
             activeOpacity={0.7}
             onPress={toggleRoom}
             hitSlop={8}
@@ -91,7 +111,7 @@ export default function MachinesScreen() {
             accessibilityLabel={roomExpanded ? 'Collapse room' : 'Expand room'}
           >
             <Animated.View style={{ transform: [{ rotate: arrowRotate }] }}>
-              <Ionicons name="chevron-up" size={22} color="rgba(255,255,255,0.85)" />
+              <Ionicons name="chevron-up" size={r.scale(22)} color="rgba(255,255,255,0.85)" />
             </Animated.View>
           </TouchableOpacity>
         </View>
@@ -116,7 +136,15 @@ export default function MachinesScreen() {
           ]}
         >
           <View
-            style={styles.cards}
+            style={[
+              styles.cards,
+              {
+                marginTop: r.scale(20),
+                marginLeft: r.cardInsetLeft,
+                marginRight: r.cardInsetRight,
+                gap: r.cardGap,
+              },
+            ]}
             onLayout={(e) => {
               const height = Math.ceil(e.nativeEvent.layout.height);
               if (height > 0 && height !== cardsHeight) {
@@ -129,7 +157,7 @@ export default function MachinesScreen() {
             ))}
           </View>
         </Animated.View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -146,7 +174,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 22,
     fontWeight: '700',
     letterSpacing: 0.4,
   },
@@ -157,18 +184,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addButton: {
-    width: 36,
-    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  body: {
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingTop: 8,
+    paddingBottom: 16,
   },
   roomHeader: {
     flexDirection: 'row',
@@ -177,20 +205,14 @@ const styles = StyleSheet.create({
   },
   roomTitle: {
     color: '#fff',
-    fontSize: 26,
     fontWeight: '700',
     letterSpacing: 0.3,
+    flex: 1,
+    marginRight: 8,
   },
   roomToggle: {
-    width: 32,
-    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cards: {
-    marginTop: 20,
-    marginLeft: 4,
-    marginRight: 32,
-    gap: 12,
-  },
+  cards: {},
 });

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -9,21 +9,27 @@ import {
 } from 'react-native';
 import type { Machine } from '../types/machine';
 import { formatUpdatedAt } from '../utils/formatDate';
-
-const LABEL_WIDTH = {
-  left: 32,
-  right: 58,
-} as const;
+import { useResponsive } from '../utils/responsive';
 
 type Props = {
   machine: Machine;
 };
 
-function InlineStat({ label, value }: { label: string; value: string | number }) {
+function InlineStat({
+  label,
+  value,
+  labelSize,
+  valueSize,
+}: {
+  label: string;
+  value: string | number;
+  labelSize: number;
+  valueSize: number;
+}) {
   return (
-    <Text style={styles.inlineStat} numberOfLines={1}>
-      <Text style={styles.metricLabel}>{label} </Text>
-      <Text style={styles.metricValue}>{value}</Text>
+    <Text style={styles.inlineStat} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+      <Text style={[styles.metricLabel, { fontSize: labelSize }]}>{label} </Text>
+      <Text style={[styles.metricValue, { fontSize: valueSize }]}>{value}</Text>
     </Text>
   );
 }
@@ -32,24 +38,52 @@ function Metric({
   label,
   value,
   labelWidth,
+  labelSize,
+  valueSize,
 }: {
   label: string;
   value: string | number;
   labelWidth: number;
+  labelSize: number;
+  valueSize: number;
 }) {
   return (
     <View style={styles.metricRow}>
-      <Text style={[styles.metricLabel, { width: labelWidth }]}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={[styles.metricLabel, { width: labelWidth, fontSize: labelSize }]}>
+        {label}
+      </Text>
+      <Text style={[styles.metricValue, { fontSize: valueSize }]}>{value}</Text>
     </View>
   );
 }
 
 export default function MachineCard({ machine }: Props) {
+  const r = useResponsive();
   const [expanded, setExpanded] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [detailsHeight, setDetailsHeight] = useState(0);
   const expandAnim = useRef(new Animated.Value(0)).current;
+
+  const layout = useMemo(
+    () => ({
+      paddingH: r.scale(16),
+      paddingTop: r.scale(14),
+      paddingBottom: r.scale(14),
+      borderRight: r.scale(9),
+      borderRadius: r.scale(16),
+      titleSize: r.scale(16),
+      labelSize: r.scale(13),
+      valueSize: r.scale(15),
+      updatedSize: r.scale(11),
+      waterIcon: r.scale(18),
+      labelWidthLeft: r.scale(32),
+      labelWidthRight: r.scale(58),
+      summaryGap: r.scale(8),
+      detailsGap: r.scale(12),
+      detailsRowGap: r.scale(20),
+    }),
+    [r],
+  );
 
   const toggle = () => {
     const next = !expanded;
@@ -91,6 +125,11 @@ export default function MachineCard({ machine }: Props) {
         styles.card,
         {
           borderRightColor: machine.online ? '#34D399' : '#F87171',
+          borderRightWidth: layout.borderRight,
+          borderRadius: layout.borderRadius,
+          paddingHorizontal: layout.paddingH,
+          paddingTop: layout.paddingTop,
+          paddingBottom: layout.paddingBottom,
         },
       ]}
       onPress={toggle}
@@ -98,66 +137,87 @@ export default function MachineCard({ machine }: Props) {
       accessibilityState={{ expanded }}
       accessibilityLabel={`${machine.name}, ${expanded ? 'collapse' : 'expand'} details`}
     >
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {machine.name}
-        </Text>
+      <Text
+        style={[styles.cardTitle, { fontSize: layout.titleSize }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {machine.name}
+      </Text>
 
-        <View style={styles.summaryRow}>
-          <InlineStat label="ppm" value={machine.ppm} />
-          <InlineStat label="pH" value={machine.ph} />
-          <View style={styles.waterInline}>
-            <Ionicons name="water" size={18} color="#60A5FA" />
-            <Text style={styles.metricValue}>{machine.waterLevel}%</Text>
-          </View>
+      <View style={[styles.summaryRow, { marginTop: r.scale(10), gap: layout.summaryGap }]}>
+        <InlineStat
+          label="ppm"
+          value={machine.ppm}
+          labelSize={layout.labelSize}
+          valueSize={layout.valueSize}
+        />
+        <InlineStat
+          label="pH"
+          value={machine.ph}
+          labelSize={layout.labelSize}
+          valueSize={layout.valueSize}
+        />
+        <View style={styles.waterInline}>
+          <Ionicons name="water" size={layout.waterIcon} color="#60A5FA" />
+          <Text style={[styles.metricValue, { fontSize: layout.valueSize }]}>
+            {machine.waterLevel}%
+          </Text>
         </View>
+      </View>
 
-        <Animated.View
-          style={[
-            constrainDetails &&
-              detailsHeight > 0 && {
-                maxHeight: detailsMaxHeight,
-                overflow: 'hidden',
-              },
-            isAnimating && {
-              opacity: detailsOpacity,
-              transform: [{ scaleY: detailsScale }],
+      <Animated.View
+        style={[
+          constrainDetails &&
+            detailsHeight > 0 && {
+              maxHeight: detailsMaxHeight,
+              overflow: 'hidden',
             },
-            !expanded &&
-              !isAnimating && {
-                height: 0,
-                overflow: 'hidden',
-                opacity: 0,
-              },
-          ]}
-          pointerEvents={expanded ? 'auto' : 'none'}
+          isAnimating && {
+            opacity: detailsOpacity,
+            transform: [{ scaleY: detailsScale }],
+          },
+          !expanded &&
+            !isAnimating && {
+              height: 0,
+              overflow: 'hidden',
+              opacity: 0,
+            },
+        ]}
+        pointerEvents={expanded ? 'auto' : 'none'}
+      >
+        <View
+          style={[styles.details, { paddingTop: layout.detailsGap, gap: layout.detailsGap }]}
+          onLayout={(e) => {
+            const height = Math.ceil(e.nativeEvent.layout.height);
+            if (height > 0 && height !== detailsHeight) {
+              setDetailsHeight(height);
+            }
+          }}
         >
-          <View
-            style={styles.details}
-            onLayout={(e) => {
-              const height = Math.ceil(e.nativeEvent.layout.height);
-              if (height > 0 && height !== detailsHeight) {
-                setDetailsHeight(height);
-              }
-            }}
-          >
-            <View style={styles.detailsRow}>
-              <Metric
-                label="pH down"
-                value={machine.phDown}
-                labelWidth={LABEL_WIDTH.right}
-              />
-              <Metric
-                label="pH up"
-                value={machine.phUp}
-                labelWidth={LABEL_WIDTH.right}
-              />
-            </View>
-
-            <Text style={styles.updatedAt}>
-              updated at {formatUpdatedAt(machine.updatedAt)}
-            </Text>
+          <View style={[styles.detailsRow, { gap: layout.detailsRowGap }]}>
+            <Metric
+              label="pH down"
+              value={machine.phDown}
+              labelWidth={layout.labelWidthRight}
+              labelSize={layout.labelSize}
+              valueSize={layout.valueSize}
+            />
+            <Metric
+              label="pH up"
+              value={machine.phUp}
+              labelWidth={layout.labelWidthRight}
+              labelSize={layout.labelSize}
+              valueSize={layout.valueSize}
+            />
           </View>
-        </Animated.View>
+
+          <Text style={[styles.updatedAt, { fontSize: layout.updatedSize }]}>
+            updated at {formatUpdatedAt(machine.updatedAt)}
+          </Text>
+        </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -165,19 +225,13 @@ export default function MachineCard({ machine }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(0,0,0,0.35)',
-    borderRadius: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderRightWidth: 9,
     borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
   },
   cardTitle: {
     color: '#fff',
-    fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.2,
   },
@@ -185,11 +239,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 10,
-    gap: 8,
   },
   inlineStat: {
     flex: 1,
+    minWidth: 0,
   },
   waterInline: {
     flexDirection: 'row',
@@ -197,13 +250,10 @@ const styles = StyleSheet.create({
     gap: 4,
     flexShrink: 0,
   },
-  details: {
-    paddingTop: 12,
-    gap: 12,
-  },
+  details: {},
   detailsRow: {
     flexDirection: 'row',
-    gap: 20,
+    flexWrap: 'wrap',
   },
   metricRow: {
     flexDirection: 'row',
@@ -211,19 +261,16 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     color: 'rgba(255,255,255,0.5)',
-    fontSize: 13,
     fontWeight: '500',
   },
   metricValue: {
     color: '#fff',
-    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.2,
   },
   updatedAt: {
     alignSelf: 'flex-end',
     color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.2,
   },
