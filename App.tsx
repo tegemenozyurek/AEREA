@@ -4,9 +4,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
+import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
+import AccountScreen from './screens/AccountScreen';
+import AnalysisScreen from './screens/AnalysisScreen';
 import AuthScreen from './screens/AuthScreen';
+import CommunityScreen from './screens/CommunityScreen';
 import HomeScreen from './screens/HomeScreen';
+import MachinesScreen from './screens/MachinesScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import { useResponsive } from './utils/responsive';
 
 const SPLASH_DURATION_MS = 1500;
@@ -15,9 +22,39 @@ const SHOW_SPLASH = Platform.OS !== 'web';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+function CurrentScreen() {
+  const { route } = useNavigation();
+  switch (route) {
+    case 'community':
+      return <CommunityScreen />;
+    case 'machines':
+      return <MachinesScreen />;
+    case 'analysis':
+      return <AnalysisScreen />;
+    case 'account':
+      return <AccountScreen />;
+    case 'settings':
+      return <SettingsScreen />;
+    case 'home':
+    default:
+      return <HomeScreen />;
+  }
+}
+
+function AuthenticatedRoutes() {
+  return (
+    <View style={styles.fill}>
+      <View style={styles.fill}>
+        <CurrentScreen />
+      </View>
+      <NavBar />
+    </View>
+  );
+}
+
 function Routes() {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <HomeScreen /> : <AuthScreen />;
+  return isAuthenticated ? <AuthenticatedRoutes /> : <AuthScreen />;
 }
 
 export default function App() {
@@ -54,6 +91,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
+        <NavigationProvider>
         <GradientBackground>
           <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
             <Routes />
@@ -76,6 +114,7 @@ export default function App() {
 
           <StatusBar style="light" />
         </GradientBackground>
+        </NavigationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
