@@ -1,18 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 import type { Machine } from '../types/machine';
 import { formatUpdatedAt } from '../utils/formatDate';
 import { useResponsive } from '../utils/responsive';
 
+const DRAG_HOLD_MS = 2000;
+
 type Props = {
   machine: Machine;
+  onLongPressDrag?: () => void;
+  isDragging?: boolean;
+  dragHoldMs?: number;
 };
 
 function InlineStat({
@@ -57,7 +62,12 @@ function Metric({
   );
 }
 
-export default function MachineCard({ machine }: Props) {
+export default function MachineCard({
+  machine,
+  onLongPressDrag,
+  isDragging = false,
+  dragHoldMs = DRAG_HOLD_MS,
+}: Props) {
   const r = useResponsive();
   const [expanded, setExpanded] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -86,6 +96,9 @@ export default function MachineCard({ machine }: Props) {
   );
 
   const toggle = () => {
+    if (isDragging) {
+      return;
+    }
     const next = !expanded;
     setIsAnimating(true);
     setExpanded(next);
@@ -119,8 +132,18 @@ export default function MachineCard({ machine }: Props) {
     outputRange: [0.92, 1],
   });
 
+  useEffect(() => {
+    if (!isDragging || !expanded) {
+      return;
+    }
+    setExpanded(false);
+    setIsAnimating(false);
+    expandAnim.setValue(0);
+  }, [isDragging, expanded, expandAnim]);
+
   return (
-    <Pressable
+    <TouchableOpacity
+      activeOpacity={0.85}
       style={[
         styles.card,
         {
@@ -131,10 +154,15 @@ export default function MachineCard({ machine }: Props) {
           paddingTop: layout.paddingTop,
           paddingBottom: layout.paddingBottom,
         },
+        isDragging && styles.cardDragging,
       ]}
       onPress={toggle}
+      onLongPress={onLongPressDrag}
+      delayLongPress={dragHoldMs}
+      disabled={isDragging}
       accessibilityRole="button"
-      accessibilityState={{ expanded }}
+      accessibilityState={{ expanded, selected: isDragging }}
+      accessibilityHint="Hold for two seconds to reorder"
       accessibilityLabel={`${machine.name}, ${expanded ? 'collapse' : 'expand'} details`}
     >
       <Text
@@ -218,7 +246,7 @@ export default function MachineCard({ machine }: Props) {
           </Text>
         </View>
       </Animated.View>
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
@@ -229,6 +257,14 @@ const styles = StyleSheet.create({
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
+  },
+  cardDragging: {
+    opacity: 0.92,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
   },
   cardTitle: {
     color: '#fff',

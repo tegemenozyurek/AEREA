@@ -1,27 +1,44 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import DraggableFlatList, {
+  RenderItemParams,
+  ShadowDecorator,
+} from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MachineCard from '../components/MachineCard';
 import { MOCK_MACHINES } from '../data/mockMachines';
+import type { Machine } from '../types/machine';
 import { useResponsive } from '../utils/responsive';
 
 const COLLAPSE_MS = 220;
 
+const DRAG_HOLD_MS = 2000;
+
+const DRAG_SPRING = {
+  damping: 22,
+  stiffness: 180,
+  mass: 0.18,
+  overshootClamping: true,
+};
+
 export default function MachinesScreen() {
   const r = useResponsive();
+  const [machines, setMachines] = useState<Machine[]>(MOCK_MACHINES);
   const [roomExpanded, setRoomExpanded] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
   const [cardsHeight, setCardsHeight] = useState(0);
+  const isDraggingRef = useRef(false);
   const expandAnim = useRef(new Animated.Value(1)).current;
+
+  const showMachines = roomExpanded || isAnimating;
 
   const toggleRoom = () => {
     const next = !roomExpanded;
@@ -62,6 +79,39 @@ export default function MachinesScreen() {
 
   const constrainHeight = isAnimating || !roomExpanded;
 
+  const renderMachine = useCallback(
+    ({ item, drag, isActive }: RenderItemParams<Machine>) => (
+      <ShadowDecorator elevation={12} radius={10} opacity={0.3}>
+        <MachineCard
+          machine={item}
+          onLongPressDrag={drag}
+          isDragging={isActive}
+          dragHoldMs={DRAG_HOLD_MS}
+        />
+      </ShadowDecorator>
+    ),
+    [],
+  );
+
+  const handleDragBegin = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
+  const handleDragEnd = useCallback(({ data }: { data: Machine[] }) => {
+    isDraggingRef.current = false;
+    setMachines(data);
+  }, []);
+
+  const handleListContentSizeChange = useCallback((_w: number, h: number) => {
+    if (isDraggingRef.current) {
+      return;
+    }
+    const height = Math.ceil(h);
+    if (height > 0 && height !== cardsHeight) {
+      setCardsHeight(height);
+    }
+  }, [cardsHeight]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
@@ -87,10 +137,9 @@ export default function MachinesScreen() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
+      <View
+        style={[
+          styles.body,
           {
             paddingHorizontal: r.horizontalPadding,
             maxWidth: r.contentMaxWidth,
@@ -98,7 +147,6 @@ export default function MachinesScreen() {
             width: '100%',
           },
         ]}
-        showsVerticalScrollIndicator={false}
       >
         <View style={styles.roomHeader}>
           <Text style={[styles.roomTitle, { fontSize: r.scale(26) }]}>Room #1</Text>
@@ -118,6 +166,12 @@ export default function MachinesScreen() {
 
         <Animated.View
           style={[
+            styles.listWrap,
+            {
+              marginTop: r.scale(20),
+              marginLeft: r.cardInsetLeft,
+              marginRight: r.cardInsetRight,
+            },
             constrainHeight &&
               cardsHeight > 0 && {
                 maxHeight: cardsMaxHeight,
@@ -127,37 +181,32 @@ export default function MachinesScreen() {
               opacity: cardsOpacity,
               transform: [{ scaleY: cardsScale }],
             },
-            !roomExpanded &&
-              !isAnimating && {
-                height: 0,
-                overflow: 'hidden',
-                opacity: 0,
-              },
+            !showMachines && {
+              height: 0,
+              overflow: 'hidden',
+              opacity: 0,
+            },
           ]}
         >
-          <View
-            style={[
-              styles.cards,
-              {
-                marginTop: r.scale(20),
-                marginLeft: r.cardInsetLeft,
-                marginRight: r.cardInsetRight,
-                gap: r.cardGap,
-              },
-            ]}
-            onLayout={(e) => {
-              const height = Math.ceil(e.nativeEvent.layout.height);
-              if (height > 0 && height !== cardsHeight) {
-                setCardsHeight(height);
-              }
-            }}
-          >
-            {MOCK_MACHINES.map((machine) => (
-              <MachineCard key={machine.id} machine={machine} />
-            ))}
-          </View>
+          {showMachines && (
+            <DraggableFlatList
+              data={machines}
+              keyExtractor={(item) => item.id}
+              renderItem={renderMachine}
+              onDragBegin={handleDragBegin}
+              onDragEnd={handleDragEnd}
+              onContentSizeChange={handleListContentSizeChange}
+              scrollEnabled
+              activationDistance={10}
+              dragItemOverflow
+              animationConfig={DRAG_SPRING}
+              ItemSeparatorComponent={() => (
+                <View style={{ height: r.cardGap }} />
+              )}
+            />
+          )}
         </Animated.View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -190,13 +239,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  scroll: {
+  body: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  listWrap: {
+    flex: 1,
   },
   roomHeader: {
     flexDirection: 'row',
@@ -214,5 +263,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cards: {},
 });
