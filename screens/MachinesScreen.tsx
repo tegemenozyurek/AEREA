@@ -70,6 +70,8 @@ function Metric({
   );
 }
 
+const RIGHT_COLUMN_WIDTH = 48;
+
 function MachineCard({ machine }: { machine: Machine }) {
   return (
     <View style={styles.card}>
@@ -77,12 +79,14 @@ function MachineCard({ machine }: { machine: Machine }) {
         <Text style={styles.cardTitle} numberOfLines={1}>
           {machine.name}
         </Text>
-        <View
-          style={[
-            styles.statusDot,
-            { backgroundColor: machine.online ? '#34D399' : '#F87171' },
-          ]}
-        />
+        <View style={styles.rightColumn}>
+          <View
+            style={[
+              styles.statusDot,
+              { backgroundColor: machine.online ? '#34D399' : '#F87171' },
+            ]}
+          />
+        </View>
       </View>
 
       <View style={styles.metrics}>
@@ -97,9 +101,11 @@ function MachineCard({ machine }: { machine: Machine }) {
           </View>
         </View>
 
-        <View style={styles.waterColumn}>
-          <Ionicons name="water" size={22} color="#60A5FA" />
-          <Text style={styles.waterValue}>{machine.waterLevel}%</Text>
+        <View style={styles.rightColumn}>
+          <View style={styles.waterBlock}>
+            <Ionicons name="water" size={22} color="#60A5FA" />
+            <Text style={styles.waterValue}>{machine.waterLevel}%</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -184,6 +190,7 @@ const styles = StyleSheet.create({
   },
   cards: {
     marginTop: 20,
+    marginHorizontal: 10,
     gap: 12,
   },
   card: {
@@ -198,11 +205,8 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 12,
     paddingBottom: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   cardTitle: {
     flex: 1,
@@ -210,6 +214,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.2,
+  },
+  rightColumn: {
+    width: RIGHT_COLUMN_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 24,
+    marginRight: -10,
   },
   statusDot: {
     width: 10,
@@ -246,15 +257,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  waterColumn: {
-    width: 48,
+  waterBlock: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingLeft: 14,
-    marginRight: -2,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderLeftColor: 'rgba(255,255,255,0.1)',
   },
   waterValue: {
     color: '#fff',
