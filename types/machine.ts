@@ -7,4 +7,5 @@ export type Machine = {
   phDown: number;
   phUp: number;
   waterLevel: number;
+  updatedAt: string;
 };

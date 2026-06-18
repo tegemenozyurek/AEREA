@@ -1,18 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { Machine } from '../types/machine';
+import { formatUpdatedAt } from '../utils/formatDate';
 
 const LABEL_WIDTH = {
   left: 32,
   right: 58,
 } as const;
 
-const RIGHT_COLUMN_WIDTH = 48;
-
 type Props = {
   machine: Machine;
 };
+
+function InlineStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <Text style={styles.inlineStat} numberOfLines={1}>
+      <Text style={styles.metricLabel}>{label} </Text>
+      <Text style={styles.metricValue}>{value}</Text>
+    </Text>
+  );
+}
 
 function Metric({
   label,
@@ -32,46 +46,132 @@ function Metric({
 }
 
 export default function MachineCard({ machine }: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [detailsHeight, setDetailsHeight] = useState(0);
+  const expandAnim = useRef(new Animated.Value(0)).current;
+
+  const toggle = () => {
+    const next = !expanded;
+    setIsAnimating(true);
+    setExpanded(next);
+
+    Animated.spring(expandAnim, {
+      toValue: next ? 1 : 0,
+      friction: 5,
+      tension: 110,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) {
+        setIsAnimating(false);
+      }
+    });
+  };
+
+  const constrainDetails = isAnimating || !expanded;
+
+  const detailsMaxHeight = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, detailsHeight],
+  });
+
+  const detailsOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [0, 0.7, 1],
+  });
+
+  const detailsScale = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1],
+  });
+
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
+    <View style={styles.wrapper}>
+      <Pressable
+        style={styles.card}
+        onPress={toggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${machine.name}, ${expanded ? 'collapse' : 'expand'} details`}
+      >
         <Text style={styles.cardTitle} numberOfLines={1}>
           {machine.name}
         </Text>
-        <View style={styles.rightColumn}>
+
+        <View style={styles.summaryRow}>
+          <InlineStat label="ppm" value={machine.ppm} />
+          <InlineStat label="pH" value={machine.ph} />
+          <View style={styles.waterInline}>
+            <Ionicons name="water" size={18} color="#60A5FA" />
+            <Text style={styles.metricValue}>{machine.waterLevel}%</Text>
+          </View>
+        </View>
+
+        <Animated.View
+          style={[
+            constrainDetails &&
+              detailsHeight > 0 && {
+                maxHeight: detailsMaxHeight,
+                overflow: 'hidden',
+              },
+            isAnimating && {
+              opacity: detailsOpacity,
+              transform: [{ scaleY: detailsScale }],
+            },
+            !expanded &&
+              !isAnimating && {
+                height: 0,
+                overflow: 'hidden',
+                opacity: 0,
+              },
+          ]}
+          pointerEvents={expanded ? 'auto' : 'none'}
+        >
           <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: machine.online ? '#34D399' : '#F87171' },
-            ]}
-          />
-        </View>
-      </View>
+            style={styles.details}
+            onLayout={(e) => {
+              const height = Math.ceil(e.nativeEvent.layout.height);
+              if (height > 0 && height !== detailsHeight) {
+                setDetailsHeight(height);
+              }
+            }}
+          >
+            <View style={styles.detailsRow}>
+              <Metric
+                label="pH down"
+                value={machine.phDown}
+                labelWidth={LABEL_WIDTH.right}
+              />
+              <Metric
+                label="pH up"
+                value={machine.phUp}
+                labelWidth={LABEL_WIDTH.right}
+              />
+            </View>
 
-      <View style={styles.metrics}>
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricsCol}>
-            <Metric label="ppm" value={machine.ppm} labelWidth={LABEL_WIDTH.left} />
-            <Metric label="pH" value={machine.ph} labelWidth={LABEL_WIDTH.left} />
+            <Text style={styles.updatedAt}>
+              updated at {formatUpdatedAt(machine.updatedAt)}
+            </Text>
           </View>
-          <View style={styles.metricsCol}>
-            <Metric label="pH down" value={machine.phDown} labelWidth={LABEL_WIDTH.right} />
-            <Metric label="pH up" value={machine.phUp} labelWidth={LABEL_WIDTH.right} />
-          </View>
-        </View>
+        </Animated.View>
+      </Pressable>
 
-        <View style={styles.rightColumn}>
-          <View style={styles.waterBlock}>
-            <Ionicons name="water" size={22} color="#60A5FA" />
-            <Text style={styles.waterValue}>{machine.waterLevel}%</Text>
-          </View>
-        </View>
+      <View style={styles.statusDotWrap}>
+        <View
+          style={[
+            styles.statusDot,
+            { backgroundColor: machine.online ? '#34D399' : '#F87171' },
+          ]}
+        />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    position: 'relative',
+  },
   card: {
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 16,
@@ -79,47 +179,37 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 18,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingBottom: 9,
+    paddingBottom: 14,
   },
   cardTitle: {
-    flex: 1,
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.2,
   },
-  rightColumn: {
-    width: RIGHT_COLUMN_WIDTH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 24,
-    marginRight: -10,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  metrics: {
+  summaryRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    paddingTop: 7,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 8,
+  },
+  inlineStat: {
+    flex: 1,
+  },
+  waterInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+  details: {
+    paddingTop: 12,
     gap: 12,
   },
-  metricsGrid: {
-    flex: 1,
+  detailsRow: {
     flexDirection: 'row',
-    gap: 16,
-  },
-  metricsCol: {
-    flex: 1,
-    gap: 10,
+    gap: 20,
   },
   metricRow: {
     flexDirection: 'row',
@@ -136,15 +226,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  waterBlock: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  waterValue: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
+  updatedAt: {
+    alignSelf: 'flex-end',
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    fontWeight: '500',
     letterSpacing: 0.2,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  statusDotWrap: {
+    position: 'absolute',
+    right: -34,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

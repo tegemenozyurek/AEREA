@@ -11,6 +11,7 @@ export const MOCK_MACHINES: Machine[] = [
     phDown: 0,
     phUp: 0,
     waterLevel: 80,
+    updatedAt: '2026-06-19T14:32:18.000Z',
   },
   {
     id: 'machine-2',
@@ -21,6 +22,7 @@ export const MOCK_MACHINES: Machine[] = [
     phDown: 2,
     phUp: 0,
     waterLevel: 45,
+    updatedAt: '2026-06-19T11:05:42.000Z',
   },
   {
     id: 'machine-3',
@@ -31,5 +33,6 @@ export const MOCK_MACHINES: Machine[] = [
     phDown: 0,
     phUp: 1,
     waterLevel: 92,
+    updatedAt: '2026-06-19T16:48:03.000Z',
   },
 ];
