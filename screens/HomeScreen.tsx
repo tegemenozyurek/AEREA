@@ -193,7 +193,7 @@ export default function HomeScreen() {
                     <View style={styles.drawerItemIcon}>
                       <MenuIcon
                         icon={item.icon}
-                        size={22}
+                        size={26}
                         color="rgba(255,255,255,0.9)"
                       />
                     </View>
@@ -298,16 +298,16 @@ const styles = StyleSheet.create({
   drawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 18,
   },
   drawerItemIcon: {
-    width: 28,
-    marginRight: 14,
+    width: 34,
+    marginRight: 16,
   },
   drawerItemText: {
     color: '#fff',
-    fontSize: 20,
-    fontWeight: '500',
+    fontSize: 26,
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   drawerFooter: {
