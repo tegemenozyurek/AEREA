@@ -1,8 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { ReactNode } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '../contexts/NavigationContext';
 import { useResponsive } from '../utils/responsive';
 
 type Props = {
@@ -11,29 +9,15 @@ type Props = {
 };
 
 export default function PlaceholderScreen({ title, children }: Props) {
-  const { goHome } = useNavigation();
   const r = useResponsive();
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          activeOpacity={0.7}
-          onPress={goHome}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          hitSlop={8}
-        >
-          <Ionicons name="chevron-back" size={26} color="#fff" />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{title}</Text>
       </View>
 
-      <View style={styles.body}>
-        <Text style={styles.title}>{title}</Text>
-        {children}
-      </View>
+      <View style={styles.body}>{children}</View>
     </SafeAreaView>
   );
 }
@@ -44,31 +28,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   header: {
-    flexDirection: 'row',
+    paddingVertical: 18,
     alignItems: 'center',
-    paddingVertical: 12,
   },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingRight: 12,
-    gap: 2,
-  },
-  backText: {
+  headerTitle: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
   body: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  title: {
-    color: '#fff',
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: 0.4,
   },
 });

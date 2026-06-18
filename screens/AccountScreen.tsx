@@ -7,7 +7,7 @@ export default function AccountScreen() {
   const { user, logout } = useAuth();
 
   return (
-    <PlaceholderScreen title="Account">
+    <PlaceholderScreen title="Profile">
       {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
       <TouchableOpacity
         style={styles.signOut}

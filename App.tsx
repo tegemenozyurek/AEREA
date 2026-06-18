@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
+import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import AccountScreen from './screens/AccountScreen';
@@ -21,7 +22,7 @@ const SHOW_SPLASH = Platform.OS !== 'web';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-function AuthenticatedRoutes() {
+function CurrentScreen() {
   const { route } = useNavigation();
   switch (route) {
     case 'rooms':
@@ -38,6 +39,17 @@ function AuthenticatedRoutes() {
     default:
       return <HomeScreen />;
   }
+}
+
+function AuthenticatedRoutes() {
+  return (
+    <View style={styles.fill}>
+      <View style={styles.fill}>
+        <CurrentScreen />
+      </View>
+      <NavBar />
+    </View>
+  );
 }
 
 function Routes() {
