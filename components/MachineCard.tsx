@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderRightWidth: 3,
+    borderRightWidth: 9,
     borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 16,
     paddingTop: 14,
