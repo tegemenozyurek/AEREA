@@ -190,14 +190,16 @@ export default function MachineDetailScreen({
             styles.metricsCard,
             {
               borderRadius: r.scale(16),
-              paddingVertical: r.scale(20),
+              paddingVertical: r.scale(24),
               paddingHorizontal: r.scale(12),
               marginTop: r.scale(16),
+              overflow: 'visible',
             },
           ]}
         >
-          <View style={[styles.metricsRow, { gap: r.scale(10) }]}>
+          <View style={[styles.metricsRow, { gap: r.scale(10), overflow: 'visible' }]}>
             <MetricRing
+              floatIndex={0}
               label="ppm"
               value={machine.ppm}
               color="#FBBF24"
@@ -206,6 +208,7 @@ export default function MachineDetailScreen({
               valueSize={r.scale(16)}
             />
             <MetricRing
+              floatIndex={1}
               label="pH"
               value={machine.ph}
               color="#34D399"
@@ -214,6 +217,7 @@ export default function MachineDetailScreen({
               valueSize={r.scale(20)}
             />
             <MetricRing
+              floatIndex={2}
               label="water"
               value={`${machine.waterLevel}%`}
               color="#60A5FA"
@@ -224,8 +228,9 @@ export default function MachineDetailScreen({
             />
           </View>
 
-          <View style={[styles.metricsRow, { marginTop: r.scale(18), gap: r.scale(24) }]}>
+          <View style={[styles.metricsRow, { marginTop: r.scale(18), gap: r.scale(24), overflow: 'visible' }]}>
             <MetricRing
+              floatIndex={3}
               label="pH down"
               value={machine.phDown}
               color="#FB7185"
@@ -234,6 +239,7 @@ export default function MachineDetailScreen({
               valueSize={r.scale(16)}
             />
             <MetricRing
+              floatIndex={4}
               label="pH up"
               value={machine.phUp}
               color="#A78BFA"
@@ -361,5 +367,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
+    overflow: 'visible',
   },
 });
