@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CommunityProvider } from './contexts/CommunityContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import AccountScreen from './screens/AccountScreen';
-import AnalysisScreen from './screens/AnalysisScreen';
+import MarketScreen from './screens/MarketScreen';
 import AuthScreen from './screens/AuthScreen';
 import CommunityScreen from './screens/CommunityScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -31,8 +31,8 @@ function CurrentScreen() {
       return <CommunityScreen />;
     case 'machines':
       return <MachinesScreen />;
-    case 'analysis':
-      return <AnalysisScreen />;
+    case 'market':
+      return <MarketScreen />;
     case 'account':
       return <AccountScreen />;
     case 'settings':

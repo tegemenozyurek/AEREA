@@ -11,7 +11,7 @@ export type AppRoute =
   | 'home'
   | 'community'
   | 'machines'
-  | 'analysis'
+  | 'market'
   | 'account'
   | 'settings';
 
