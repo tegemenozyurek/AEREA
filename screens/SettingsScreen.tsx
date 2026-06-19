@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import SettingsProfileCard from '../components/SettingsProfileCard';
 import SettingsRow from '../components/SettingsRow';
 import SettingsSection from '../components/SettingsSection';
+import { MOCK_OWN_BIO } from '../data/mockUsers';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import { getProfileUsername } from '../utils/profile';
@@ -111,14 +113,14 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <SettingsSection title="Profile">
-          <SettingsRow label="Username" value={username} />
-          <SettingsRow label="Email" value={user?.email ?? '—'} stacked />
-          <SettingsRow label="Edit bio" showChevron onPress={() => comingSoon('Edit bio')} />
-          <SettingsRow
-            label="Change photo"
-            showChevron
-            onPress={() => comingSoon('Change photo')}
-            isLast
+          <SettingsProfileCard
+            username={username}
+            email={user?.email}
+            bio={MOCK_OWN_BIO}
+            photoUrl={user?.photoURL}
+            onEditPhoto={() => comingSoon('Change photo')}
+            onEditUsername={() => comingSoon('Edit username')}
+            onEditBio={() => comingSoon('Edit bio')}
           />
         </SettingsSection>
 
