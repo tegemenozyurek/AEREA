@@ -47,6 +47,8 @@ type Props = {
   karma: number;
   showSettings?: boolean;
   onSettingsPress?: () => void;
+  showMessage?: boolean;
+  onMessagePress?: () => void;
   onFollowingPress?: () => void;
   onFollowersPress?: () => void;
 };
@@ -60,6 +62,8 @@ export default function ProfileHeader({
   karma,
   showSettings = false,
   onSettingsPress,
+  showMessage = false,
+  onMessagePress,
   onFollowingPress,
   onFollowersPress,
 }: Props) {
@@ -116,7 +120,7 @@ export default function ProfileHeader({
             {showSettings ? (
               <TouchableOpacity
                 style={[
-                  styles.settingsButton,
+                  styles.actionButton,
                   {
                     width: r.scale(36),
                     height: r.scale(36),
@@ -131,6 +135,26 @@ export default function ProfileHeader({
                 accessibilityLabel="Settings"
               >
                 <Ionicons name="settings-outline" size={r.scale(20)} color="#fff" />
+              </TouchableOpacity>
+            ) : null}
+            {showMessage ? (
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  {
+                    width: r.scale(36),
+                    height: r.scale(36),
+                    borderRadius: r.scale(18),
+                    marginLeft: r.scale(8),
+                  },
+                ]}
+                activeOpacity={0.7}
+                onPress={onMessagePress}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Message"
+              >
+                <Ionicons name="chatbubble-outline" size={r.scale(20)} color="#fff" />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -205,7 +229,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  settingsButton: {
+  actionButton: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,

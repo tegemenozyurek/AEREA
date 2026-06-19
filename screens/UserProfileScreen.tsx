@@ -50,6 +50,8 @@ export default function UserProfileScreen({ user, onBack }: Props) {
         followingCount={user.followingCount}
         followersCount={user.followersCount}
         karma={user.karma}
+        showMessage
+        onMessagePress={() => {}}
       />
     </View>
   );
