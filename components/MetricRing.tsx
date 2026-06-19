@@ -21,6 +21,8 @@ type Props = {
   icon?: ReactNode;
   floatIndex?: number;
   onPress?: () => void;
+  labelGap?: number;
+  shiftX?: number;
 };
 
 export default function MetricRing({
@@ -33,6 +35,8 @@ export default function MetricRing({
   icon,
   floatIndex = 0,
   onPress,
+  labelGap = 8,
+  shiftX = 0,
 }: Props) {
   const ringWidth = Math.max(2.5, Math.round(size * 0.055));
   const innerSize = size - ringWidth * 2 - 4;
@@ -81,6 +85,7 @@ export default function MetricRing({
       disabled={!onPress}
       accessibilityRole="button"
       accessibilityLabel={`${label}, show 48 hour history`}
+      style={shiftX !== 0 ? { transform: [{ translateX: shiftX }] } : undefined}
     >
       <Animated.View style={[styles.wrap, { width: size + 12 }, floatStyle]}>
       <View
@@ -118,7 +123,7 @@ export default function MetricRing({
           </Text>
         </View>
       </View>
-      <Text style={[styles.label, { fontSize: labelSize, marginTop: 8 }]} numberOfLines={1}>
+      <Text style={[styles.label, { fontSize: labelSize, marginTop: labelGap }]} numberOfLines={1}>
         {label}
       </Text>
       </Animated.View>
