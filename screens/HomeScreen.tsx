@@ -40,18 +40,16 @@ export default function HomeScreen() {
             ]}
             resizeMode="contain"
           />
-          <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
-            <TouchableOpacity
-              style={styles.inboxButton}
-              activeOpacity={0.7}
-              onPress={() => {}}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Inbox"
-            >
-              <Ionicons name="file-tray-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.inboxButton}
+            activeOpacity={0.7}
+            onPress={() => {}}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Inbox"
+          >
+            <Ionicons name="file-tray-outline" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -83,19 +81,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   headerContent: {
-    position: 'relative',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerLogo: {
     height: undefined,
     aspectRatio: LOGO_ASPECT_RATIO,
-  },
-  headerActionWrap: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
   },
   inboxButton: {
     width: 36,
