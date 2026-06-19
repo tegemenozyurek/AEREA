@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,6 +27,7 @@ type Props = {
   onRoomChange: (roomId: string) => void;
   onNameChange: (name: string) => void;
   onBack: () => void;
+  onRefresh?: () => Promise<void>;
 };
 
 export default function MachineDetailScreen({
@@ -36,8 +38,10 @@ export default function MachineDetailScreen({
   onRoomChange,
   onNameChange,
   onBack,
+  onRefresh,
 }: Props) {
   const r = useResponsive();
+  const [refreshing, setRefreshing] = useState(false);
   const [roomOpen, setRoomOpen] = useState(false);
   const [selectedMetricIndex, setSelectedMetricIndex] = useState(1);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -84,6 +88,19 @@ export default function MachineDetailScreen({
     onNameChange(trimmed);
     setRenameOpen(false);
   };
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [onRefresh]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -213,6 +230,14 @@ export default function MachineDetailScreen({
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor="#fff"
+            colors={['#008D41']}
+          />
+        }
       >
         <View
           style={[

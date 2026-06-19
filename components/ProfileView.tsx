@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import CommunityPostCard from './CommunityPostCard';
 import DeletePostModal from './DeletePostModal';
 import ProfileHeader from './ProfileHeader';
@@ -18,7 +18,14 @@ type Props = {
 };
 
 export default function ProfileView({ userId, authorName, headerProps }: Props) {
-  const { getProfilePosts, deleteProfilePost, commentsPostId, closeComments } = useCommunity();
+  const {
+    getProfilePosts,
+    deleteProfilePost,
+    commentsPostId,
+    closeComments,
+    refresh,
+    refreshing,
+  } = useCommunity();
   const r = useResponsive();
   const [postToDelete, setPostToDelete] = useState<CommunityPost | null>(null);
   const isOwnProfile = userId === PROFILE_SELF_USER_ID;
@@ -77,8 +84,15 @@ export default function ProfileView({ userId, authorName, headerProps }: Props) 
           },
         ]}
         showsVerticalScrollIndicator={false}
-        bounces={posts.length > 0}
-        alwaysBounceVertical={posts.length > 0}
+        alwaysBounceVertical
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor="#fff"
+            colors={['#008D41']}
+          />
+        }
       />
       <DeletePostModal
         visible={postToDelete !== null}

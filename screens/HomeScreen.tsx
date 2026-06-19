@@ -1,7 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useResponsive } from '../utils/responsive';
@@ -12,8 +20,15 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const r = useResponsive();
+  const [refreshing, setRefreshing] = useState(false);
   const greetingName =
     user?.email?.split('@')[0] ?? user?.displayName ?? 'there';
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setRefreshing(false);
+  }, []);
 
   return (
     <View style={styles.screen}>
@@ -53,9 +68,28 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.body}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingHorizontal: r.horizontalPadding,
+            paddingBottom: r.scale(120),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor="#fff"
+            colors={['#008D41']}
+          />
+        }
+      >
         <Text style={styles.welcome}>Welcome, {greetingName}</Text>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -99,8 +133,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  body: {
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

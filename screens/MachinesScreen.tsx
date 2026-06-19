@@ -117,12 +117,35 @@ export default function MachinesScreen() {
     setEditingRoom(null);
   }, []);
 
+  const applyRoomMetricsRefresh = useCallback(() => {
+    setRooms((prev) => {
+      const next = refreshRoomMetrics(prev);
+      setSelectedMachine((current) => {
+        if (!current) {
+          return current;
+        }
+        const room = next.find((item) => item.id === current.roomId);
+        const updatedMachine = room?.machines.find((item) => item.id === current.machine.id);
+        if (!room || !updatedMachine) {
+          return current;
+        }
+        return { ...current, machine: updatedMachine, roomName: room.name };
+      });
+      return next;
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
     await new Promise((resolve) => setTimeout(resolve, 800));
-    setRooms((prev) => refreshRoomMetrics(prev));
+    applyRoomMetricsRefresh();
     setRefreshing(false);
-  }, []);
+  }, [applyRoomMetricsRefresh]);
+
+  const refreshMachineDetail = useCallback(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    applyRoomMetricsRefresh();
+  }, [applyRoomMetricsRefresh]);
 
   if (selectedMachine) {
     return (
@@ -134,6 +157,7 @@ export default function MachinesScreen() {
         onRoomChange={(roomId) => handleMoveMachine(selectedMachine.machine.id, roomId)}
         onNameChange={(name) => handleRenameMachine(selectedMachine.machine.id, name)}
         onBack={() => setSelectedMachine(null)}
+        onRefresh={refreshMachineDetail}
       />
     );
   }
