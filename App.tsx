@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
 import NavBar from './components/NavBar';
@@ -90,6 +91,7 @@ export default function App() {
   }, [contentOpacity, splashOpacity]);
 
   return (
+    <GestureHandlerRootView style={styles.fill}>
     <SafeAreaProvider>
       <AuthProvider>
         <NavigationProvider>
@@ -120,6 +122,7 @@ export default function App() {
         </NavigationProvider>
       </AuthProvider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
