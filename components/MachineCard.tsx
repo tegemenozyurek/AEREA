@@ -2,11 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
 import type { Machine } from '../types/machine';
 import { formatUpdatedAt } from '../utils/formatDate';
 import { useResponsive } from '../utils/responsive';
@@ -118,9 +118,8 @@ export default function MachineCard({
   }, [isDragging, expanded, expandAnim]);
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      style={[
+    <Pressable
+      style={({ pressed }) => [
         styles.card,
         {
           borderRightColor: machine.online ? '#34D399' : '#F87171',
@@ -131,6 +130,7 @@ export default function MachineCard({
           paddingBottom: layout.paddingBottom,
         },
         isDragging && styles.cardDragging,
+        pressed && !isDragging && styles.cardPressed,
       ]}
       onPress={toggle}
       onLongPress={onLongPressDrag}
@@ -222,7 +222,7 @@ export default function MachineCard({
           </Text>
         </View>
       </Animated.View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -241,6 +241,9 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 10,
+  },
+  cardPressed: {
+    opacity: 0.85,
   },
   cardTitle: {
     color: '#fff',

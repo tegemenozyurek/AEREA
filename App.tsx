@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
 import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ChatProvider } from './contexts/ChatContext';
 import { CommunityProvider } from './contexts/CommunityContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import AccountScreen from './screens/AccountScreen';
@@ -96,6 +97,7 @@ export default function App() {
       <AuthProvider>
         <NavigationProvider>
         <CommunityProvider>
+        <ChatProvider>
         <GradientBackground>
           <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
             <Routes />
@@ -118,6 +120,7 @@ export default function App() {
 
           <StatusBar style="light" />
         </GradientBackground>
+        </ChatProvider>
         </CommunityProvider>
         </NavigationProvider>
       </AuthProvider>

@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DraggableFlatList, {
+import {
+  NestableDraggableFlatList,
   RenderItemParams,
   ShadowDecorator,
 } from 'react-native-draggable-flatlist';
@@ -31,7 +32,6 @@ type Props = {
   room: Room;
   defaultExpanded?: boolean;
   onMachinesChange: (roomId: string, machines: Machine[]) => void;
-  onDragActiveChange?: (active: boolean) => void;
   onMachinePress?: (machine: Machine, roomId: string, roomName: string) => void;
   onEditPress?: (room: Room) => void;
 };
@@ -40,7 +40,6 @@ export default function RoomSection({
   room,
   defaultExpanded = true,
   onMachinesChange,
-  onDragActiveChange,
   onMachinePress,
   onEditPress,
 }: Props) {
@@ -110,6 +109,7 @@ export default function RoomSection({
           activeOpacity={0.7}
           onPress={() => onMachinePress?.(item, room.id, room.name)}
           hitSlop={8}
+          disabled={isActive}
           accessibilityRole="button"
           accessibilityLabel={`Open ${item.name}`}
         >
@@ -121,22 +121,20 @@ export default function RoomSection({
         </TouchableOpacity>
       </View>
     ),
-    [onMachinePress, room.name, r],
+    [onMachinePress, room.id, room.name, r],
   );
 
   const handleDragBegin = useCallback(() => {
     isDraggingRef.current = true;
-    onDragActiveChange?.(true);
-  }, [onDragActiveChange]);
+  }, []);
 
   const handleDragEnd = useCallback(
     ({ data }: { data: Machine[] }) => {
       isDraggingRef.current = false;
-      onDragActiveChange?.(false);
       setMachines(data);
       onMachinesChange(room.id, data);
     },
-    [onMachinesChange, onDragActiveChange, room.id],
+    [onMachinesChange, room.id],
   );
 
   const handleListContentSizeChange = useCallback(
@@ -211,15 +209,14 @@ export default function RoomSection({
         ]}
       >
         {showMachines && (
-          <DraggableFlatList
+          <NestableDraggableFlatList
             data={machines}
             keyExtractor={(item) => item.id}
             renderItem={renderMachine}
             onDragBegin={handleDragBegin}
             onDragEnd={handleDragEnd}
             onContentSizeChange={handleListContentSizeChange}
-            scrollEnabled={false}
-            activationDistance={10}
+            activationDistance={20}
             dragItemOverflow
             animationConfig={DRAG_SPRING}
             ItemSeparatorComponent={() => <View style={{ height: r.cardGap }} />}

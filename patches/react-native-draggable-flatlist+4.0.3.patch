@@ -1,0 +1,104 @@
+diff --git a/node_modules/react-native-draggable-flatlist/lib/module/components/NestableDraggableFlatList.js b/node_modules/react-native-draggable-flatlist/lib/module/components/NestableDraggableFlatList.js
+index 3bf1f43..8a874d1 100644
+--- a/node_modules/react-native-draggable-flatlist/lib/module/components/NestableDraggableFlatList.js
++++ b/node_modules/react-native-draggable-flatlist/lib/module/components/NestableDraggableFlatList.js
+@@ -1,7 +1,7 @@
+ function _extends() { _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; }; return _extends.apply(this, arguments); }
+ 
+ import React, { useRef, useState } from "react";
+-import { findNodeHandle, LogBox } from "react-native";
++import { LogBox } from "react-native";
+ import { useDerivedValue, useSharedValue } from "react-native-reanimated";
+ import DraggableFlatList from "../components/DraggableFlatList";
+ import { useSafeNestableScrollContainerContext } from "../context/nestableScrollContainerContext";
+@@ -38,7 +38,8 @@ function NestableDraggableFlatListInner(props, ref) {
+     let {
+       containerRef
+     } = _ref;
+-    const nodeHandle = findNodeHandle(scrollableRef.current);
++    const scrollNode = scrollableRef.current;
++    const containerNode = containerRef.current;
+ 
+     const onSuccess = (_x, y) => {
+       listVerticalOffset.value = y;
+@@ -46,10 +47,13 @@ function NestableDraggableFlatListInner(props, ref) {
+ 
+     const onFail = () => {
+       console.log("## nested draggable list measure fail");
+-    }; //@ts-ignore
++    };
+ 
++    if (!scrollNode || !containerNode) {
++      return;
++    }
+ 
+-    containerRef.current.measureLayout(nodeHandle, onSuccess, onFail);
++    containerNode.measureLayout(scrollNode, onSuccess, onFail);
+   });
+   const onDragBegin = useStableCallback(params => {
+     var _props$onDragBegin;
+diff --git a/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx b/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx
+index e4e861a..bfea6f3 100644
+--- a/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx
++++ b/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx
+@@ -4,6 +4,7 @@ import {
+   LayoutChangeEvent,
+   MeasureLayoutOnSuccessCallback,
+   StyleProp,
++  UIManager,
+   ViewStyle,
+ } from "react-native";
+ import Animated, {
+@@ -90,11 +91,11 @@ function CellRendererComponent<T>(props: Props<T>) {
+ 
+     const containerNode = containerRef.current;
+     const viewNode = viewRef.current;
+-    const nodeHandle = containerNode;
++    const containerTag = findNodeHandle(containerNode);
++    const viewTag = findNodeHandle(viewNode);
+ 
+-    if (viewNode && nodeHandle) {
+-      //@ts-ignore
+-      viewNode.measureLayout(nodeHandle, onSuccess, onFail);
++    if (viewTag != null && containerTag != null) {
++      UIManager.measureLayout(viewTag, containerTag, onFail, onSuccess);
+     }
+   });
+ 
+diff --git a/node_modules/react-native-draggable-flatlist/src/components/NestableDraggableFlatList.tsx b/node_modules/react-native-draggable-flatlist/src/components/NestableDraggableFlatList.tsx
+index 1559352..2dd0b8b 100644
+--- a/node_modules/react-native-draggable-flatlist/src/components/NestableDraggableFlatList.tsx
++++ b/node_modules/react-native-draggable-flatlist/src/components/NestableDraggableFlatList.tsx
+@@ -1,5 +1,5 @@
+ import React, { useRef, useState } from "react";
+-import { findNodeHandle, LogBox } from "react-native";
++import { findNodeHandle, LogBox, UIManager } from "react-native";
+ import Animated, {
+   useDerivedValue,
+   useSharedValue,
+@@ -48,7 +48,8 @@ function NestableDraggableFlatListInner<T>(
+   });
+ 
+   const onListContainerLayout = useStableCallback(async ({ containerRef }) => {
+-    const nodeHandle = findNodeHandle(scrollableRef.current);
++    const scrollTag = findNodeHandle(scrollableRef.current);
++    const containerTag = findNodeHandle(containerRef.current);
+ 
+     const onSuccess = (_x: number, y: number) => {
+       listVerticalOffset.value = y;
+@@ -56,8 +57,13 @@ function NestableDraggableFlatListInner<T>(
+     const onFail = () => {
+       console.log("## nested draggable list measure fail");
+     };
+-    //@ts-ignore
+-    containerRef.current.measureLayout(nodeHandle, onSuccess, onFail);
++
++    if (scrollTag == null || containerTag == null) {
++      onFail();
++      return;
++    }
++
++    UIManager.measureLayout(containerTag, scrollTag, onFail, onSuccess);
+   });
+ 
+   const onDragBegin: DraggableFlatListProps<T>["onDragBegin"] = useStableCallback(
