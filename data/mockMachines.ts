@@ -1,7 +1,45 @@
+import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
 
-/** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */
-export const MOCK_ROOMS: Room[] = [
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function round(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+function jitter(value: number, range: number): number {
+  return value + (Math.random() - 0.5) * range * 2;
+}
+
+/** Simulates fetching fresh sensor readings while keeping local room layout. */
+export function refreshRoomMetrics(rooms: Room[]): Room[] {
+  const mockById = new Map<string, Machine>();
+  MOCK_ROOMS.forEach((room) => {
+    room.machines.forEach((machine) => mockById.set(machine.id, machine));
+  });
+
+  return rooms.map((room) => ({
+    ...room,
+    machines: room.machines.map((machine) => {
+      const base = mockById.get(machine.id) ?? machine;
+      return {
+        ...machine,
+        ppm: Math.round(clamp(jitter(base.ppm, 40), 400, 1600)),
+        ph: round(clamp(jitter(base.ph, 0.15), 5.0, 7.0), 1),
+        phDown: base.phDown,
+        phUp: base.phUp,
+        waterLevel: Math.round(clamp(jitter(base.waterLevel, 4), 0, 100)),
+        online: Math.random() > 0.08 ? base.online : !base.online,
+        updatedAt: new Date().toISOString(),
+      };
+    }),
+  }));
+}
+
+/** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-1',
     name: 'Room #1',

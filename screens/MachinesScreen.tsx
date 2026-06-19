@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import RoomEditModal from '../components/RoomEditModal';
 import RoomSection from '../components/RoomSection';
-import { MOCK_ROOMS } from '../data/mockMachines';
+import { MOCK_ROOMS, refreshRoomMetrics } from '../data/mockMachines';
 import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
@@ -25,6 +25,7 @@ type EditingRoom = {
 export default function MachinesScreen() {
   const r = useResponsive();
   const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
   const [editingRoom, setEditingRoom] = useState<EditingRoom | null>(null);
 
@@ -116,6 +117,13 @@ export default function MachinesScreen() {
     setEditingRoom(null);
   }, []);
 
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setRooms((prev) => refreshRoomMetrics(prev));
+    setRefreshing(false);
+  }, []);
+
   if (selectedMachine) {
     return (
       <MachineDetailScreen
@@ -179,6 +187,14 @@ export default function MachinesScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor="#fff"
+            colors={['#008D41']}
+          />
+        }
       >
         {rooms.map((room) => (
           <RoomSection
