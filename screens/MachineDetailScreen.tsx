@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MetricHistorySection, { type MetricHistoryItem } from '../components/MetricHistorySection';
 import MetricRing from '../components/MetricRing';
 import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
@@ -27,6 +28,22 @@ export default function MachineDetailScreen({
 }: Props) {
   const r = useResponsive();
   const [roomOpen, setRoomOpen] = useState(false);
+  const [selectedMetricIndex, setSelectedMetricIndex] = useState(1);
+
+  const metrics = useMemo<MetricHistoryItem[]>(
+    () => [
+      { key: 'ppm', label: 'ppm', color: '#FBBF24', value: machine.ppm },
+      { key: 'ph', label: 'pH', color: '#34D399', value: machine.ph },
+      { key: 'waterLevel', label: 'water', color: '#60A5FA', value: machine.waterLevel },
+      { key: 'phDown', label: 'pH down', color: '#FB7185', value: machine.phDown },
+      { key: 'phUp', label: 'pH up', color: '#A78BFA', value: machine.phUp },
+    ],
+    [machine.ph, machine.phDown, machine.phUp, machine.ppm, machine.waterLevel],
+  );
+
+  const selectMetric = (index: number) => {
+    setSelectedMetricIndex(index);
+  };
 
   const handleRoomSelect = (nextRoomId: string) => {
     setRoomOpen(false);
@@ -206,6 +223,7 @@ export default function MachineDetailScreen({
               size={r.scale(76)}
               labelSize={r.scale(12)}
               valueSize={r.scale(16)}
+              onPress={() => selectMetric(0)}
             />
             <MetricRing
               floatIndex={1}
@@ -215,6 +233,7 @@ export default function MachineDetailScreen({
               size={r.scale(92)}
               labelSize={r.scale(12)}
               valueSize={r.scale(20)}
+              onPress={() => selectMetric(1)}
             />
             <MetricRing
               floatIndex={2}
@@ -225,6 +244,7 @@ export default function MachineDetailScreen({
               labelSize={r.scale(12)}
               valueSize={r.scale(15)}
               icon={<Ionicons name="water" size={r.scale(14)} color="#60A5FA" style={{ marginBottom: 2 }} />}
+              onPress={() => selectMetric(2)}
             />
           </View>
 
@@ -237,6 +257,7 @@ export default function MachineDetailScreen({
               size={r.scale(72)}
               labelSize={r.scale(12)}
               valueSize={r.scale(16)}
+              onPress={() => selectMetric(3)}
             />
             <MetricRing
               floatIndex={4}
@@ -246,9 +267,17 @@ export default function MachineDetailScreen({
               size={r.scale(72)}
               labelSize={r.scale(12)}
               valueSize={r.scale(16)}
+              onPress={() => selectMetric(4)}
             />
           </View>
         </View>
+
+        <MetricHistorySection
+          metrics={metrics}
+          selectedIndex={selectedMetricIndex}
+          onSelectedIndexChange={setSelectedMetricIndex}
+          machineId={machine.id}
+        />
       </ScrollView>
     </SafeAreaView>
   );

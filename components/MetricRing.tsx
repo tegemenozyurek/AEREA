@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { withAlpha } from '../utils/color';
 
 type Props = {
   label: string;
@@ -19,6 +20,7 @@ type Props = {
   valueSize: number;
   icon?: ReactNode;
   floatIndex?: number;
+  onPress?: () => void;
 };
 
 export default function MetricRing({
@@ -30,6 +32,7 @@ export default function MetricRing({
   valueSize,
   icon,
   floatIndex = 0,
+  onPress,
 }: Props) {
   const ringWidth = Math.max(2.5, Math.round(size * 0.055));
   const innerSize = size - ringWidth * 2 - 4;
@@ -73,7 +76,13 @@ export default function MetricRing({
   }));
 
   return (
-    <Animated.View style={[styles.wrap, { width: size + 12 }, floatStyle]}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, show 48 hour history`}
+    >
+      <Animated.View style={[styles.wrap, { width: size + 12 }, floatStyle]}>
       <View
         style={[
           styles.outerRing,
@@ -94,7 +103,7 @@ export default function MetricRing({
               width: innerSize,
               height: innerSize,
               borderRadius: innerSize / 2,
-              borderColor: `${color}55`,
+              borderColor: withAlpha(color, 0.33),
             },
           ]}
         >
@@ -112,7 +121,8 @@ export default function MetricRing({
       <Text style={[styles.label, { fontSize: labelSize, marginTop: 8 }]} numberOfLines={1}>
         {label}
       </Text>
-    </Animated.View>
+      </Animated.View>
+    </Pressable>
   );
 }
 
