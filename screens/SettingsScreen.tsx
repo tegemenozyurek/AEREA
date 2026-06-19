@@ -10,14 +10,14 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EditProfileModal from '../components/EditProfileModal';
 import SettingsChoiceRow from '../components/SettingsChoiceRow';
 import SettingsProfileCard from '../components/SettingsProfileCard';
 import SettingsRow from '../components/SettingsRow';
 import SettingsSection from '../components/SettingsSection';
-import { MOCK_OWN_BIO } from '../data/mockUsers';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
-import { getProfileUsername } from '../utils/profile';
+import { useProfile } from '../contexts/ProfileContext';
 import { useResponsive } from '../utils/responsive';
 
 const APP_VERSION = '1.0.0';
@@ -48,6 +48,7 @@ function comingSoon(feature: string) {
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
+  const { username, bio, photoUrl, updateProfile } = useProfile();
   const { navigate } = useNavigation();
   const r = useResponsive();
   const insets = useSafeAreaInsets();
@@ -56,8 +57,7 @@ export default function SettingsScreen() {
   const [theme, setTheme] = useState<ThemeOption>('dark');
   const [language, setLanguage] = useState<LanguageOption>('English');
   const [expandedPicker, setExpandedPicker] = useState<ExpandedPicker>(null);
-
-  const username = getProfileUsername(user?.email, user?.displayName);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   const togglePicker = (picker: Exclude<ExpandedPicker, null>) => {
     setExpandedPicker((current) => (current === picker ? null : picker));
@@ -138,9 +138,9 @@ export default function SettingsScreen() {
         <SettingsSection title="Profile">
           <SettingsProfileCard
             username={username}
-            bio={MOCK_OWN_BIO}
-            photoUrl={user?.photoURL}
-            onEditPress={() => comingSoon('Edit profile')}
+            bio={bio}
+            photoUrl={photoUrl}
+            onEditPress={() => setEditProfileOpen(true)}
           />
         </SettingsSection>
 
@@ -230,6 +230,15 @@ export default function SettingsScreen() {
           AEREA · v{APP_VERSION}
         </Text>
       </ScrollView>
+
+      <EditProfileModal
+        visible={editProfileOpen}
+        username={username}
+        bio={bio}
+        photoUrl={photoUrl}
+        onClose={() => setEditProfileOpen(false)}
+        onSave={updateProfile}
+      />
     </View>
   );
 }

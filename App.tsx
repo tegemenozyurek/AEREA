@@ -9,6 +9,7 @@ import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CommunityProvider } from './contexts/CommunityContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
+import { ProfileProvider } from './contexts/ProfileContext';
 import AccountScreen from './screens/AccountScreen';
 import MarketScreen from './screens/MarketScreen';
 import AuthScreen from './screens/AuthScreen';
@@ -95,6 +96,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <NavigationProvider>
+        <ProfileProvider>
         <CommunityProvider>
         <GradientBackground>
           <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
@@ -119,6 +121,7 @@ export default function App() {
           <StatusBar style="light" />
         </GradientBackground>
         </CommunityProvider>
+        </ProfileProvider>
         </NavigationProvider>
       </AuthProvider>
     </SafeAreaProvider>
