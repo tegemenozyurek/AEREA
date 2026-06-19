@@ -21,6 +21,14 @@ import { useResponsive } from '../utils/responsive';
 
 const APP_VERSION = '1.0.0';
 
+type ThemeOption = 'dark' | 'light';
+type LanguageOption = 'English' | 'Türkçe' | 'Deutsch';
+
+const THEME_LABELS: Record<ThemeOption, string> = {
+  dark: 'Dark',
+  light: 'Light',
+};
+
 const SWITCH_TRACK = {
   false: 'rgba(255,255,255,0.14)',
   true: 'rgba(96,165,250,0.45)',
@@ -37,8 +45,27 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(false);
+  const [theme, setTheme] = useState<ThemeOption>('dark');
+  const [language, setLanguage] = useState<LanguageOption>('English');
 
   const username = getProfileUsername(user?.email, user?.displayName);
+
+  const pickTheme = () => {
+    Alert.alert('Theme', undefined, [
+      { text: 'Dark', onPress: () => setTheme('dark') },
+      { text: 'Light', onPress: () => setTheme('light') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const pickLanguage = () => {
+    Alert.alert('Language', undefined, [
+      { text: 'English', onPress: () => setLanguage('English') },
+      { text: 'Türkçe', onPress: () => setLanguage('Türkçe') },
+      { text: 'Deutsch', onPress: () => setLanguage('Deutsch') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -115,12 +142,36 @@ export default function SettingsScreen() {
         <SettingsSection title="Profile">
           <SettingsProfileCard
             username={username}
-            email={user?.email}
             bio={MOCK_OWN_BIO}
             photoUrl={user?.photoURL}
-            onEditPhoto={() => comingSoon('Change photo')}
-            onEditUsername={() => comingSoon('Edit username')}
-            onEditBio={() => comingSoon('Edit bio')}
+            onEditPress={() => comingSoon('Edit profile')}
+          />
+        </SettingsSection>
+
+        <SettingsSection title="Account">
+          <SettingsRow label="Mail" value={user?.email ?? '—'} stacked />
+          <SettingsRow label="ID" value={user?.uid ?? '—'} stacked />
+          <SettingsRow
+            label="Change password"
+            showChevron
+            onPress={() => comingSoon('Change password')}
+            isLast
+          />
+        </SettingsSection>
+
+        <SettingsSection title="Settings">
+          <SettingsRow
+            label="Theme"
+            value={THEME_LABELS[theme]}
+            showChevron
+            onPress={pickTheme}
+          />
+          <SettingsRow
+            label="Language"
+            value={language}
+            showChevron
+            onPress={pickLanguage}
+            isLast
           />
         </SettingsSection>
 
@@ -159,12 +210,6 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="Security" separated>
-          <SettingsRow
-            label="Change password"
-            centered
-            onPress={() => comingSoon('Change password')}
-            isLast
-          />
           <SettingsRow
             label="Sign out"
             destructive
