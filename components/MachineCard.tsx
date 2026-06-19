@@ -66,7 +66,6 @@ export default function MachineCard({
       updatedSize: r.scale(11),
       waterIcon: r.scale(18),
       detailsGap: r.scale(12),
-      phDetailShift: r.scale(22),
     }),
     [r],
   );
@@ -206,14 +205,18 @@ export default function MachineCard({
               value={machine.phDown}
               labelSize={layout.labelSize}
               valueSize={layout.valueSize}
-              shiftX={layout.phDetailShift}
             />
             <CenteredStat
               label="pH up"
               value={machine.phUp}
               labelSize={layout.labelSize}
               valueSize={layout.valueSize}
-              shiftX={-layout.phDetailShift}
+            />
+            <CenteredStat
+              label="tank %"
+              value={`${machine.waterLevel}%`}
+              labelSize={layout.labelSize}
+              valueSize={layout.valueSize}
             />
           </View>
 
