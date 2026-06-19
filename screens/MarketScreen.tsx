@@ -3,13 +3,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useResponsive } from '../utils/responsive';
 
-export default function AnalysisScreen() {
+export default function MarketScreen() {
   const r = useResponsive();
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
-        <Text style={styles.headerTitle}>Analysis</Text>
+        <Text style={[styles.headerTitle, { fontSize: r.scale(22) }]}>Market</Text>
       </View>
 
       <View style={styles.body} />
@@ -29,7 +29,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 22,
     fontWeight: '700',
     letterSpacing: 0.4,
   },

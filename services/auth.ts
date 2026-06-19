@@ -3,6 +3,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase';
@@ -43,4 +44,13 @@ export function subscribeToAuthState(
 
 export function getCurrentUser(): User | null {
   return firebaseAuth.currentUser;
+}
+
+export async function updateUserDisplayName(displayName: string): Promise<void> {
+  const user = firebaseAuth.currentUser;
+  if (!user) {
+    throw new Error('Not signed in');
+  }
+
+  await updateProfile(user, { displayName: displayName.trim() });
 }

@@ -17,9 +17,9 @@ const NAV_ITEMS: { label: string; route: AppRoute; icon: IconSpec }[] = [
   { label: 'Home', route: 'home', icon: { lib: 'ion', name: 'home-outline' } },
   { label: 'Machines', route: 'machines', icon: { lib: 'fa5', name: 'seedling' } },
   {
-    label: 'Analysis',
-    route: 'analysis',
-    icon: { lib: 'ion', name: 'analytics-outline' },
+    label: 'Market',
+    route: 'market',
+    icon: { lib: 'ion', name: 'storefront-outline' },
   },
   {
     label: 'Community',
