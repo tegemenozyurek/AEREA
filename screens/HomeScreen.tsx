@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useResponsive } from '../utils/responsive';
 
@@ -9,58 +10,82 @@ const LOGO_ASPECT_RATIO = 1390 / 694;
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const r = useResponsive();
   const greetingName =
     user?.email?.split('@')[0] ?? user?.displayName ?? 'there';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <View style={styles.screen}>
       <View
         style={[
           styles.header,
           {
             paddingHorizontal: r.horizontalPadding,
+            paddingTop: insets.top + 12,
+            paddingBottom: 12,
           },
         ]}
       >
-        <Image
-          source={require('../assets/aerea-logo.png')}
-          style={[
-            styles.headerLogo,
-            { width: r.isTablet ? 110 : 90 },
-          ]}
-          resizeMode="contain"
-        />
-        <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
-          <TouchableOpacity
-            style={styles.inboxButton}
-            activeOpacity={0.7}
-            onPress={() => {}}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Inbox"
-          >
-            <Ionicons name="file-tray-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, styles.tint]} />
+        <View style={styles.borderBottom} />
+
+        <View style={styles.headerContent}>
+          <Image
+            source={require('../assets/aerea-logo.png')}
+            style={[
+              styles.headerLogo,
+              { width: r.isTablet ? 110 : 90 },
+            ]}
+            resizeMode="contain"
+          />
+          <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
+            <TouchableOpacity
+              style={styles.inboxButton}
+              activeOpacity={0.7}
+              onPress={() => {}}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Inbox"
+            >
+              <Ionicons name="file-tray-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
       <View style={styles.body}>
         <Text style={styles.welcome}>Welcome, {greetingName}</Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screen: {
     flex: 1,
     backgroundColor: 'transparent',
   },
   header: {
+    width: '100%',
+    overflow: 'hidden',
+  },
+  tint: {
+    backgroundColor: 'rgba(10, 12, 20, 0.55)',
+  },
+  borderBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  headerContent: {
+    position: 'relative',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingVertical: 12,
   },
   headerLogo: {
     height: undefined,
