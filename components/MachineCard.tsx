@@ -20,7 +20,7 @@ type Props = {
   dragHoldMs?: number;
 };
 
-function InlineStat({
+function CenteredStat({
   label,
   value,
   labelSize,
@@ -32,10 +32,17 @@ function InlineStat({
   valueSize: number;
 }) {
   return (
-    <Text style={styles.inlineStat} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-      <Text style={[styles.metricLabel, { fontSize: labelSize }]}>{label} </Text>
-      <Text style={[styles.metricValue, { fontSize: valueSize }]}>{value}</Text>
-    </Text>
+    <View style={styles.summaryStatCol}>
+      <Text
+        style={[styles.metricLabel, { fontSize: labelSize }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+      >
+        {label}
+      </Text>
+      <Text style={[styles.metricValue, { fontSize: valueSize, marginTop: 2 }]}>{value}</Text>
+    </View>
   );
 }
 
@@ -88,7 +95,6 @@ export default function MachineCard({
       waterIcon: r.scale(18),
       labelWidthLeft: r.scale(32),
       labelWidthRight: r.scale(58),
-      summaryGap: r.scale(8),
       detailsGap: r.scale(12),
       detailsRowGap: r.scale(20),
     }),
@@ -174,22 +180,28 @@ export default function MachineCard({
         {machine.name}
       </Text>
 
-      <View style={[styles.summaryRow, { marginTop: r.scale(10), gap: layout.summaryGap }]}>
-        <InlineStat
+      <View style={[styles.summaryRow, { marginTop: r.scale(10) }]}>
+        <CenteredStat
           label="ppm"
           value={machine.ppm}
           labelSize={layout.labelSize}
           valueSize={layout.valueSize}
         />
-        <InlineStat
+        <CenteredStat
+          label="pH down"
+          value={machine.phDown}
+          labelSize={layout.labelSize}
+          valueSize={layout.valueSize}
+        />
+        <CenteredStat
           label="pH"
           value={machine.ph}
           labelSize={layout.labelSize}
           valueSize={layout.valueSize}
         />
-        <View style={styles.waterInline}>
+        <View style={styles.summaryStatCol}>
           <Ionicons name="water" size={layout.waterIcon} color="#60A5FA" />
-          <Text style={[styles.metricValue, { fontSize: layout.valueSize }]}>
+          <Text style={[styles.metricValue, { fontSize: layout.valueSize, marginTop: 2 }]}>
             {machine.waterLevel}%
           </Text>
         </View>
@@ -225,13 +237,6 @@ export default function MachineCard({
           }}
         >
           <View style={[styles.detailsRow, { gap: layout.detailsRowGap }]}>
-            <Metric
-              label="pH down"
-              value={machine.phDown}
-              labelWidth={layout.labelWidthRight}
-              labelSize={layout.labelSize}
-              valueSize={layout.valueSize}
-            />
             <Metric
               label="pH up"
               value={machine.phUp}
@@ -273,18 +278,12 @@ const styles = StyleSheet.create({
   },
   summaryRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  inlineStat: {
+  summaryStatCol: {
     flex: 1,
-    minWidth: 0,
-  },
-  waterInline: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    flexShrink: 0,
+    justifyContent: 'center',
   },
   details: {},
   detailsRow: {
