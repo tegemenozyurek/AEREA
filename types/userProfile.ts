@@ -1,6 +1,7 @@
 export type UserProfile = {
   id: string;
   username: string;
+  bio: string;
   karma: number;
   followingCount: number;
   followersCount: number;

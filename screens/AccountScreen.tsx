@@ -4,6 +4,7 @@ import ProfileHeader from '../components/ProfileHeader';
 import {
   getMockFollowerUsers,
   getMockFollowingUsers,
+  MOCK_OWN_BIO,
 } from '../data/mockUsers';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
@@ -63,6 +64,7 @@ export default function AccountScreen() {
       <ProfileHeader
         username={username}
         photoUrl={user?.photoURL}
+        bio={MOCK_OWN_BIO}
         followingCount={MOCK_STATS.following}
         followersCount={MOCK_STATS.followers}
         karma={MOCK_STATS.karma}

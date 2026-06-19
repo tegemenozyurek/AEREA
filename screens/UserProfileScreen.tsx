@@ -14,6 +14,7 @@ export default function UserProfileScreen({ user, onBack }: Props) {
       <ProfileHeader
         username={user.username}
         photoUrl={user.photoUrl}
+        bio={user.bio}
         accentColor={user.accentColor}
         followingCount={user.followingCount}
         followersCount={user.followersCount}

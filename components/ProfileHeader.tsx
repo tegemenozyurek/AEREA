@@ -45,6 +45,7 @@ type Props = {
   followingCount: number;
   followersCount: number;
   karma: number;
+  bio?: string;
   showSettings?: boolean;
   onSettingsPress?: () => void;
   showMessage?: boolean;
@@ -62,6 +63,7 @@ export default function ProfileHeader({
   followingCount,
   followersCount,
   karma,
+  bio,
   showSettings = false,
   onSettingsPress,
   showMessage = false,
@@ -192,6 +194,21 @@ export default function ProfileHeader({
         )}
       </View>
 
+      {bio ? (
+        <Text
+          style={[
+            styles.bio,
+            {
+              fontSize: r.scale(14),
+              marginTop: r.scale(10),
+              lineHeight: r.scale(20),
+            },
+          ]}
+        >
+          {bio}
+        </Text>
+      ) : null}
+
       <View
         style={[
           styles.statsRow,
@@ -271,6 +288,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.2,
+  },
+  bio: {
+    color: 'rgba(255,255,255,0.62)',
+    fontWeight: '500',
+    letterSpacing: 0.15,
   },
   statsRow: {
     flexDirection: 'row',
