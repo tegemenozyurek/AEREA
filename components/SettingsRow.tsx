@@ -3,52 +3,71 @@ import React, { ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useResponsive } from '../utils/responsive';
 
-type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
-
 type Props = {
-  icon?: IoniconName;
   label: string;
   value?: string;
-  showChevron?: boolean;
   destructive?: boolean;
+  centered?: boolean;
+  stacked?: boolean;
+  showChevron?: boolean;
   onPress?: () => void;
   rightElement?: ReactNode;
   isLast?: boolean;
+  spacingBelow?: number;
 };
 
 export default function SettingsRow({
-  icon,
   label,
   value,
-  showChevron = false,
   destructive = false,
+  centered = false,
+  stacked = false,
+  showChevron = false,
   onPress,
   rightElement,
   isLast = false,
+  spacingBelow,
 }: Props) {
   const r = useResponsive();
-  const content = (
+
+  const content = centered ? (
+    <Text
+      style={[
+        styles.label,
+        styles.labelCentered,
+        { fontSize: r.scale(15) },
+        destructive && styles.labelDestructive,
+      ]}
+      numberOfLines={1}
+    >
+      {label}
+    </Text>
+  ) : stacked ? (
     <>
-      {icon ? (
-        <View
+      <View style={styles.stackedHeader}>
+        <Text
           style={[
-            styles.iconWrap,
-            {
-              width: r.scale(32),
-              height: r.scale(32),
-              borderRadius: r.scale(10),
-            },
-            destructive && styles.iconWrapDestructive,
+            styles.label,
+            styles.labelStacked,
+            { fontSize: r.scale(15) },
+            destructive && styles.labelDestructive,
           ]}
         >
-          <Ionicons
-            name={icon}
-            size={r.scale(17)}
-            color={destructive ? '#FCA5A5' : 'rgba(255,255,255,0.85)'}
-          />
-        </View>
+          {label}
+        </Text>
+        {showChevron ? (
+          <Ionicons name="chevron-forward" size={r.scale(15)} color="rgba(255,255,255,0.28)" />
+        ) : null}
+      </View>
+      {value ? (
+        <Text style={[styles.valueStacked, { fontSize: r.scale(14), marginTop: r.scale(6) }]}>
+          {value}
+        </Text>
       ) : null}
-
+      {rightElement}
+    </>
+  ) : (
+    <>
       <Text
         style={[
           styles.label,
@@ -59,43 +78,36 @@ export default function SettingsRow({
       >
         {label}
       </Text>
-
       <View style={styles.right}>
         {value ? (
-          <Text style={[styles.value, { fontSize: r.scale(13), maxWidth: r.scale(140) }]} numberOfLines={1}>
+          <Text style={[styles.value, { fontSize: r.scale(13), maxWidth: r.scale(170) }]} numberOfLines={1}>
             {value}
           </Text>
         ) : null}
         {rightElement}
         {showChevron ? (
-          <Ionicons name="chevron-forward" size={r.scale(16)} color="rgba(255,255,255,0.35)" />
+          <Ionicons name="chevron-forward" size={r.scale(15)} color="rgba(255,255,255,0.28)" />
         ) : null}
       </View>
     </>
   );
 
+  const rowStyle = [
+    stacked ? styles.rowStacked : styles.row,
+    centered && styles.rowCentered,
+    { paddingVertical: r.scale(15), paddingHorizontal: r.scale(14) },
+    spacingBelow !== undefined && { marginBottom: spacingBelow },
+    !isLast && spacingBelow === undefined && styles.rowBorder,
+  ];
+
   if (!onPress) {
-    return (
-      <View
-        style={[
-          styles.row,
-          { paddingVertical: r.scale(13), paddingHorizontal: r.scale(14) },
-          !isLast && styles.rowBorder,
-        ]}
-      >
-        {content}
-      </View>
-    );
+    return <View style={rowStyle}>{content}</View>;
   }
 
   return (
     <TouchableOpacity
-      style={[
-        styles.row,
-        { paddingVertical: r.scale(13), paddingHorizontal: r.scale(14) },
-        !isLast && styles.rowBorder,
-      ]}
-      activeOpacity={0.7}
+      style={rowStyle}
+      activeOpacity={0.65}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -109,28 +121,39 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
+  },
+  rowStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  stackedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  rowCentered: {
+    justifyContent: 'center',
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255,255,255,0.08)',
   },
-  iconWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  iconWrapDestructive: {
-    backgroundColor: 'rgba(248,113,113,0.12)',
-    borderColor: 'rgba(248,113,113,0.25)',
-  },
   label: {
     flex: 1,
     color: '#fff',
-    fontWeight: '600',
-    letterSpacing: 0.15,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  labelStacked: {
+    flex: 0,
+  },
+  labelCentered: {
+    flex: 0,
+    width: '100%',
+    textAlign: 'center',
   },
   labelDestructive: {
     color: '#FCA5A5',
@@ -139,10 +162,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 1,
   },
   value: {
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '500',
+    color: 'rgba(255,255,255,0.42)',
+    fontWeight: '400',
     textAlign: 'right',
+  },
+  valueStacked: {
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '400',
+    lineHeight: 20,
   },
 });

@@ -12,13 +12,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SettingsRow from '../components/SettingsRow';
 import SettingsSection from '../components/SettingsSection';
-import { MOCK_OWN_BIO } from '../data/mockUsers';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import { getProfileUsername } from '../utils/profile';
 import { useResponsive } from '../utils/responsive';
 
 const APP_VERSION = '1.0.0';
+
+const SWITCH_TRACK = {
+  false: 'rgba(255,255,255,0.14)',
+  true: 'rgba(96,165,250,0.45)',
+};
 
 function comingSoon(feature: string) {
   Alert.alert(feature, 'Coming soon.');
@@ -45,6 +49,21 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account and all data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => comingSoon('Delete account'),
+        },
+      ],
+    );
   };
 
   return (
@@ -85,27 +104,17 @@ export default function SettingsScreen() {
             maxWidth: r.contentMaxWidth,
             alignSelf: 'center',
             width: '100%',
-            paddingTop: r.scale(8),
+            paddingTop: r.scale(16),
             paddingBottom: r.scale(32),
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
         <SettingsSection title="Profile">
+          <SettingsRow label="Username" value={username} />
+          <SettingsRow label="Email" value={user?.email ?? '—'} stacked />
+          <SettingsRow label="Edit bio" showChevron onPress={() => comingSoon('Edit bio')} />
           <SettingsRow
-            icon="person-outline"
-            label="Username"
-            value={username}
-          />
-          <SettingsRow
-            icon="create-outline"
-            label="Edit bio"
-            value={MOCK_OWN_BIO.length > 22 ? `${MOCK_OWN_BIO.slice(0, 22)}…` : MOCK_OWN_BIO}
-            showChevron
-            onPress={() => comingSoon('Edit bio')}
-          />
-          <SettingsRow
-            icon="camera-outline"
             label="Change photo"
             showChevron
             onPress={() => comingSoon('Change photo')}
@@ -113,72 +122,65 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
-        <SettingsSection title="Account">
-          <SettingsRow icon="mail-outline" label="Email" value={user?.email ?? '—'} isLast />
-        </SettingsSection>
-
         <SettingsSection title="Notifications">
           <SettingsRow
-            icon="notifications-outline"
             label="Push notifications"
             rightElement={
               <Switch
                 value={pushEnabled}
                 onValueChange={setPushEnabled}
-                trackColor={{ false: 'rgba(255,255,255,0.15)', true: 'rgba(96,165,250,0.55)' }}
+                trackColor={SWITCH_TRACK}
                 thumbColor="#fff"
+                ios_backgroundColor={SWITCH_TRACK.false}
               />
             }
           />
           <SettingsRow
-            icon="megaphone-outline"
             label="Product updates"
             rightElement={
               <Switch
                 value={emailUpdates}
                 onValueChange={setEmailUpdates}
-                trackColor={{ false: 'rgba(255,255,255,0.15)', true: 'rgba(96,165,250,0.55)' }}
+                trackColor={SWITCH_TRACK}
                 thumbColor="#fff"
+                ios_backgroundColor={SWITCH_TRACK.false}
               />
             }
             isLast
           />
         </SettingsSection>
 
-        <SettingsSection title="Support">
-          <SettingsRow
-            icon="help-circle-outline"
-            label="Help center"
-            showChevron
-            onPress={() => comingSoon('Help center')}
-          />
-          <SettingsRow
-            icon="shield-checkmark-outline"
-            label="Privacy policy"
-            showChevron
-            onPress={() => comingSoon('Privacy policy')}
-          />
-          <SettingsRow
-            icon="document-text-outline"
-            label="Terms of service"
-            showChevron
-            onPress={() => comingSoon('Terms of service')}
-            isLast
-          />
+        <SettingsSection title="About">
+          <SettingsRow label="Help" showChevron onPress={() => comingSoon('Help')} />
+          <SettingsRow label="Privacy" showChevron onPress={() => comingSoon('Privacy')} />
+          <SettingsRow label="Terms" showChevron onPress={() => comingSoon('Terms')} isLast />
         </SettingsSection>
 
-        <SettingsSection title="Session">
+        <SettingsSection title="Security" separated>
           <SettingsRow
-            icon="log-out-outline"
+            label="Change password"
+            centered
+            onPress={() => comingSoon('Change password')}
+            isLast
+          />
+          <SettingsRow
             label="Sign out"
             destructive
+            centered
             onPress={handleSignOut}
+            isLast
+          />
+          <SettingsRow
+            label="Delete account"
+            destructive
+            centered
+            onPress={handleDeleteAccount}
             isLast
           />
         </SettingsSection>
 
         <Text style={[styles.version, { fontSize: r.scale(12), marginTop: r.scale(4) }]}>
-          AEREA v{APP_VERSION}
+          AEREA · v{APP_VERSION}
         </Text>
       </ScrollView>
     </View>
@@ -218,9 +220,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   version: {
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(255,255,255,0.28)',
     fontWeight: '500',
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 });
