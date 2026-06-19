@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import RoomEditModal from '../components/RoomEditModal';
 import RoomSection from '../components/RoomSection';
-import { MOCK_ROOMS } from '../data/mockMachines';
+import { MOCK_ROOMS, refreshRoomMetrics } from '../data/mockMachines';
 import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
@@ -24,7 +25,7 @@ type EditingRoom = {
 export default function MachinesScreen() {
   const r = useResponsive();
   const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
-  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
   const [editingRoom, setEditingRoom] = useState<EditingRoom | null>(null);
 
@@ -32,10 +33,6 @@ export default function MachinesScreen() {
     setRooms((prev) =>
       prev.map((room) => (room.id === roomId ? { ...room, machines } : room)),
     );
-  }, []);
-
-  const handleDragActiveChange = useCallback((active: boolean) => {
-    setScrollEnabled(!active);
   }, []);
 
   const handleMachinePress = useCallback((machine: Machine, roomId: string, roomName: string) => {
@@ -120,6 +117,13 @@ export default function MachinesScreen() {
     setEditingRoom(null);
   }, []);
 
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setRooms((prev) => refreshRoomMetrics(prev));
+    setRefreshing(false);
+  }, []);
+
   if (selectedMachine) {
     return (
       <MachineDetailScreen
@@ -169,7 +173,7 @@ export default function MachinesScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <NestableScrollContainer
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
@@ -178,18 +182,25 @@ export default function MachinesScreen() {
             maxWidth: r.contentMaxWidth,
             alignSelf: 'center',
             width: '100%',
-            paddingBottom: r.scale(24),
+            paddingBottom: r.scale(120),
           },
         ]}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={scrollEnabled}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor="#fff"
+            colors={['#008D41']}
+          />
+        }
       >
         {rooms.map((room) => (
           <RoomSection
             key={room.id}
             room={room}
             onMachinesChange={handleMachinesChange}
-            onDragActiveChange={handleDragActiveChange}
             onMachinePress={handleMachinePress}
             onEditPress={handleEditRoomPress}
           />
@@ -215,7 +226,7 @@ export default function MachinesScreen() {
             <Text style={[styles.addRoomLabel, { fontSize: r.scale(15) }]}>Add Room</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </NestableScrollContainer>
     </SafeAreaView>
   );
 }
@@ -252,7 +263,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
     paddingTop: 8,
   },
   addRoomWrap: {

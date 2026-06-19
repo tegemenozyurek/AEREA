@@ -52,14 +52,21 @@ type PostMetaProps = {
   topic: CommunityTopic;
   authorName: string;
   createdAt: string;
+  onAuthorPress?: (authorName: string) => void;
 };
 
-export function PostMeta({ topic, authorName, createdAt }: PostMetaProps) {
+export function PostMeta({ topic, authorName, createdAt, onAuthorPress }: PostMetaProps) {
   return (
     <View style={metaStyles.row}>
       <TopicBadge topic={topic} />
       <Text style={metaStyles.text}>
-        <Text style={metaStyles.author}>{authorName}</Text>
+        {onAuthorPress ? (
+          <Text style={metaStyles.authorLink} onPress={() => onAuthorPress(authorName)}>
+            {authorName}
+          </Text>
+        ) : (
+          <Text style={metaStyles.author}>{authorName}</Text>
+        )}
         <Text style={metaStyles.dot}> · </Text>
         <Text style={metaStyles.time}>{formatRelativeTime(createdAt)}</Text>
       </Text>
@@ -152,6 +159,11 @@ const metaStyles = StyleSheet.create({
   author: {
     color: 'rgba(255,255,255,0.75)',
     fontWeight: '600',
+  },
+  authorLink: {
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   dot: {
     color: FORUM.muted,

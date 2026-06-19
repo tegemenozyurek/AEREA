@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { useCommunity } from '../contexts/CommunityContext';
+import { useChat } from '../contexts/ChatContext';
 import type { CommunityPost } from '../types/community';
 import { countComments } from '../utils/comments';
 import { cardStyles, photoPostStyles, PostMeta } from './communityPostShared';
@@ -15,6 +16,7 @@ export default function CommunityPostWithPhoto({
   post,
 }: CommunityPostWithPhotoProps) {
   const { toggleLike, isLiked, openComments } = useCommunity();
+  const { openChatWithAuthor } = useChat();
 
   return (
     <View style={cardStyles.inner}>
@@ -22,6 +24,7 @@ export default function CommunityPostWithPhoto({
         topic={post.topic}
         authorName={post.authorName}
         createdAt={post.createdAt}
+        onAuthorPress={openChatWithAuthor}
       />
 
       <View style={photoPostStyles.block}>

@@ -14,7 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import CommunityPostCard from '../components/CommunityPostCard';
 import CreatePostModal from '../components/CreatePostModal';
 import { useCommunity } from '../contexts/CommunityContext';
+import { useChat } from '../contexts/ChatContext';
 import PostCommentsScreen from './PostCommentsScreen';
+import ChatListScreen from './ChatListScreen';
+import ChatScreen from './ChatScreen';
 import type { CommunityPost } from '../types/community';
 
 type SectionItem = CommunityPost & { listKey: string };
@@ -30,6 +33,7 @@ export default function CommunityScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const { hotPosts, latestPosts, refreshing, refresh, createPost, commentsPostId, closeComments } =
     useCommunity();
+  const { chatView, activeConversationId, openInbox, closeChat, totalUnread } = useChat();
   const [createVisible, setCreateVisible] = useState(false);
   const [feedTab, setFeedTab] = useState<FeedTab>('hot');
 
@@ -122,11 +126,41 @@ export default function CommunityScreen() {
     );
   }
 
+  if (chatView === 'conversation' && activeConversationId) {
+    return (
+      <ChatScreen
+        conversationId={activeConversationId}
+        onBack={() => openInbox()}
+      />
+    );
+  }
+
+  if (chatView === 'inbox') {
+    return <ChatListScreen onBack={closeChat} />;
+  }
+
   return (
     <SafeAreaView style={[styles.safeArea, { width: screenWidth }]} edges={['top']}>
       <View style={[styles.header, { width: screenWidth }]}>
         <Text style={styles.headerTitle}>Forum</Text>
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            onPress={openInbox}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Messages"
+          >
+            <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+            {totalUnread > 0 && (
+              <View style={styles.unreadDot}>
+                <Text style={styles.unreadDotText}>
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
             activeOpacity={0.7}
@@ -218,6 +252,25 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF6B8A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.35)',
+  },
+  unreadDotText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
   },
   list: {
     flex: 1,
