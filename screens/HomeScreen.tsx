@@ -1,7 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+import React, { useCallback, useState } from 'react';
+import {
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useResponsive } from '../utils/responsive';
 
@@ -9,29 +18,43 @@ const LOGO_ASPECT_RATIO = 1390 / 694;
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const r = useResponsive();
+  const [refreshing, setRefreshing] = useState(false);
   const greetingName =
     user?.email?.split('@')[0] ?? user?.displayName ?? 'there';
 
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setRefreshing(false);
+  }, []);
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <View style={styles.screen}>
       <View
         style={[
           styles.header,
           {
             paddingHorizontal: r.horizontalPadding,
+            paddingTop: insets.top + 12,
+            paddingBottom: 12,
           },
         ]}
       >
-        <Image
-          source={require('../assets/aerea-logo.png')}
-          style={[
-            styles.headerLogo,
-            { width: r.isTablet ? 110 : 90 },
-          ]}
-          resizeMode="contain"
-        />
-        <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
+        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, styles.tint]} />
+        <View style={styles.borderBottom} />
+
+        <View style={styles.headerContent}>
+          <Image
+            source={require('../assets/aerea-logo.png')}
+            style={[
+              styles.headerLogo,
+              { width: r.isTablet ? 110 : 90 },
+            ]}
+            resizeMode="contain"
+          />
           <TouchableOpacity
             style={styles.inboxButton}
             activeOpacity={0.7}
@@ -45,32 +68,60 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.body}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingHorizontal: r.horizontalPadding,
+            paddingBottom: r.scale(120),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor="#fff"
+            colors={['#008D41']}
+          />
+        }
+      >
         <Text style={styles.welcome}>Welcome, {greetingName}</Text>
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screen: {
     flex: 1,
     backgroundColor: 'transparent',
   },
   header: {
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    paddingVertical: 12,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  tint: {
+    backgroundColor: 'rgba(10, 12, 20, 0.55)',
+  },
+  borderBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerLogo: {
     height: undefined,
     aspectRatio: LOGO_ASPECT_RATIO,
-  },
-  headerActionWrap: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
   },
   inboxButton: {
     width: 36,
@@ -82,8 +133,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  body: {
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

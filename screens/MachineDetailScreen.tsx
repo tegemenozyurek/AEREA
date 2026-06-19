@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,6 +27,7 @@ type Props = {
   onRoomChange: (roomId: string) => void;
   onNameChange: (name: string) => void;
   onBack: () => void;
+  onRefresh?: () => Promise<void>;
 };
 
 export default function MachineDetailScreen({
@@ -36,8 +38,10 @@ export default function MachineDetailScreen({
   onRoomChange,
   onNameChange,
   onBack,
+  onRefresh,
 }: Props) {
   const r = useResponsive();
+  const [refreshing, setRefreshing] = useState(false);
   const [roomOpen, setRoomOpen] = useState(false);
   const [selectedMetricIndex, setSelectedMetricIndex] = useState(1);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -50,8 +54,9 @@ export default function MachineDetailScreen({
       { key: 'waterLevel', label: 'water', color: '#60A5FA', value: machine.waterLevel },
       { key: 'phDown', label: 'pH down', color: '#FB7185', value: machine.phDown },
       { key: 'phUp', label: 'pH up', color: '#A78BFA', value: machine.phUp },
+      { key: 'tankLevel', label: 'tank %', color: '#38BDF8', value: machine.tankLevel },
     ],
-    [machine.ph, machine.phDown, machine.phUp, machine.ppm, machine.waterLevel],
+    [machine.ph, machine.phDown, machine.phUp, machine.ppm, machine.tankLevel, machine.waterLevel],
   );
 
   const selectMetric = (index: number) => {
@@ -84,6 +89,19 @@ export default function MachineDetailScreen({
     onNameChange(trimmed);
     setRenameOpen(false);
   };
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [onRefresh]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -213,6 +231,14 @@ export default function MachineDetailScreen({
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor="#fff"
+            colors={['#008D41']}
+          />
+        }
       >
         <View
           style={[
@@ -328,7 +354,7 @@ export default function MachineDetailScreen({
             styles.metricsCard,
             {
               borderRadius: r.scale(16),
-              paddingVertical: r.scale(24),
+              paddingVertical: r.scale(16),
               paddingHorizontal: r.scale(12),
               marginTop: r.scale(16),
               overflow: 'visible',
@@ -341,9 +367,11 @@ export default function MachineDetailScreen({
               label="ppm"
               value={machine.ppm}
               color="#FBBF24"
-              size={r.scale(76)}
-              labelSize={r.scale(12)}
-              valueSize={r.scale(16)}
+              size={r.scale(64)}
+              labelSize={r.scale(11)}
+              valueSize={r.scale(14)}
+              labelGap={r.scale(5)}
+              shiftX={-r.scale(12)}
               onPress={() => selectMetric(0)}
             />
             <MetricRing
@@ -351,9 +379,10 @@ export default function MachineDetailScreen({
               label="pH"
               value={machine.ph}
               color="#34D399"
-              size={r.scale(92)}
-              labelSize={r.scale(12)}
-              valueSize={r.scale(20)}
+              size={r.scale(76)}
+              labelSize={r.scale(11)}
+              valueSize={r.scale(17)}
+              labelGap={r.scale(5)}
               onPress={() => selectMetric(1)}
             />
             <MetricRing
@@ -361,23 +390,27 @@ export default function MachineDetailScreen({
               label="water"
               value={`${machine.waterLevel}%`}
               color="#60A5FA"
-              size={r.scale(76)}
-              labelSize={r.scale(12)}
-              valueSize={r.scale(15)}
-              icon={<Ionicons name="water" size={r.scale(14)} color="#60A5FA" style={{ marginBottom: 2 }} />}
+              size={r.scale(64)}
+              labelSize={r.scale(11)}
+              valueSize={r.scale(13)}
+              labelGap={r.scale(5)}
+              shiftX={r.scale(12)}
+              icon={<Ionicons name="water" size={r.scale(12)} color="#60A5FA" style={{ marginBottom: 2 }} />}
               onPress={() => selectMetric(2)}
             />
           </View>
 
-          <View style={[styles.metricsRow, { marginTop: r.scale(18), gap: r.scale(24), overflow: 'visible' }]}>
+          <View style={[styles.metricsRow, { marginTop: r.scale(12), gap: r.scale(10), overflow: 'visible' }]}>
             <MetricRing
               floatIndex={3}
               label="pH down"
               value={machine.phDown}
               color="#FB7185"
-              size={r.scale(72)}
-              labelSize={r.scale(12)}
-              valueSize={r.scale(16)}
+              size={r.scale(60)}
+              labelSize={r.scale(11)}
+              valueSize={r.scale(14)}
+              labelGap={r.scale(5)}
+              shiftX={-r.scale(12)}
               onPress={() => selectMetric(3)}
             />
             <MetricRing
@@ -385,10 +418,23 @@ export default function MachineDetailScreen({
               label="pH up"
               value={machine.phUp}
               color="#A78BFA"
-              size={r.scale(72)}
-              labelSize={r.scale(12)}
-              valueSize={r.scale(16)}
+              size={r.scale(60)}
+              labelSize={r.scale(11)}
+              valueSize={r.scale(14)}
+              labelGap={r.scale(5)}
               onPress={() => selectMetric(4)}
+            />
+            <MetricRing
+              floatIndex={5}
+              label="tank %"
+              value={`${machine.tankLevel}%`}
+              color="#38BDF8"
+              size={r.scale(60)}
+              labelSize={r.scale(11)}
+              valueSize={r.scale(13)}
+              labelGap={r.scale(5)}
+              shiftX={r.scale(12)}
+              onPress={() => selectMetric(5)}
             />
           </View>
         </View>

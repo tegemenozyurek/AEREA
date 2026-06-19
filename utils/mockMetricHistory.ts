@@ -1,4 +1,4 @@
-export type MetricKey = 'ppm' | 'ph' | 'waterLevel' | 'phDown' | 'phUp';
+export type MetricKey = 'ppm' | 'ph' | 'waterLevel' | 'tankLevel' | 'phDown' | 'phUp';
 
 export type MetricPoint = {
   at: Date;
@@ -9,6 +9,7 @@ const METRIC_BOUNDS: Record<MetricKey, { min: number; max: number; step: number 
   ppm: { min: 400, max: 1800, step: 35 },
   ph: { min: 4.5, max: 7.5, step: 0.08 },
   waterLevel: { min: 10, max: 100, step: 3 },
+  tankLevel: { min: 10, max: 100, step: 3 },
   phDown: { min: 0, max: 10, step: 0.4 },
   phUp: { min: 0, max: 10, step: 0.4 },
 };
@@ -79,7 +80,7 @@ export function build48hHistory(
 }
 
 export function formatMetricValue(metric: MetricKey, value: number): string {
-  if (metric === 'waterLevel') {
+  if (metric === 'waterLevel' || metric === 'tankLevel') {
     return `${value}%`;
   }
   if (metric === 'ph' || metric === 'phDown' || metric === 'phUp') {
