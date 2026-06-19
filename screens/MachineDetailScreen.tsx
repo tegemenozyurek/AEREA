@@ -1,6 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MetricHistorySection, { type MetricHistoryItem } from '../components/MetricHistorySection';
 import MetricRing from '../components/MetricRing';
@@ -15,6 +24,7 @@ type Props = {
   roomName: string;
   rooms: Room[];
   onRoomChange: (roomId: string) => void;
+  onNameChange: (name: string) => void;
   onBack: () => void;
 };
 
@@ -24,11 +34,14 @@ export default function MachineDetailScreen({
   roomName,
   rooms,
   onRoomChange,
+  onNameChange,
   onBack,
 }: Props) {
   const r = useResponsive();
   const [roomOpen, setRoomOpen] = useState(false);
   const [selectedMetricIndex, setSelectedMetricIndex] = useState(1);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [draftName, setDraftName] = useState(machine.name);
 
   const metrics = useMemo<MetricHistoryItem[]>(
     () => [
@@ -52,8 +65,101 @@ export default function MachineDetailScreen({
     }
   };
 
+  const openRename = () => {
+    setDraftName(machine.name);
+    setRenameOpen(true);
+  };
+
+  const closeRename = () => {
+    setRenameOpen(false);
+    setDraftName(machine.name);
+  };
+
+  const saveRename = () => {
+    const trimmed = draftName.trim();
+    if (!trimmed || trimmed === machine.name) {
+      closeRename();
+      return;
+    }
+    onNameChange(trimmed);
+    setRenameOpen(false);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <Modal visible={renameOpen} transparent animationType="fade" onRequestClose={closeRename}>
+        <Pressable style={styles.renameBackdrop} onPress={closeRename}>
+          <Pressable
+            style={[
+              styles.renameSheet,
+              {
+                borderRadius: r.scale(18),
+                padding: r.scale(18),
+                maxWidth: r.contentMaxWidth,
+              },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.renameHeader}>
+              <Text style={[styles.renameTitle, { fontSize: r.scale(18) }]}>Rename machine</Text>
+              <Pressable
+                style={[
+                  styles.headerIconButton,
+                  { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+                ]}
+                onPress={closeRename}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Close rename dialog"
+              >
+                <Ionicons name="close" size={r.scale(18)} color="#fff" />
+              </Pressable>
+            </View>
+
+            <TextInput
+              style={[
+                styles.renameInput,
+                {
+                  marginTop: r.scale(14),
+                  paddingVertical: r.scale(12),
+                  paddingHorizontal: r.scale(14),
+                  borderRadius: r.scale(12),
+                  fontSize: r.scale(16),
+                },
+              ]}
+              value={draftName}
+              onChangeText={setDraftName}
+              placeholder="Machine name"
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              autoFocus
+              selectTextOnFocus
+              maxLength={48}
+              returnKeyType="done"
+              onSubmitEditing={saveRename}
+            />
+
+            <View style={[styles.renameActions, { marginTop: r.scale(16), gap: r.scale(10) }]}>
+              <TouchableOpacity
+                style={[styles.renameButton, styles.renameButtonSecondary, { borderRadius: r.scale(12) }]}
+                activeOpacity={0.7}
+                onPress={closeRename}
+              >
+                <Text style={[styles.renameButtonText, { fontSize: r.scale(15) }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.renameButton, styles.renameButtonPrimary, { borderRadius: r.scale(12) }]}
+                activeOpacity={0.7}
+                onPress={saveRename}
+                disabled={!draftName.trim()}
+              >
+                <Text style={[styles.renameButtonText, styles.renameButtonTextPrimary, { fontSize: r.scale(15) }]}>
+                  Save
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
         <View style={[styles.headerActionWrap, { left: r.horizontalPadding }]}>
           <TouchableOpacity
@@ -85,7 +191,7 @@ export default function MachineDetailScreen({
               { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
             ]}
             activeOpacity={0.7}
-            onPress={() => {}}
+            onPress={openRename}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={`Edit ${machine.name}`}
@@ -412,5 +518,61 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     overflow: 'visible',
+  },
+  renameBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  renameSheet: {
+    width: '100%',
+    backgroundColor: 'rgba(15,23,42,0.96)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  renameHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  renameTitle: {
+    color: '#fff',
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  renameInput: {
+    color: '#fff',
+    fontWeight: '600',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  renameActions: {
+    flexDirection: 'row',
+  },
+  renameButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  renameButtonSecondary: {
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  renameButtonPrimary: {
+    borderColor: 'rgba(96,165,250,0.5)',
+    backgroundColor: 'rgba(96,165,250,0.2)',
+  },
+  renameButtonText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+  },
+  renameButtonTextPrimary: {
+    color: '#fff',
+    fontWeight: '700',
   },
 });

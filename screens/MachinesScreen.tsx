@@ -66,6 +66,22 @@ export default function MachinesScreen() {
     });
   }, []);
 
+  const handleRenameMachine = useCallback((machineId: string, name: string) => {
+    setRooms((prev) =>
+      prev.map((room) => ({
+        ...room,
+        machines: room.machines.map((machine) =>
+          machine.id === machineId ? { ...machine, name } : machine,
+        ),
+      })),
+    );
+    setSelectedMachine((current) =>
+      current?.machine.id === machineId
+        ? { ...current, machine: { ...current.machine, name } }
+        : current,
+    );
+  }, []);
+
   if (selectedMachine) {
     return (
       <MachineDetailScreen
@@ -74,6 +90,7 @@ export default function MachinesScreen() {
         roomName={selectedMachine.roomName}
         rooms={rooms}
         onRoomChange={(roomId) => handleMoveMachine(selectedMachine.machine.id, roomId)}
+        onNameChange={(name) => handleRenameMachine(selectedMachine.machine.id, name)}
         onBack={() => setSelectedMachine(null)}
       />
     );
