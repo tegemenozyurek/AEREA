@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -119,6 +120,11 @@ export default function ProfileHeader({
         },
       ]}
     >
+      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, styles.tint]} />
+      <View style={styles.borderBottom} />
+
+      <View style={styles.content}>
       <View style={[styles.profileRow, { gap: showBack ? r.scale(10) : r.scale(14) }]}>
         {showBack ? (
           <TouchableOpacity
@@ -238,6 +244,7 @@ export default function ProfileHeader({
         <View style={styles.statDivider} />
         <StatItem label="Karma" value={karma} labelSize={r.scale(12)} valueSize={r.scale(18)} />
       </View>
+      </View>
     </View>
   );
 }
@@ -246,9 +253,21 @@ const styles = StyleSheet.create({
   header: {
     width: '100%',
     alignSelf: 'stretch',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  tint: {
+    backgroundColor: 'rgba(10, 12, 20, 0.55)',
+  },
+  borderBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  content: {
+    position: 'relative',
   },
   profileRow: {
     flexDirection: 'row',
@@ -298,7 +317,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: 'rgba(255,255,255,0.12)',
   },
   statItem: {
     flex: 1,

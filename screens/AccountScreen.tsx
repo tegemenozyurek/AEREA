@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import ProfileHeader from '../components/ProfileHeader';
+import ProfileView from '../components/ProfileView';
 import {
   getMockFollowerUsers,
   getMockFollowingUsers,
   MOCK_OWN_BIO,
 } from '../data/mockUsers';
+import { PROFILE_SELF_USER_ID } from '../data/mockProfilePosts';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import type { ConnectionListType, UserProfile } from '../types/userProfile';
@@ -60,26 +60,21 @@ export default function AccountScreen() {
   }
 
   return (
-    <View style={styles.safeArea}>
-      <ProfileHeader
-        username={username}
-        photoUrl={user?.photoURL}
-        bio={MOCK_OWN_BIO}
-        followingCount={MOCK_STATS.following}
-        followersCount={MOCK_STATS.followers}
-        karma={MOCK_STATS.karma}
-        showSettings
-        onSettingsPress={() => navigate('settings')}
-        onFollowingPress={() => setView({ kind: 'connections', listType: 'following' })}
-        onFollowersPress={() => setView({ kind: 'connections', listType: 'followers' })}
-      />
-    </View>
+    <ProfileView
+      userId={PROFILE_SELF_USER_ID}
+      authorName={username}
+      headerProps={{
+        username,
+        photoUrl: user?.photoURL,
+        bio: MOCK_OWN_BIO,
+        followingCount: MOCK_STATS.following,
+        followersCount: MOCK_STATS.followers,
+        karma: MOCK_STATS.karma,
+        showSettings: true,
+        onSettingsPress: () => navigate('settings'),
+        onFollowingPress: () => setView({ kind: 'connections', listType: 'following' }),
+        onFollowersPress: () => setView({ kind: 'connections', listType: 'followers' }),
+      }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-});

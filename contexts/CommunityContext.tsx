@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { mockCommunityPosts } from '../data/mockCommunityPosts';
+import { isProfilePostId, mockProfilePosts } from '../data/mockProfilePosts';
 import type { CommunityPost, CreatePostInput } from '../types/community';
 import { addReplyToComment, cloneComments } from '../utils/comments';
 import { useAuth } from './AuthContext';
@@ -26,6 +27,8 @@ type CommunityContextValue = {
   isLiked: (postId: string) => boolean;
   openComments: (postId: string) => void;
   closeComments: () => void;
+  getProfilePosts: (userId: string, authorName?: string) => CommunityPost[];
+  deleteProfilePost: (postId: string) => void;
 };
 
 const CommunityContext = createContext<CommunityContextValue | null>(null);
@@ -43,7 +46,7 @@ function sortLatest(posts: CommunityPost[]): CommunityPost[] {
 export function CommunityProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<CommunityPost[]>(() =>
-    mockCommunityPosts.map((post) => ({
+    [...mockCommunityPosts, ...mockProfilePosts].map((post) => ({
       ...post,
       comments: cloneComments(post.comments),
     })),
@@ -55,8 +58,28 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   const authorName =
     user?.email?.split('@')[0] ?? user?.displayName ?? 'You';
 
-  const hotPosts = useMemo(() => sortHot(posts), [posts]);
-  const latestPosts = useMemo(() => sortLatest(posts), [posts]);
+  const feedPosts = useMemo(
+    () => posts.filter((post) => !isProfilePostId(post.id)),
+    [posts],
+  );
+
+  const hotPosts = useMemo(() => sortHot(feedPosts), [feedPosts]);
+  const latestPosts = useMemo(() => sortLatest(feedPosts), [feedPosts]);
+
+  const getProfilePosts = useCallback(
+    (userId: string, profileAuthorName?: string) => {
+      const prefix = `profile-${userId}-`;
+      return posts
+        .filter((post) => post.id.startsWith(prefix))
+        .sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .map((post) =>
+          profileAuthorName ? { ...post, authorName: profileAuthorName } : post,
+        );
+    },
+    [posts],
+  );
 
   const isLiked = useCallback(
     (postId: string) => Boolean(userLikes[postId]),
@@ -152,6 +175,22 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     setCommentsPostId(null);
   }, []);
 
+  const deleteProfilePost = useCallback((postId: string) => {
+    if (!isProfilePostId(postId)) {
+      return;
+    }
+
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setUserLikes((prev) => {
+      if (!prev[postId]) {
+        return prev;
+      }
+      const { [postId]: _, ...rest } = prev;
+      return rest;
+    });
+    setCommentsPostId((current) => (current === postId ? null : current));
+  }, []);
+
   const value = useMemo<CommunityContextValue>(
     () => ({
       posts,
@@ -166,6 +205,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       isLiked,
       openComments,
       closeComments,
+      getProfilePosts,
+      deleteProfilePost,
     }),
     [
       posts,
@@ -180,6 +221,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       isLiked,
       openComments,
       closeComments,
+      getProfilePosts,
+      deleteProfilePost,
     ],
   );
 
