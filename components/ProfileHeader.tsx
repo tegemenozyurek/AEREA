@@ -49,6 +49,8 @@ type Props = {
   onSettingsPress?: () => void;
   showMessage?: boolean;
   onMessagePress?: () => void;
+  showBack?: boolean;
+  onBack?: () => void;
   onFollowingPress?: () => void;
   onFollowersPress?: () => void;
 };
@@ -64,12 +66,45 @@ export default function ProfileHeader({
   onSettingsPress,
   showMessage = false,
   onMessagePress,
+  showBack = false,
+  onBack,
   onFollowingPress,
   onFollowersPress,
 }: Props) {
   const r = useResponsive();
   const insets = useSafeAreaInsets();
   const initials = getProfileInitials(username);
+  const avatarSize = r.scale(64);
+  const actionSize = r.scale(36);
+
+  const avatar = photoUrl ? (
+    <Image
+      source={{ uri: photoUrl }}
+      style={[
+        styles.avatar,
+        {
+          width: avatarSize,
+          height: avatarSize,
+          borderRadius: avatarSize / 2,
+        },
+      ]}
+    />
+  ) : (
+    <View
+      style={[
+        styles.avatarFallback,
+        {
+          width: avatarSize,
+          height: avatarSize,
+          borderRadius: avatarSize / 2,
+          borderColor: `${accentColor}73`,
+          backgroundColor: `${accentColor}2E`,
+        },
+      ]}
+    >
+      <Text style={[styles.avatarInitials, { fontSize: r.scale(22) }]}>{initials}</Text>
+    </View>
+  );
 
   return (
     <View
@@ -82,70 +117,38 @@ export default function ProfileHeader({
         },
       ]}
     >
-      <View style={[styles.profileRow, { gap: r.scale(14) }]}>
-        {photoUrl ? (
-          <Image
-            source={{ uri: photoUrl }}
+      <View style={[styles.profileRow, { gap: showBack ? r.scale(10) : r.scale(14) }]}>
+        {showBack ? (
+          <TouchableOpacity
             style={[
-              styles.avatar,
-              {
-                width: r.scale(64),
-                height: r.scale(64),
-                borderRadius: r.scale(32),
-              },
+              styles.actionButton,
+              { width: actionSize, height: actionSize, borderRadius: actionSize / 2 },
             ]}
-          />
-        ) : (
-          <View
-            style={[
-              styles.avatarFallback,
-              {
-                width: r.scale(64),
-                height: r.scale(64),
-                borderRadius: r.scale(32),
-                borderColor: `${accentColor}73`,
-                backgroundColor: `${accentColor}2E`,
-              },
-            ]}
+            activeOpacity={0.7}
+            onPress={onBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
-            <Text style={[styles.avatarInitials, { fontSize: r.scale(22) }]}>{initials}</Text>
-          </View>
-        )}
+            <Ionicons name="chevron-back" size={r.scale(24)} color="#fff" />
+          </TouchableOpacity>
+        ) : null}
 
-        <View style={styles.profileTextCol}>
-          <View style={styles.usernameRow}>
+        {avatar}
+
+        {showBack ? (
+          <>
             <Text style={[styles.username, { fontSize: r.scale(22), flex: 1 }]} numberOfLines={1}>
               {username}
             </Text>
-            {showSettings ? (
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  {
-                    width: r.scale(36),
-                    height: r.scale(36),
-                    borderRadius: r.scale(18),
-                    marginLeft: r.scale(8),
-                  },
-                ]}
-                activeOpacity={0.7}
-                onPress={onSettingsPress}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Settings"
-              >
-                <Ionicons name="settings-outline" size={r.scale(20)} color="#fff" />
-              </TouchableOpacity>
-            ) : null}
             {showMessage ? (
               <TouchableOpacity
                 style={[
                   styles.actionButton,
                   {
-                    width: r.scale(36),
-                    height: r.scale(36),
-                    borderRadius: r.scale(18),
-                    marginLeft: r.scale(8),
+                    width: actionSize,
+                    height: actionSize,
+                    borderRadius: actionSize / 2,
                   },
                 ]}
                 activeOpacity={0.7}
@@ -157,8 +160,36 @@ export default function ProfileHeader({
                 <Ionicons name="chatbubble-outline" size={r.scale(20)} color="#fff" />
               </TouchableOpacity>
             ) : null}
+          </>
+        ) : (
+          <View style={styles.profileTextCol}>
+            <View style={styles.usernameRow}>
+              <Text style={[styles.username, { fontSize: r.scale(22), flex: 1 }]} numberOfLines={1}>
+                {username}
+              </Text>
+              {showSettings ? (
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    {
+                      width: actionSize,
+                      height: actionSize,
+                      borderRadius: actionSize / 2,
+                      marginLeft: r.scale(8),
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={onSettingsPress}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Settings"
+                >
+                  <Ionicons name="settings-outline" size={r.scale(20)} color="#fff" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
-        </View>
+        )}
       </View>
 
       <View
