@@ -25,46 +25,18 @@ function CenteredStat({
   value,
   labelSize,
   valueSize,
+  shiftX = 0,
 }: {
   label: string;
   value: string | number;
   labelSize: number;
   valueSize: number;
+  shiftX?: number;
 }) {
   return (
-    <View style={styles.summaryStatCol}>
-      <Text
-        style={[styles.metricLabel, { fontSize: labelSize }]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
-      >
-        {label}
-      </Text>
+    <View style={[styles.summaryStatCol, shiftX !== 0 && { transform: [{ translateX: shiftX }] }]}>
+      <Text style={[styles.metricLabel, { fontSize: labelSize }]}>{label}</Text>
       <Text style={[styles.metricValue, { fontSize: valueSize, marginTop: 2 }]}>{value}</Text>
-    </View>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  labelWidth,
-  labelSize,
-  valueSize,
-}: {
-  label: string;
-  value: string | number;
-  labelWidth: number;
-  labelSize: number;
-  valueSize: number;
-}) {
-  return (
-    <View style={styles.metricRow}>
-      <Text style={[styles.metricLabel, { width: labelWidth, fontSize: labelSize }]}>
-        {label}
-      </Text>
-      <Text style={[styles.metricValue, { fontSize: valueSize }]}>{value}</Text>
     </View>
   );
 }
@@ -93,10 +65,8 @@ export default function MachineCard({
       valueSize: r.scale(15),
       updatedSize: r.scale(11),
       waterIcon: r.scale(18),
-      labelWidthLeft: r.scale(32),
-      labelWidthRight: r.scale(58),
       detailsGap: r.scale(12),
-      detailsRowGap: r.scale(20),
+      phDetailShift: r.scale(22),
     }),
     [r],
   );
@@ -188,12 +158,6 @@ export default function MachineCard({
           valueSize={layout.valueSize}
         />
         <CenteredStat
-          label="pH down"
-          value={machine.phDown}
-          labelSize={layout.labelSize}
-          valueSize={layout.valueSize}
-        />
-        <CenteredStat
           label="pH"
           value={machine.ph}
           labelSize={layout.labelSize}
@@ -236,13 +200,20 @@ export default function MachineCard({
             }
           }}
         >
-          <View style={[styles.detailsRow, { gap: layout.detailsRowGap }]}>
-            <Metric
-              label="pH up"
-              value={machine.phUp}
-              labelWidth={layout.labelWidthRight}
+          <View style={styles.detailsRow}>
+            <CenteredStat
+              label="pH down"
+              value={machine.phDown}
               labelSize={layout.labelSize}
               valueSize={layout.valueSize}
+              shiftX={layout.phDetailShift}
+            />
+            <CenteredStat
+              label="pH up"
+              value={machine.phUp}
+              labelSize={layout.labelSize}
+              valueSize={layout.valueSize}
+              shiftX={-layout.phDetailShift}
             />
           </View>
 
@@ -288,11 +259,7 @@ const styles = StyleSheet.create({
   details: {},
   detailsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  metricRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'flex-start',
   },
   metricLabel: {
     color: 'rgba(255,255,255,0.5)',
