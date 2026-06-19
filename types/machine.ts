@@ -6,6 +6,7 @@ export type Machine = {
   ph: number;
   phDown: number;
   phUp: number;
+  tankLevel: number;
   waterLevel: number;
   updatedAt: string;
 };

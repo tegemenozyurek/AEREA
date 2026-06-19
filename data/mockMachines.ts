@@ -32,6 +32,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: base.phDown,
         phUp: base.phUp,
         waterLevel: Math.round(clamp(jitter(base.waterLevel, 4), 0, 100)),
+        tankLevel: Math.round(clamp(jitter(base.tankLevel ?? base.waterLevel, 4), 0, 100)),
         online: Math.random() > 0.08 ? base.online : !base.online,
         updatedAt: new Date().toISOString(),
       };
@@ -53,6 +54,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 0,
         phUp: 0,
         waterLevel: 80,
+        tankLevel: 65,
         updatedAt: '2026-06-19T14:32:18.000Z',
       },
       {
@@ -64,6 +66,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 2,
         phUp: 0,
         waterLevel: 45,
+        tankLevel: 38,
         updatedAt: '2026-06-19T11:05:42.000Z',
       },
       {
@@ -75,6 +78,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 0,
         phUp: 1,
         waterLevel: 92,
+        tankLevel: 78,
         updatedAt: '2026-06-19T16:48:03.000Z',
       },
       {
@@ -86,6 +90,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 1,
         phUp: 0,
         waterLevel: 67,
+        tankLevel: 54,
         updatedAt: '2026-06-19T09:15:30.000Z',
       },
       {
@@ -97,6 +102,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 0,
         phUp: 0,
         waterLevel: 88,
+        tankLevel: 72,
         updatedAt: '2026-06-19T13:22:11.000Z',
       },
     ],
@@ -114,6 +120,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 0,
         phUp: 0,
         waterLevel: 74,
+        tankLevel: 61,
         updatedAt: '2026-06-19T10:40:55.000Z',
       },
       {
@@ -125,6 +132,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 3,
         phUp: 0,
         waterLevel: 38,
+        tankLevel: 29,
         updatedAt: '2026-06-18T22:18:07.000Z',
       },
     ],
@@ -142,6 +150,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 0,
         phUp: 1,
         waterLevel: 81,
+        tankLevel: 68,
         updatedAt: '2026-06-19T08:05:20.000Z',
       },
       {
@@ -153,6 +162,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 0,
         phUp: 0,
         waterLevel: 95,
+        tankLevel: 83,
         updatedAt: '2026-06-19T15:33:44.000Z',
       },
       {
@@ -164,6 +174,7 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         phDown: 1,
         phUp: 2,
         waterLevel: 52,
+        tankLevel: 44,
         updatedAt: '2026-06-19T07:50:12.000Z',
       },
     ],

@@ -214,7 +214,7 @@ export default function MachineCard({
             />
             <CenteredStat
               label="tank %"
-              value={`${machine.waterLevel}%`}
+              value={`${machine.tankLevel}%`}
               labelSize={layout.labelSize}
               valueSize={layout.valueSize}
             />

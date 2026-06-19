@@ -54,8 +54,9 @@ export default function MachineDetailScreen({
       { key: 'waterLevel', label: 'water', color: '#60A5FA', value: machine.waterLevel },
       { key: 'phDown', label: 'pH down', color: '#FB7185', value: machine.phDown },
       { key: 'phUp', label: 'pH up', color: '#A78BFA', value: machine.phUp },
+      { key: 'tankLevel', label: 'tank %', color: '#38BDF8', value: machine.tankLevel },
     ],
-    [machine.ph, machine.phDown, machine.phUp, machine.ppm, machine.waterLevel],
+    [machine.ph, machine.phDown, machine.phUp, machine.ppm, machine.tankLevel, machine.waterLevel],
   );
 
   const selectMetric = (index: number) => {
@@ -394,7 +395,7 @@ export default function MachineDetailScreen({
             />
           </View>
 
-          <View style={[styles.metricsRow, { marginTop: r.scale(18), gap: r.scale(24), overflow: 'visible' }]}>
+          <View style={[styles.metricsRow, { marginTop: r.scale(18), gap: r.scale(10), overflow: 'visible' }]}>
             <MetricRing
               floatIndex={3}
               label="pH down"
@@ -414,6 +415,16 @@ export default function MachineDetailScreen({
               labelSize={r.scale(12)}
               valueSize={r.scale(16)}
               onPress={() => selectMetric(4)}
+            />
+            <MetricRing
+              floatIndex={5}
+              label="tank %"
+              value={`${machine.tankLevel}%`}
+              color="#38BDF8"
+              size={r.scale(72)}
+              labelSize={r.scale(12)}
+              valueSize={r.scale(15)}
+              onPress={() => selectMetric(5)}
             />
           </View>
         </View>
