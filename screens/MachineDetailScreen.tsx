@@ -58,7 +58,7 @@ export default function MachineDetailScreen({
         <View style={[styles.headerActionWrap, { left: r.horizontalPadding }]}>
           <TouchableOpacity
             style={[
-              styles.backButton,
+              styles.headerIconButton,
               { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
             ]}
             activeOpacity={0.7}
@@ -78,6 +78,21 @@ export default function MachineDetailScreen({
         >
           {machine.name}
         </Text>
+        <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
+          <TouchableOpacity
+            style={[
+              styles.headerIconButton,
+              { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
+            ]}
+            activeOpacity={0.7}
+            onPress={() => {}}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${machine.name}`}
+          >
+            <Ionicons name="pencil-outline" size={r.scale(18)} color="rgba(255,255,255,0.85)" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -299,7 +314,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
   },
-  backButton: {
+  headerIconButton: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
