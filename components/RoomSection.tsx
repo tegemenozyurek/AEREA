@@ -33,6 +33,7 @@ type Props = {
   onMachinesChange: (roomId: string, machines: Machine[]) => void;
   onDragActiveChange?: (active: boolean) => void;
   onMachinePress?: (machine: Machine, roomId: string, roomName: string) => void;
+  onEditPress?: (room: Room) => void;
 };
 
 export default function RoomSection({
@@ -41,6 +42,7 @@ export default function RoomSection({
   onMachinesChange,
   onDragActiveChange,
   onMachinePress,
+  onEditPress,
 }: Props) {
   const r = useResponsive();
   const [machines, setMachines] = useState<Machine[]>(room.machines);
@@ -173,7 +175,7 @@ export default function RoomSection({
             },
           ]}
           activeOpacity={0.7}
-          onPress={() => {}}
+          onPress={() => onEditPress?.(room)}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={`Edit ${room.name}`}

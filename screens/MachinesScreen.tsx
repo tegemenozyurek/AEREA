@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import RoomEditModal from '../components/RoomEditModal';
 import RoomSection from '../components/RoomSection';
 import { MOCK_ROOMS } from '../data/mockMachines';
 import type { Machine } from '../types/machine';
@@ -15,11 +16,17 @@ type SelectedMachine = {
   roomName: string;
 };
 
+type EditingRoom = {
+  room: Room;
+  index: number;
+};
+
 export default function MachinesScreen() {
   const r = useResponsive();
   const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
+  const [editingRoom, setEditingRoom] = useState<EditingRoom | null>(null);
 
   const handleMachinesChange = useCallback((roomId: string, machines: Machine[]) => {
     setRooms((prev) =>
@@ -82,6 +89,37 @@ export default function MachinesScreen() {
     );
   }, []);
 
+  const handleEditRoomPress = useCallback(
+    (room: Room) => {
+      const index = rooms.findIndex((item) => item.id === room.id);
+      if (index !== -1) {
+        setEditingRoom({ room, index });
+      }
+    },
+    [rooms],
+  );
+
+  const handleSaveRoom = useCallback((roomId: string, name: string, position: number) => {
+    setRooms((prev) => {
+      const currentIndex = prev.findIndex((room) => room.id === roomId);
+      if (currentIndex === -1) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [room] = next.splice(currentIndex, 1);
+      const updatedRoom = { ...room, name };
+      const targetIndex = Math.max(0, Math.min(next.length, position - 1));
+      next.splice(targetIndex, 0, updatedRoom);
+      return next;
+    });
+
+    setSelectedMachine((current) =>
+      current?.roomId === roomId ? { ...current, roomName: name } : current,
+    );
+    setEditingRoom(null);
+  }, []);
+
   if (selectedMachine) {
     return (
       <MachineDetailScreen
@@ -98,6 +136,16 @@ export default function MachinesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {editingRoom ? (
+        <RoomEditModal
+          visible
+          roomName={editingRoom.room.name}
+          position={editingRoom.index + 1}
+          totalRooms={rooms.length}
+          onClose={() => setEditingRoom(null)}
+          onSave={(name, position) => handleSaveRoom(editingRoom.room.id, name, position)}
+        />
+      ) : null}
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
         <Text style={[styles.headerTitle, { fontSize: r.scale(22) }]}>Machines</Text>
         <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
@@ -143,6 +191,7 @@ export default function MachinesScreen() {
             onMachinesChange={handleMachinesChange}
             onDragActiveChange={handleDragActiveChange}
             onMachinePress={handleMachinePress}
+            onEditPress={handleEditRoomPress}
           />
         ))}
 
