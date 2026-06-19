@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -32,6 +32,7 @@ type Props = {
   defaultExpanded?: boolean;
   onMachinesChange: (roomId: string, machines: Machine[]) => void;
   onDragActiveChange?: (active: boolean) => void;
+  onMachinePress?: (machine: Machine, roomId: string, roomName: string) => void;
 };
 
 export default function RoomSection({
@@ -39,6 +40,7 @@ export default function RoomSection({
   defaultExpanded = true,
   onMachinesChange,
   onDragActiveChange,
+  onMachinePress,
 }: Props) {
   const r = useResponsive();
   const [machines, setMachines] = useState<Machine[]>(room.machines);
@@ -47,6 +49,10 @@ export default function RoomSection({
   const [cardsHeight, setCardsHeight] = useState(0);
   const isDraggingRef = useRef(false);
   const expandAnim = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
+
+  useEffect(() => {
+    setMachines(room.machines);
+  }, [room.machines]);
 
   const showMachines = roomExpanded || isAnimating;
 
@@ -97,16 +103,23 @@ export default function RoomSection({
             />
           </ShadowDecorator>
         </View>
-        <View style={[styles.machineChevronCol, { width: r.cardInsetRight, paddingRight: r.scale(2) }]}>
+        <TouchableOpacity
+          style={[styles.machineChevronCol, { width: r.cardInsetRight, paddingRight: r.scale(2) }]}
+          activeOpacity={0.7}
+          onPress={() => onMachinePress?.(item, room.id, room.name)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${item.name}`}
+        >
           <Ionicons
             name="chevron-forward"
             size={r.scale(22)}
             color="rgba(255,255,255,0.55)"
           />
-        </View>
+        </TouchableOpacity>
       </View>
     ),
-    [r],
+    [onMachinePress, room.name, r],
   );
 
   const handleDragBegin = useCallback(() => {

@@ -7,11 +7,19 @@ import { MOCK_ROOMS } from '../data/mockMachines';
 import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
+import MachineDetailScreen from './MachineDetailScreen';
+
+type SelectedMachine = {
+  machine: Machine;
+  roomId: string;
+  roomName: string;
+};
 
 export default function MachinesScreen() {
   const r = useResponsive();
   const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
 
   const handleMachinesChange = useCallback((roomId: string, machines: Machine[]) => {
     setRooms((prev) =>
@@ -22,6 +30,54 @@ export default function MachinesScreen() {
   const handleDragActiveChange = useCallback((active: boolean) => {
     setScrollEnabled(!active);
   }, []);
+
+  const handleMachinePress = useCallback((machine: Machine, roomId: string, roomName: string) => {
+    setSelectedMachine({ machine, roomId, roomName });
+  }, []);
+
+  const handleMoveMachine = useCallback((machineId: string, toRoomId: string) => {
+    setRooms((prev) => {
+      const fromRoom = prev.find((room) => room.machines.some((m) => m.id === machineId));
+      if (!fromRoom || fromRoom.id === toRoomId) {
+        return prev;
+      }
+
+      const machine = fromRoom.machines.find((m) => m.id === machineId);
+      const toRoom = prev.find((room) => room.id === toRoomId);
+      if (!machine || !toRoom) {
+        return prev;
+      }
+
+      setSelectedMachine((current) =>
+        current?.machine.id === machineId
+          ? { machine, roomId: toRoomId, roomName: toRoom.name }
+          : current,
+      );
+
+      return prev.map((room) => {
+        if (room.id === fromRoom.id) {
+          return { ...room, machines: room.machines.filter((m) => m.id !== machineId) };
+        }
+        if (room.id === toRoomId) {
+          return { ...room, machines: [...room.machines, machine] };
+        }
+        return room;
+      });
+    });
+  }, []);
+
+  if (selectedMachine) {
+    return (
+      <MachineDetailScreen
+        machine={selectedMachine.machine}
+        roomId={selectedMachine.roomId}
+        roomName={selectedMachine.roomName}
+        rooms={rooms}
+        onRoomChange={(roomId) => handleMoveMachine(selectedMachine.machine.id, roomId)}
+        onBack={() => setSelectedMachine(null)}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -69,6 +125,7 @@ export default function MachinesScreen() {
             room={room}
             onMachinesChange={handleMachinesChange}
             onDragActiveChange={handleDragActiveChange}
+            onMachinePress={handleMachinePress}
           />
         ))}
 
