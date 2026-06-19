@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import SettingsChoiceRow from '../components/SettingsChoiceRow';
 import SettingsProfileCard from '../components/SettingsProfileCard';
 import SettingsRow from '../components/SettingsRow';
 import SettingsSection from '../components/SettingsSection';
@@ -23,11 +24,18 @@ const APP_VERSION = '1.0.0';
 
 type ThemeOption = 'dark' | 'light';
 type LanguageOption = 'English' | 'Türkçe' | 'Deutsch';
+type ExpandedPicker = 'theme' | 'language' | null;
 
-const THEME_LABELS: Record<ThemeOption, string> = {
-  dark: 'Dark',
-  light: 'Light',
-};
+const THEME_OPTIONS = [
+  { value: 'dark' as const, label: 'Dark', icon: 'moon-outline' as const },
+  { value: 'light' as const, label: 'Light', icon: 'sunny-outline' as const },
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: 'English' as const, label: 'English', icon: 'globe-outline' as const },
+  { value: 'Türkçe' as const, label: 'Türkçe', icon: 'globe-outline' as const },
+  { value: 'Deutsch' as const, label: 'Deutsch', icon: 'globe-outline' as const },
+];
 
 const SWITCH_TRACK = {
   false: 'rgba(255,255,255,0.14)',
@@ -47,24 +55,12 @@ export default function SettingsScreen() {
   const [emailUpdates, setEmailUpdates] = useState(false);
   const [theme, setTheme] = useState<ThemeOption>('dark');
   const [language, setLanguage] = useState<LanguageOption>('English');
+  const [expandedPicker, setExpandedPicker] = useState<ExpandedPicker>(null);
 
   const username = getProfileUsername(user?.email, user?.displayName);
 
-  const pickTheme = () => {
-    Alert.alert('Theme', undefined, [
-      { text: 'Dark', onPress: () => setTheme('dark') },
-      { text: 'Light', onPress: () => setTheme('light') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const pickLanguage = () => {
-    Alert.alert('Language', undefined, [
-      { text: 'English', onPress: () => setLanguage('English') },
-      { text: 'Türkçe', onPress: () => setLanguage('Türkçe') },
-      { text: 'Deutsch', onPress: () => setLanguage('Deutsch') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  const togglePicker = (picker: Exclude<ExpandedPicker, null>) => {
+    setExpandedPicker((current) => (current === picker ? null : picker));
   };
 
   const handleSignOut = () => {
@@ -160,17 +156,21 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="Settings">
-          <SettingsRow
+          <SettingsChoiceRow
             label="Theme"
-            value={THEME_LABELS[theme]}
-            showChevron
-            onPress={pickTheme}
+            value={theme}
+            options={THEME_OPTIONS}
+            expanded={expandedPicker === 'theme'}
+            onToggle={() => togglePicker('theme')}
+            onChange={setTheme}
           />
-          <SettingsRow
+          <SettingsChoiceRow
             label="Language"
             value={language}
-            showChevron
-            onPress={pickLanguage}
+            options={LANGUAGE_OPTIONS}
+            expanded={expandedPicker === 'language'}
+            onToggle={() => togglePicker('language')}
+            onChange={setLanguage}
             isLast
           />
         </SettingsSection>
