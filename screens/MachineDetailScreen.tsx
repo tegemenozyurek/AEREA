@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { isDefaultRoom } from '../data/mockMachines';
 import MetricHistorySection, { type MetricHistoryItem } from '../components/MetricHistorySection';
 import MetricRing from '../components/MetricRing';
 import type { Machine } from '../types/machine';
@@ -32,6 +33,91 @@ type Props = {
   onRefresh?: () => Promise<void>;
 };
 
+function machineCountLabel(count: number): string {
+  return count === 1 ? '1 machine' : `${count} machines`;
+}
+
+type RoomMenuOptionProps = {
+  room: Room;
+  selected: boolean;
+  scale: (value: number) => number;
+  onPress: () => void;
+};
+
+function RoomMenuOption({ room, selected, scale, onPress }: RoomMenuOptionProps) {
+  const isDefault = isDefaultRoom(room.id);
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.roomOption,
+        {
+          paddingVertical: scale(11),
+          paddingHorizontal: scale(12),
+          borderRadius: scale(10),
+          marginHorizontal: scale(6),
+          marginBottom: scale(4),
+          gap: scale(10),
+        },
+        selected && styles.roomOptionSelected,
+        selected && { borderLeftWidth: scale(3), borderLeftColor: '#60A5FA' },
+      ]}
+      activeOpacity={0.75}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${room.name}, ${machineCountLabel(room.machines.length)}`}
+    >
+      <View
+        style={[
+          styles.roomOptionIcon,
+          {
+            width: scale(34),
+            height: scale(34),
+            borderRadius: scale(17),
+          },
+          selected && styles.roomOptionIconSelected,
+        ]}
+      >
+        <Ionicons
+          name={isDefault ? 'archive-outline' : 'layers-outline'}
+          size={scale(16)}
+          color={selected ? '#93C5FD' : 'rgba(255,255,255,0.55)'}
+        />
+      </View>
+
+      <View style={styles.roomOptionContent}>
+        <Text
+          style={[
+            styles.roomOptionText,
+            { fontSize: scale(14) },
+            selected && styles.roomOptionTextSelected,
+          ]}
+          numberOfLines={1}
+        >
+          {room.name}
+        </Text>
+        <Text style={[styles.roomOptionMeta, { fontSize: scale(11), marginTop: scale(2) }]}>
+          {machineCountLabel(room.machines.length)}
+        </Text>
+      </View>
+
+      {selected ? (
+        <View
+          style={[
+            styles.roomOptionCheck,
+            { width: scale(22), height: scale(22), borderRadius: scale(11) },
+          ]}
+        >
+          <Ionicons name="checkmark" size={scale(13)} color="#fff" />
+        </View>
+      ) : (
+        <View style={{ width: scale(22) }} />
+      )}
+    </TouchableOpacity>
+  );
+}
+
 export default function MachineDetailScreen({
   machine,
   roomId,
@@ -49,6 +135,11 @@ export default function MachineDetailScreen({
   const [selectedMetricIndex, setSelectedMetricIndex] = useState(1);
   const [renameOpen, setRenameOpen] = useState(false);
   const [draftName, setDraftName] = useState(machine.name);
+
+  const currentRoom = useMemo(
+    () => rooms.find((room) => room.id === roomId),
+    [roomId, rooms],
+  );
 
   const metrics = useMemo<MetricHistoryItem[]>(
     () => [
@@ -341,9 +432,16 @@ export default function MachineDetailScreen({
               >
                 <View style={[styles.roomPickerLeading, { gap: r.scale(8) }]}>
                   <Ionicons name="layers-outline" size={r.scale(16)} color="rgba(255,255,255,0.55)" />
-                  <Text style={[styles.roomPickerText, { fontSize: r.scale(15) }]} numberOfLines={1}>
-                    {roomName}
-                  </Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[styles.roomPickerText, { fontSize: r.scale(15) }]} numberOfLines={1}>
+                      {roomName}
+                    </Text>
+                    {currentRoom ? (
+                      <Text style={[styles.roomPickerMeta, { fontSize: r.scale(11), marginTop: r.scale(2) }]}>
+                        {machineCountLabel(currentRoom.machines.length)}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
                 <Ionicons
                   name={roomOpen ? 'chevron-up' : 'chevron-down'}
@@ -357,67 +455,89 @@ export default function MachineDetailScreen({
                   style={[
                     styles.roomDropdown,
                     {
-                      borderRadius: r.scale(12),
+                      borderRadius: r.scale(14),
                       marginTop: r.scale(8),
-                      paddingVertical: r.scale(4),
+                      paddingTop: r.scale(8),
+                      paddingBottom: r.scale(8),
                     },
                   ]}
                 >
-                  {rooms.map((room) => {
-                    const selected = room.id === roomId;
-                    return (
-                      <TouchableOpacity
+                  <View
+                    style={[
+                      styles.roomDropdownHeader,
+                      {
+                        paddingHorizontal: r.scale(14),
+                        paddingBottom: r.scale(8),
+                        marginBottom: r.scale(4),
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.roomDropdownTitle, { fontSize: r.scale(11) }]}>
+                      Select room
+                    </Text>
+                    <Text style={[styles.roomDropdownCount, { fontSize: r.scale(11) }]}>
+                      {rooms.length} rooms
+                    </Text>
+                  </View>
+
+                  <ScrollView
+                    style={{ maxHeight: r.scale(240) }}
+                    showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {rooms.map((room) => (
+                      <RoomMenuOption
                         key={room.id}
-                        style={[
-                          styles.roomOption,
-                          {
-                            paddingVertical: r.scale(10),
-                            paddingHorizontal: r.scale(12),
-                          },
-                          selected && styles.roomOptionSelected,
-                        ]}
-                        activeOpacity={0.7}
+                        room={room}
+                        selected={room.id === roomId}
+                        scale={r.scale}
                         onPress={() => handleRoomSelect(room.id)}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                      >
-                        <Text
-                          style={[
-                            styles.roomOptionText,
-                            { fontSize: r.scale(14) },
-                            selected && styles.roomOptionTextSelected,
-                          ]}
-                        >
-                          {room.name}
-                        </Text>
-                        {selected ? (
-                          <Ionicons name="checkmark" size={r.scale(16)} color="#60A5FA" />
-                        ) : null}
-                      </TouchableOpacity>
-                    );
-                  })}
+                      />
+                    ))}
+                  </ScrollView>
+
                   {onAddRoom ? (
                     <>
-                      <View style={styles.roomOptionDivider} />
+                      <View
+                        style={[
+                          styles.roomOptionDivider,
+                          { marginHorizontal: r.scale(12), marginVertical: r.scale(6) },
+                        ]}
+                      />
                       <TouchableOpacity
                         style={[
-                          styles.roomOption,
                           styles.roomOptionAdd,
                           {
-                            paddingVertical: r.scale(10),
+                            marginHorizontal: r.scale(6),
+                            paddingVertical: r.scale(11),
                             paddingHorizontal: r.scale(12),
+                            borderRadius: r.scale(10),
                             gap: r.scale(8),
                           },
                         ]}
-                        activeOpacity={0.7}
+                        activeOpacity={0.75}
                         onPress={handleAddRoomPress}
                         accessibilityRole="button"
                         accessibilityLabel="Add room"
                       >
-                        <Ionicons name="add" size={r.scale(16)} color="#60A5FA" />
-                        <Text style={[styles.roomOptionAddText, { fontSize: r.scale(14) }]}>
-                          Add room
-                        </Text>
+                        <View
+                          style={[
+                            styles.roomAddIcon,
+                            { width: r.scale(28), height: r.scale(28), borderRadius: r.scale(14) },
+                          ]}
+                        >
+                          <Ionicons name="add" size={r.scale(16)} color="#93C5FD" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.roomOptionAddText, { fontSize: r.scale(14) }]}>
+                            Add room
+                          </Text>
+                          <Text style={[styles.roomOptionAddHint, { fontSize: r.scale(11), marginTop: r.scale(1) }]}>
+                            Create a new room for this machine
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={r.scale(14)} color="rgba(147,197,253,0.55)" />
                       </TouchableOpacity>
                     </>
                   ) : null}
@@ -680,45 +800,104 @@ const styles = StyleSheet.create({
   roomPickerText: {
     color: '#fff',
     fontWeight: '600',
-    flex: 1,
+  },
+  roomPickerMeta: {
+    color: 'rgba(255,255,255,0.42)',
+    fontWeight: '500',
   },
   roomDropdown: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: 'rgba(10,15,28,0.98)',
+    borderColor: 'rgba(96,165,250,0.22)',
+    backgroundColor: 'rgba(8,12,22,0.98)',
     shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 12,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 14,
+  },
+  roomDropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  roomDropdownTitle: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  roomDropdownCount: {
+    color: 'rgba(255,255,255,0.32)',
+    fontWeight: '600',
   },
   roomOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   roomOptionSelected: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(96,165,250,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.22)',
+  },
+  roomOptionIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  roomOptionIconSelected: {
+    backgroundColor: 'rgba(96,165,250,0.16)',
+    borderColor: 'rgba(96,165,250,0.28)',
+  },
+  roomOptionContent: {
+    flex: 1,
+    minWidth: 0,
   },
   roomOptionText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.88)',
+    fontWeight: '600',
+  },
+  roomOptionMeta: {
+    color: 'rgba(255,255,255,0.4)',
     fontWeight: '500',
   },
   roomOptionTextSelected: {
     color: '#fff',
     fontWeight: '700',
   },
+  roomOptionCheck: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+  },
   roomOptionDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    marginVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   roomOptionAdd: {
-    justifyContent: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(96,165,250,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.18)',
+  },
+  roomAddIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96,165,250,0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.25)',
   },
   roomOptionAddText: {
-    color: '#60A5FA',
-    fontWeight: '600',
+    color: '#BFDBFE',
+    fontWeight: '700',
+  },
+  roomOptionAddHint: {
+    color: 'rgba(147,197,253,0.55)',
+    fontWeight: '500',
   },
   metricsCard: {
     backgroundColor: 'rgba(0,0,0,0.35)',
