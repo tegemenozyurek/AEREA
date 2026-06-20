@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { fetchNearbyMachines, type NearbyMachine } from '../data/mockMachines';
+import { formatDeviceId } from '../types/machine';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
 
@@ -41,6 +42,95 @@ function getPairedDeviceIds(rooms: Room[]): Set<string> {
     });
   });
   return ids;
+}
+
+function mockSignalStrength(deviceId: string): number {
+  let hash = 0;
+  for (let i = 0; i < deviceId.length; i += 1) {
+    hash = deviceId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return (Math.abs(hash) % 3) + 2;
+}
+
+function signalLabel(strength: number): string {
+  if (strength >= 4) {
+    return 'Strong';
+  }
+  if (strength >= 3) {
+    return 'Good';
+  }
+  return 'Fair';
+}
+
+type DeviceRowProps = {
+  device: NearbyMachine;
+  onPress: () => void;
+  scale: (value: number) => number;
+};
+
+function DeviceRow({ device, onPress, scale }: DeviceRowProps) {
+  const strength = mockSignalStrength(device.id);
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.deviceRow,
+        {
+          paddingVertical: scale(14),
+          paddingHorizontal: scale(14),
+          borderRadius: scale(14),
+          marginBottom: scale(10),
+          gap: scale(12),
+        },
+      ]}
+      activeOpacity={0.75}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Pair ${device.model} ${formatDeviceId(device.id)}`}
+    >
+      <View
+        style={[
+          styles.deviceIcon,
+          { width: scale(44), height: scale(44), borderRadius: scale(22) },
+        ]}
+      >
+        <Ionicons name="hardware-chip-outline" size={scale(20)} color="#93C5FD" />
+      </View>
+
+      <View style={styles.deviceContent}>
+        <Text style={[styles.deviceModel, { fontSize: scale(15) }]} numberOfLines={1}>
+          {device.model}
+        </Text>
+        <Text style={[styles.deviceId, { fontSize: scale(12), marginTop: scale(2) }]}>
+          {formatDeviceId(device.id)}
+        </Text>
+        <View style={[styles.signalRow, { marginTop: scale(6), gap: scale(4) }]}>
+          {[1, 2, 3, 4].map((bar) => (
+            <View
+              key={bar}
+              style={[
+                styles.signalBar,
+                {
+                  width: scale(3),
+                  height: scale(4 + bar * 2),
+                  borderRadius: scale(1),
+                  opacity: bar <= strength ? 1 : 0.22,
+                },
+              ]}
+            />
+          ))}
+          <Text style={[styles.signalText, { fontSize: scale(11), marginLeft: scale(4) }]}>
+            {signalLabel(strength)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.pairButton, { paddingVertical: scale(8), paddingHorizontal: scale(12), borderRadius: scale(10), gap: scale(4) }]}>
+        <Text style={[styles.pairButtonText, { fontSize: scale(13) }]}>Pair</Text>
+        <Ionicons name="arrow-forward" size={scale(14)} color="#BFDBFE" />
+      </View>
+    </TouchableOpacity>
+  );
 }
 
 export default function AddMachineModal({ visible, rooms, onClose, onSave }: Props) {
@@ -89,7 +179,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
 
   const handleDeviceSelect = (device: NearbyMachine) => {
     setSelectedDevice(device);
-    setDraftName(device.label);
+    setDraftName(`${device.model} - ${formatDeviceId(device.id)}`);
     setRoomId(rooms[0]?.id ?? '');
     setRoomOpen(false);
     setStep('setup');
@@ -153,14 +243,46 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                 </Pressable>
               </View>
 
-              <Text
+              <View
                 style={[
-                  styles.subtitle,
-                  { fontSize: r.scale(13), marginTop: r.scale(8), lineHeight: r.scale(18) },
+                  styles.scanHero,
+                  {
+                    marginTop: r.scale(16),
+                    paddingVertical: r.scale(16),
+                    paddingHorizontal: r.scale(14),
+                    borderRadius: r.scale(14),
+                  },
                 ]}
               >
-                Select a nearby machine to connect.
-              </Text>
+                <View
+                  style={[
+                    styles.scanIconWrap,
+                    {
+                      width: r.scale(52),
+                      height: r.scale(52),
+                      borderRadius: r.scale(26),
+                    },
+                    scanning && styles.scanIconWrapActive,
+                  ]}
+                >
+                  {scanning ? (
+                    <ActivityIndicator size="small" color="#93C5FD" />
+                  ) : (
+                    <Ionicons name="bluetooth" size={r.scale(24)} color="#93C5FD" />
+                  )}
+                </View>
+                <Text style={[styles.scanTitle, { fontSize: r.scale(15), marginTop: r.scale(12) }]}>
+                  {scanning ? 'Scanning nearby...' : 'Ready to pair'}
+                </Text>
+                <Text
+                  style={[
+                    styles.scanSubtitle,
+                    { fontSize: r.scale(12), marginTop: r.scale(6), lineHeight: r.scale(17) },
+                  ]}
+                >
+                  Power on your AEREA device and keep it close to this phone.
+                </Text>
+              </View>
 
               <View
                 style={[
@@ -168,16 +290,36 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                   { marginTop: r.scale(18), marginBottom: r.scale(10) },
                 ]}
               >
-                <Text style={[styles.fieldLabel, { fontSize: r.scale(12) }]}>Nearby machines</Text>
+                <View style={styles.listHeaderLeft}>
+                  <Text style={[styles.fieldLabel, { fontSize: r.scale(12) }]}>Nearby</Text>
+                  {!scanning ? (
+                    <View
+                      style={[
+                        styles.countBadge,
+                        {
+                          marginLeft: r.scale(8),
+                          paddingHorizontal: r.scale(8),
+                          paddingVertical: r.scale(3),
+                          borderRadius: r.scale(8),
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.countBadgeText, { fontSize: r.scale(11) }]}>
+                        {availableDevices.length}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <TouchableOpacity
                   style={[
                     styles.refreshButton,
                     {
-                      paddingVertical: r.scale(6),
-                      paddingHorizontal: r.scale(10),
+                      paddingVertical: r.scale(7),
+                      paddingHorizontal: r.scale(12),
                       borderRadius: r.scale(10),
                       gap: r.scale(6),
                     },
+                    scanning && styles.refreshButtonDisabled,
                   ]}
                   activeOpacity={0.7}
                   onPress={() => void loadNearbyDevices()}
@@ -185,72 +327,118 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                   accessibilityRole="button"
                   accessibilityLabel="Refresh nearby machines"
                 >
-                  {scanning ? (
-                    <ActivityIndicator size="small" color="#93C5FD" />
-                  ) : (
-                    <Ionicons name="refresh" size={r.scale(16)} color="#93C5FD" />
-                  )}
-                  <Text style={[styles.refreshText, { fontSize: r.scale(13) }]}>Refresh</Text>
+                  <Ionicons
+                    name="refresh"
+                    size={r.scale(15)}
+                    color={scanning ? 'rgba(147,197,253,0.45)' : '#93C5FD'}
+                  />
+                  <Text
+                    style={[
+                      styles.refreshText,
+                      { fontSize: r.scale(13) },
+                      scanning && styles.refreshTextDisabled,
+                    ]}
+                  >
+                    Refresh
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               <ScrollView
-                style={[styles.deviceList, { maxHeight: r.scale(220) }]}
+                style={[styles.deviceList, { maxHeight: r.scale(260) }]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
                 {scanning && availableDevices.length === 0 ? (
-                  <View style={[styles.emptyState, { paddingVertical: r.scale(28) }]}>
-                    <ActivityIndicator size="small" color="#93C5FD" />
-                    <Text style={[styles.emptyText, { fontSize: r.scale(14), marginTop: r.scale(10) }]}>
-                      Scanning for nearby machines...
+                  <View
+                    style={[
+                      styles.emptyState,
+                      {
+                        paddingVertical: r.scale(32),
+                        borderRadius: r.scale(14),
+                      },
+                    ]}
+                  >
+                    <View style={[styles.scanPulse, { width: r.scale(56), height: r.scale(56), borderRadius: r.scale(28) }]}>
+                      <View style={[styles.scanPulseInner, { width: r.scale(40), height: r.scale(40), borderRadius: r.scale(20) }]}>
+                        <Ionicons name="radio-outline" size={r.scale(20)} color="#93C5FD" />
+                      </View>
+                    </View>
+                    <Text style={[styles.emptyText, { fontSize: r.scale(14), marginTop: r.scale(14) }]}>
+                      Looking for AEREA devices...
+                    </Text>
+                    <Text style={[styles.emptyHint, { fontSize: r.scale(12), marginTop: r.scale(6) }]}>
+                      This usually takes a few seconds.
                     </Text>
                   </View>
                 ) : availableDevices.length === 0 ? (
-                  <View style={[styles.emptyState, { paddingVertical: r.scale(28) }]}>
-                    <Ionicons name="bluetooth-outline" size={r.scale(28)} color="rgba(255,255,255,0.35)" />
-                    <Text style={[styles.emptyText, { fontSize: r.scale(14), marginTop: r.scale(10) }]}>
-                      No nearby machines found.
+                  <View
+                    style={[
+                      styles.emptyState,
+                      styles.emptyStateCard,
+                      {
+                        paddingVertical: r.scale(28),
+                        paddingHorizontal: r.scale(16),
+                        borderRadius: r.scale(14),
+                      },
+                    ]}
+                  >
+                    <Ionicons name="search-outline" size={r.scale(30)} color="rgba(255,255,255,0.35)" />
+                    <Text style={[styles.emptyText, { fontSize: r.scale(14), marginTop: r.scale(12) }]}>
+                      No nearby machines found
                     </Text>
-                    <Text style={[styles.emptyHint, { fontSize: r.scale(12), marginTop: r.scale(4) }]}>
-                      Tap refresh to scan again.
+                    <Text style={[styles.emptyHint, { fontSize: r.scale(12), marginTop: r.scale(6), lineHeight: r.scale(17) }]}>
+                      Check that the device is on and in pairing mode, then tap refresh.
                     </Text>
-                  </View>
-                ) : (
-                  availableDevices.map((device) => (
                     <TouchableOpacity
-                      key={device.id}
                       style={[
-                        styles.deviceRow,
+                        styles.emptyRefreshButton,
                         {
-                          paddingVertical: r.scale(12),
-                          paddingHorizontal: r.scale(14),
-                          borderRadius: r.scale(12),
-                          marginBottom: r.scale(8),
-                          gap: r.scale(12),
+                          marginTop: r.scale(14),
+                          paddingVertical: r.scale(10),
+                          paddingHorizontal: r.scale(16),
+                          borderRadius: r.scale(10),
+                          gap: r.scale(6),
                         },
                       ]}
                       activeOpacity={0.7}
-                      onPress={() => handleDeviceSelect(device)}
+                      onPress={() => void loadNearbyDevices()}
                       accessibilityRole="button"
-                      accessibilityLabel={`Pair ${device.label}`}
+                      accessibilityLabel="Scan again for nearby machines"
                     >
-                      <View
-                        style={[
-                          styles.deviceIcon,
-                          { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
-                        ]}
-                      >
-                        <Ionicons name="hardware-chip-outline" size={r.scale(18)} color="#93C5FD" />
-                      </View>
-                      <Text style={[styles.deviceLabel, { fontSize: r.scale(15), flex: 1 }]}>
-                        {device.label}
-                      </Text>
-                      <Ionicons name="chevron-forward" size={r.scale(18)} color="rgba(255,255,255,0.45)" />
+                      <Ionicons name="refresh" size={r.scale(16)} color="#93C5FD" />
+                      <Text style={[styles.refreshText, { fontSize: r.scale(13) }]}>Scan again</Text>
                     </TouchableOpacity>
+                  </View>
+                ) : (
+                  availableDevices.map((device) => (
+                    <DeviceRow
+                      key={device.id}
+                      device={device}
+                      scale={r.scale}
+                      onPress={() => handleDeviceSelect(device)}
+                    />
                   ))
                 )}
               </ScrollView>
+
+              <View
+                style={[
+                  styles.helpTip,
+                  {
+                    marginTop: r.scale(14),
+                    paddingVertical: r.scale(10),
+                    paddingHorizontal: r.scale(12),
+                    borderRadius: r.scale(12),
+                    gap: r.scale(8),
+                  },
+                ]}
+              >
+                <Ionicons name="information-circle-outline" size={r.scale(16)} color="rgba(255,255,255,0.45)" />
+                <Text style={[styles.helpTipText, { fontSize: r.scale(12), lineHeight: r.scale(17), flex: 1 }]}>
+                  Select a device to continue with naming and room assignment.
+                </Text>
+              </View>
             </>
           ) : (
             <>
@@ -293,17 +481,32 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                     styles.pairedDeviceBadge,
                     {
                       marginTop: r.scale(14),
-                      paddingVertical: r.scale(10),
-                      paddingHorizontal: r.scale(12),
+                      paddingVertical: r.scale(12),
+                      paddingHorizontal: r.scale(14),
                       borderRadius: r.scale(12),
-                      gap: r.scale(8),
+                      gap: r.scale(12),
                     },
                   ]}
                 >
-                  <Ionicons name="link-outline" size={r.scale(16)} color="#34D399" />
-                  <Text style={[styles.pairedDeviceText, { fontSize: r.scale(13) }]}>
-                    Paired with {selectedDevice.label}
-                  </Text>
+                  <View
+                    style={[
+                      styles.pairedDeviceIcon,
+                      { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
+                    ]}
+                  >
+                    <Ionicons name="checkmark" size={r.scale(18)} color="#34D399" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pairedDeviceTitle, { fontSize: r.scale(12) }]}>
+                      Selected device
+                    </Text>
+                    <Text style={[styles.pairedDeviceModel, { fontSize: r.scale(14), marginTop: r.scale(2) }]}>
+                      {selectedDevice.model}
+                    </Text>
+                    <Text style={[styles.pairedDeviceId, { fontSize: r.scale(12), marginTop: r.scale(2) }]}>
+                      {formatDeviceId(selectedDevice.id)}
+                    </Text>
+                  </View>
                 </View>
               ) : null}
 
@@ -476,9 +679,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  subtitle: {
-    color: 'rgba(255,255,255,0.55)',
+  scanHero: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(96,165,250,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.2)',
+  },
+  scanIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96,165,250,0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.28)',
+  },
+  scanIconWrapActive: {
+    backgroundColor: 'rgba(96,165,250,0.2)',
+    borderColor: 'rgba(147,197,253,0.45)',
+  },
+  scanTitle: {
+    color: '#fff',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  scanSubtitle: {
+    color: 'rgba(255,255,255,0.52)',
     fontWeight: '500',
+    textAlign: 'center',
   },
   closeButton: {
     alignItems: 'center',
@@ -499,6 +725,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  listHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countBadge: {
+    backgroundColor: 'rgba(96,165,250,0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.35)',
+  },
+  countBadgeText: {
+    color: '#93C5FD',
+    fontWeight: '700',
+  },
   fieldLabel: {
     color: 'rgba(255,255,255,0.5)',
     fontWeight: '600',
@@ -512,9 +751,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(96,165,250,0.35)',
     backgroundColor: 'rgba(96,165,250,0.12)',
   },
+  refreshButtonDisabled: {
+    opacity: 0.65,
+  },
   refreshText: {
     color: '#93C5FD',
     fontWeight: '600',
+  },
+  refreshTextDisabled: {
+    color: 'rgba(147,197,253,0.55)',
   },
   deviceList: {
     flexGrow: 0,
@@ -533,13 +778,70 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(96,165,250,0.25)',
   },
-  deviceLabel: {
+  deviceContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  deviceModel: {
     color: '#fff',
+    fontWeight: '700',
+  },
+  deviceId: {
+    color: 'rgba(255,255,255,0.48)',
     fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  signalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  signalBar: {
+    backgroundColor: '#34D399',
+  },
+  signalText: {
+    color: 'rgba(255,255,255,0.42)',
+    fontWeight: '500',
+  },
+  pairButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(96,165,250,0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.35)',
+  },
+  pairButtonText: {
+    color: '#BFDBFE',
+    fontWeight: '700',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyStateCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  scanPulse: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96,165,250,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.18)',
+  },
+  scanPulseInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96,165,250,0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.28)',
+  },
+  emptyRefreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.35)',
+    backgroundColor: 'rgba(96,165,250,0.12)',
   },
   emptyText: {
     color: 'rgba(255,255,255,0.65)',
@@ -551,6 +853,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
+  helpTip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  helpTipText: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '500',
+  },
   pairedDeviceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -558,8 +871,25 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(52,211,153,0.28)',
   },
-  pairedDeviceText: {
-    color: '#6EE7B7',
+  pairedDeviceIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(52,211,153,0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(52,211,153,0.32)',
+  },
+  pairedDeviceTitle: {
+    color: 'rgba(110,231,183,0.75)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  pairedDeviceModel: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  pairedDeviceId: {
+    color: 'rgba(255,255,255,0.55)',
     fontWeight: '600',
   },
   input: {
