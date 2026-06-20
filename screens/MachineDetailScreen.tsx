@@ -111,6 +111,10 @@ export default function MachineDetailScreen({
     }
   }, [onRefresh]);
 
+  const statusColor = machine.online ? '#34D399' : '#F87171';
+  const statusBg = machine.online ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)';
+  const statusBorder = machine.online ? 'rgba(52,211,153,0.28)' : 'rgba(248,113,113,0.28)';
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <Modal visible={renameOpen} transparent animationType="fade" onRequestClose={closeRename}>
@@ -252,45 +256,80 @@ export default function MachineDetailScreen({
           style={[
             styles.statusCard,
             {
-              borderRightColor: machine.online ? '#34D399' : '#F87171',
-              borderRightWidth: r.scale(9),
               borderRadius: r.scale(16),
               padding: r.scale(16),
+              borderColor: statusBorder,
             },
           ]}
         >
-          <View style={styles.statusRow}>
-            <Text style={[styles.statusLabel, { fontSize: r.scale(13) }]}>Status</Text>
-            <Text
+          <View style={[styles.identityRow, { gap: r.scale(12) }]}>
+            <View
               style={[
-                styles.statusValue,
-                { fontSize: r.scale(15), color: machine.online ? '#34D399' : '#F87171' },
+                styles.deviceIconWrap,
+                {
+                  width: r.scale(48),
+                  height: r.scale(48),
+                  borderRadius: r.scale(24),
+                },
               ]}
             >
-              {machine.online ? 'Online' : 'Offline'}
+              <Ionicons name="hardware-chip-outline" size={r.scale(22)} color="#93C5FD" />
+            </View>
+
+            <View style={styles.identityContent}>
+              <Text style={[styles.deviceModel, { fontSize: r.scale(17) }]} numberOfLines={1}>
+                {machine.model}
+              </Text>
+              <Text style={[styles.deviceId, { fontSize: r.scale(13), marginTop: r.scale(3) }]}>
+                {formatDeviceId(machine.deviceId)}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.statusPill,
+                {
+                  paddingVertical: r.scale(6),
+                  paddingHorizontal: r.scale(10),
+                  borderRadius: r.scale(20),
+                  gap: r.scale(6),
+                  backgroundColor: statusBg,
+                  borderColor: statusBorder,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  {
+                    width: r.scale(7),
+                    height: r.scale(7),
+                    borderRadius: r.scale(4),
+                    backgroundColor: statusColor,
+                  },
+                ]}
+              />
+              <Text style={[styles.statusPillText, { fontSize: r.scale(12), color: statusColor }]}>
+                {machine.online ? 'Online' : 'Offline'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.cardDivider, { marginVertical: r.scale(14) }]} />
+
+          <View style={{ zIndex: roomOpen ? 2 : 0 }}>
+            <Text style={[styles.sectionLabel, { fontSize: r.scale(11), marginBottom: r.scale(8) }]}>
+              Room
             </Text>
-          </View>
-          <View style={[styles.statusRow, { marginTop: r.scale(10) }]}>
-            <Text style={[styles.statusLabel, { fontSize: r.scale(13) }]}>Model</Text>
-            <Text style={[styles.statusValue, { fontSize: r.scale(15) }]}>{machine.model}</Text>
-          </View>
-          <View style={[styles.statusRow, { marginTop: r.scale(10) }]}>
-            <Text style={[styles.statusLabel, { fontSize: r.scale(13) }]}>ID</Text>
-            <Text style={[styles.statusValue, { fontSize: r.scale(15) }]}>
-              {formatDeviceId(machine.deviceId)}
-            </Text>
-          </View>
-          <View style={[styles.statusRow, { marginTop: r.scale(10), zIndex: roomOpen ? 2 : 0 }]}>
-            <Text style={[styles.statusLabel, { fontSize: r.scale(13) }]}>Room</Text>
             <View style={styles.roomPickerWrap}>
               <TouchableOpacity
                 style={[
                   styles.roomPicker,
                   {
-                    paddingVertical: r.scale(6),
-                    paddingHorizontal: r.scale(10),
-                    borderRadius: r.scale(10),
-                    gap: r.scale(6),
+                    paddingVertical: r.scale(12),
+                    paddingHorizontal: r.scale(14),
+                    borderRadius: r.scale(12),
+                    gap: r.scale(8),
                   },
                   roomOpen && styles.roomPickerOpen,
                 ]}
@@ -300,11 +339,16 @@ export default function MachineDetailScreen({
                 accessibilityState={{ expanded: roomOpen }}
                 accessibilityLabel={`Room ${roomName}, change room`}
               >
-                <Text style={[styles.statusValue, { fontSize: r.scale(15) }]}>{roomName}</Text>
+                <View style={[styles.roomPickerLeading, { gap: r.scale(8) }]}>
+                  <Ionicons name="layers-outline" size={r.scale(16)} color="rgba(255,255,255,0.55)" />
+                  <Text style={[styles.roomPickerText, { fontSize: r.scale(15) }]} numberOfLines={1}>
+                    {roomName}
+                  </Text>
+                </View>
                 <Ionicons
                   name={roomOpen ? 'chevron-up' : 'chevron-down'}
                   size={r.scale(16)}
-                  color="rgba(255,255,255,0.65)"
+                  color="rgba(255,255,255,0.55)"
                 />
               </TouchableOpacity>
 
@@ -314,9 +358,8 @@ export default function MachineDetailScreen({
                     styles.roomDropdown,
                     {
                       borderRadius: r.scale(12),
-                      marginTop: r.scale(6),
+                      marginTop: r.scale(8),
                       paddingVertical: r.scale(4),
-                      minWidth: r.scale(160),
                     },
                   ]}
                 >
@@ -382,11 +425,15 @@ export default function MachineDetailScreen({
               )}
             </View>
           </View>
-          <View style={[styles.statusRow, { marginTop: r.scale(10) }]}>
-            <Text style={[styles.statusLabel, { fontSize: r.scale(13) }]}>
-              {machine.online ? 'Updated' : 'Last Seen'}
+
+          <View style={[styles.cardDivider, { marginVertical: r.scale(14) }]} />
+
+          <View style={[styles.metaRow, { gap: r.scale(8) }]}>
+            <Ionicons name="time-outline" size={r.scale(15)} color="rgba(255,255,255,0.4)" />
+            <Text style={[styles.metaLabel, { fontSize: r.scale(12) }]}>
+              {machine.online ? 'Updated' : 'Last seen'}
             </Text>
-            <Text style={[styles.statusValue, { fontSize: r.scale(12) }]}>
+            <Text style={[styles.metaValue, { fontSize: r.scale(12), flex: 1, textAlign: 'right' }]}>
               {formatUpdatedAt(machine.updatedAt)}
             </Text>
           </View>
@@ -531,11 +578,70 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   statusCard: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(15,23,42,0.72)',
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'visible',
+  },
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  deviceIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96,165,250,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.25)',
+  },
+  identityContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  deviceModel: {
+    color: '#fff',
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  deviceId: {
+    color: 'rgba(255,255,255,0.48)',
+    fontWeight: '600',
+    letterSpacing: 0.4,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  statusDot: {
+    shadowColor: '#34D399',
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  statusPillText: {
+    fontWeight: '700',
+  },
+  cardDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  sectionLabel: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaLabel: {
+    color: 'rgba(255,255,255,0.42)',
+    fontWeight: '500',
+  },
+  metaValue: {
+    color: 'rgba(255,255,255,0.72)',
+    fontWeight: '600',
   },
   statusRow: {
     flexDirection: 'row',
@@ -552,29 +658,34 @@ const styles = StyleSheet.create({
   },
   roomPickerWrap: {
     position: 'relative',
-    alignItems: 'flex-end',
-    flexShrink: 1,
-    maxWidth: '62%',
   },
   roomPicker: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.14)',
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
+  roomPickerLeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
   roomPickerOpen: {
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(96,165,250,0.4)',
+    backgroundColor: 'rgba(96,165,250,0.08)',
+  },
+  roomPickerText: {
+    color: '#fff',
+    fontWeight: '600',
+    flex: 1,
   },
   roomDropdown: {
-    position: 'absolute',
-    top: '100%',
-    right: 0,
-    zIndex: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(15,23,42,0.95)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(10,15,28,0.98)',
     shadowColor: '#000',
     shadowOpacity: 0.35,
     shadowRadius: 12,
