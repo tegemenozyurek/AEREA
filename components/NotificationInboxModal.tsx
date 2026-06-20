@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
   Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GradientBackground from './GradientBackground';
 import NotificationBox from './NotificationBox';
@@ -18,16 +18,18 @@ type NotificationInboxModalProps = {
   visible: boolean;
   notifications: AppNotification[];
   onClose: () => void;
+  onDeleteAll?: () => void;
+  onDelete?: (id: string) => void;
   onNotificationPress?: (notification: AppNotification) => void;
-  onMarkAllRead?: () => void;
 };
 
 export default function NotificationInboxModal({
   visible,
   notifications,
   onClose,
+  onDeleteAll,
+  onDelete,
   onNotificationPress,
-  onMarkAllRead,
 }: NotificationInboxModalProps) {
   const insets = useSafeAreaInsets();
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -37,7 +39,7 @@ export default function NotificationInboxModal({
       <GradientBackground style={styles.root}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
-            style={styles.closeBtn}
+            style={styles.headerBtn}
             onPress={onClose}
             hitSlop={8}
             accessibilityLabel="Close notifications"
@@ -67,7 +69,8 @@ export default function NotificationInboxModal({
           <NotificationBox
             notifications={notifications}
             onNotificationPress={onNotificationPress}
-            onMarkAllRead={onMarkAllRead}
+            onDelete={onDelete}
+            onDeleteAll={onDeleteAll}
           />
         </ScrollView>
       </GradientBackground>
@@ -87,7 +90,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: FORUM.border,
   },
-  closeBtn: {
+  headerBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
@@ -104,14 +107,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  headerSpacer: {
+    width: 36,
+  },
   headerTitle: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.3,
-  },
-  headerSpacer: {
-    width: 36,
   },
   countBadge: {
     minWidth: 20,

@@ -1,6 +1,8 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
+  AppState,
+  AppStateStatus,
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from 'react-native';
@@ -32,6 +34,13 @@ export function useCollapsingSubTabs() {
   const showSubTabs = useCallback(() => setVisible(true), [setVisible]);
   const hideSubTabs = useCallback(() => setVisible(false), [setVisible]);
 
+  const forceShowSubTabs = useCallback(() => {
+    lastOffset.current = 0;
+    isVisible.current = true;
+    visibility.stopAnimation();
+    visibility.setValue(1);
+  }, [visibility]);
+
   const onContentScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = event.nativeEvent.contentOffset.y;
@@ -51,9 +60,17 @@ export function useCollapsingSubTabs() {
   );
 
   const resetScrollTracking = useCallback(() => {
-    lastOffset.current = 0;
-    showSubTabs();
-  }, [showSubTabs]);
+    forceShowSubTabs();
+  }, [forceShowSubTabs]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        forceShowSubTabs();
+      }
+    });
+    return () => subscription.remove();
+  }, [forceShowSubTabs]);
 
   const animatedContainerStyle = {
     height: visibility.interpolate({

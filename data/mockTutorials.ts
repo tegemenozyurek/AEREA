@@ -40,6 +40,22 @@ export const mockTutorials: Tutorial[] = [
     updatedAt: '2026-06-10T12:00:00.000Z',
   },
   {
+    id: 'tut-6',
+    kind: 'guide',
+    title: 'Nutrient Deficiency Cheatsheet',
+    description: 'Visual reference for common deficiencies — nitrogen, calcium, magnesium, and more.',
+    url: 'https://aerea.app/guides/nutrient-deficiency',
+    updatedAt: '2026-06-08T11:00:00.000Z',
+  },
+  {
+    id: 'tut-7',
+    kind: 'guide',
+    title: 'Weekly Machine Maintenance',
+    description: 'Reservoir checks, filter cleaning, and sensor care in a simple checklist.',
+    url: 'https://aerea.app/guides/weekly-maintenance',
+    updatedAt: '2026-06-12T09:00:00.000Z',
+  },
+  {
     id: 'tut-5',
     kind: 'video',
     title: 'Preventing Root Rot in Hydroponics',
@@ -55,3 +71,6 @@ export function youtubeThumbnail(videoId: string, quality: 'hq' | 'max' = 'hq'):
   const file = quality === 'max' ? 'maxresdefault' : 'hqdefault';
   return `https://img.youtube.com/vi/${videoId}/${file}.jpg`;
 }
+
+export const mockVideoTutorials = mockTutorials.filter((t) => t.kind === 'video');
+export const mockGuideTutorials = mockTutorials.filter((t) => t.kind === 'guide');

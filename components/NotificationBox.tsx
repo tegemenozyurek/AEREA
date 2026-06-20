@@ -1,23 +1,93 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { FORUM } from './communityPostShared';
 import NotificationCard from './NotificationCard';
 import type { AppNotification } from '../types/notification';
 
+const SWIPE_DELETE_THRESHOLD = 72;
+
 type NotificationBoxProps = {
   notifications: AppNotification[];
   onNotificationPress?: (notification: AppNotification) => void;
-  onMarkAllRead?: () => void;
+  onDelete?: (id: string) => void;
+  onDeleteAll?: () => void;
 };
+
+function SwipeToDeleteRow({
+  onDelete,
+  children,
+}: {
+  onDelete: () => void;
+  children: React.ReactNode;
+}) {
+  const translateX = useSharedValue(0);
+
+  const pan = Gesture.Pan()
+    .activeOffsetX(-16)
+    .failOffsetY([-14, 14])
+    .onUpdate((event) => {
+      if (event.translationX < 0) {
+        translateX.value = event.translationX;
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationX <= -SWIPE_DELETE_THRESHOLD) {
+        translateX.value = withTiming(-500, { duration: 160 }, (finished) => {
+          if (finished) {
+            runOnJS(onDelete)();
+          }
+        });
+        return;
+      }
+      translateX.value = withTiming(0, { duration: 160 });
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <GestureDetector gesture={pan}>
+      <Animated.View style={[styles.swipeRow, animatedStyle]}>{children}</Animated.View>
+    </GestureDetector>
+  );
+}
+
+function SwipeableNotificationRow({
+  notification,
+  onPress,
+  onDelete,
+}: {
+  notification: AppNotification;
+  onPress?: (notification: AppNotification) => void;
+  onDelete?: (id: string) => void;
+}) {
+  if (!onDelete) {
+    return <NotificationCard notification={notification} onPress={onPress} />;
+  }
+
+  return (
+    <SwipeToDeleteRow onDelete={() => onDelete(notification.id)}>
+      <NotificationCard notification={notification} onPress={onPress} />
+    </SwipeToDeleteRow>
+  );
+}
 
 export default function NotificationBox({
   notifications,
   onNotificationPress,
-  onMarkAllRead,
+  onDelete,
+  onDeleteAll,
 }: NotificationBoxProps) {
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const canMarkAllRead = unreadCount > 0;
+  const canDeleteAll = notifications.length > 0;
 
   if (notifications.length === 0) {
     return (
@@ -31,26 +101,28 @@ export default function NotificationBox({
 
   return (
     <View style={styles.section}>
-      {onMarkAllRead && (
-        <View style={styles.actions}>
+      {onDeleteAll && (
+        <View style={styles.toolbar}>
           <TouchableOpacity
-            onPress={onMarkAllRead}
-            disabled={!canMarkAllRead}
-            activeOpacity={canMarkAllRead ? 0.7 : 1}
+            onPress={onDeleteAll}
+            disabled={!canDeleteAll}
+            activeOpacity={canDeleteAll ? 0.7 : 1}
             hitSlop={8}
+            accessibilityLabel="Delete all notifications"
           >
-            <Text style={[styles.markRead, !canMarkAllRead && styles.markReadDisabled]}>
-              Mark all read
+            <Text style={[styles.deleteAll, !canDeleteAll && styles.deleteAllDisabled]}>
+              DELETE
             </Text>
           </TouchableOpacity>
         </View>
       )}
 
       {notifications.map((notification) => (
-        <NotificationCard
+        <SwipeableNotificationRow
           key={notification.id}
           notification={notification}
           onPress={onNotificationPress}
+          onDelete={onDelete}
         />
       ))}
     </View>
@@ -62,17 +134,21 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
   },
-  actions: {
+  swipeRow: {
+    width: '100%',
+  },
+  toolbar: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginBottom: 12,
   },
-  markRead: {
-    color: FORUM.muted,
+  deleteAll: {
+    color: '#FF8A8A',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
-  markReadDisabled: {
+  deleteAllDisabled: {
     color: 'rgba(255,255,255,0.28)',
   },
   empty: {

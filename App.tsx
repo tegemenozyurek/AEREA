@@ -9,6 +9,7 @@ import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { CommunityProvider } from './contexts/CommunityContext';
+import { HomeNotificationsProvider } from './contexts/HomeNotificationsContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { ProfileProvider } from './contexts/ProfileContext';
 import { SeedExchangeProvider } from './contexts/SeedExchangeContext';
@@ -102,6 +103,7 @@ export default function App() {
         <CommunityProvider>
         <SeedExchangeProvider>
         <ChatProvider>
+        <HomeNotificationsProvider>
         <GradientBackground>
           <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
             <Routes />
@@ -124,6 +126,7 @@ export default function App() {
 
           <StatusBar style="light" />
         </GradientBackground>
+        </HomeNotificationsProvider>
         </ChatProvider>
         </SeedExchangeProvider>
         </CommunityProvider>

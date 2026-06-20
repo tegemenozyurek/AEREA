@@ -69,6 +69,3 @@ export const mockNotifications: AppNotification[] = [
   },
 ];
 
-export function getUnreadCount(notifications: AppNotification[]): number {
-  return notifications.filter((n) => !n.read).length;
-}
