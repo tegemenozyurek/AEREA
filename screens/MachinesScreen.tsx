@@ -14,6 +14,7 @@ import {
   isDefaultRoom,
   MOCK_ROOMS,
   refreshRoomMetrics,
+  type NearbyMachine,
 } from '../data/mockMachines';
 import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
@@ -159,8 +160,11 @@ export default function MachinesScreen() {
     setAddRoomOpen(true);
   }, []);
 
-  const handleAddMachine = useCallback((name: string, roomId: string) => {
-    const machine = createDefaultMachine(roomId, name);
+  const handleAddMachine = useCallback((name: string, roomId: string, device: NearbyMachine) => {
+    const machine = createDefaultMachine(roomId, name, {
+      deviceId: device.id,
+      model: device.model,
+    });
     setRooms((prev) =>
       prev.map((room) =>
         room.id === roomId ? { ...room, machines: [...room.machines, machine] } : room,

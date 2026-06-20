@@ -55,11 +55,17 @@ export function isDefaultRoom(roomId: string): boolean {
   return roomId === DEFAULT_ROOM_ID;
 }
 
-export function createDefaultMachine(roomId: string, name: string): Machine {
+export function createDefaultMachine(
+  roomId: string,
+  name: string,
+  pair?: { deviceId: string; model: string },
+): Machine {
   return {
-    id: `${roomId}-machine-${Date.now()}`,
+    id: pair ? `aerea-${pair.deviceId}` : `${roomId}-machine-${Date.now()}`,
     name,
-    online: false,
+    model: pair?.model ?? 'AEREA1',
+    deviceId: pair?.deviceId ?? String(Math.floor(10000 + Math.random() * 90000)),
+    online: !!pair,
     ppm: 800,
     ph: 6.0,
     phDown: 0,
@@ -68,6 +74,23 @@ export function createDefaultMachine(roomId: string, name: string): Machine {
     tankLevel: 50,
     updatedAt: new Date().toISOString(),
   };
+}
+
+export type NearbyMachine = {
+  id: string;
+  model: string;
+  label: string;
+};
+
+export const MOCK_NEARBY_MACHINES: NearbyMachine[] = [
+  { id: '34932', model: 'AEREA1', label: 'AEREA1 - #34932' },
+  { id: '94857', model: 'AEREA2 mini', label: 'AEREA2 mini - #94857' },
+];
+
+/** Simulates scanning for nearby unpaired AEREA devices. */
+export async function fetchNearbyMachines(): Promise<NearbyMachine[]> {
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  return MOCK_NEARBY_MACHINES;
 }
 
 /** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */
@@ -79,6 +102,8 @@ export const MOCK_ROOMS: Room[] = [
       {
         id: 'r1-machine-1',
         name: 'Machine #1 - Tomato 🍅',
+        model: 'AEREA1',
+        deviceId: '12487',
         online: true,
         ppm: 1200,
         ph: 6.2,
@@ -91,6 +116,8 @@ export const MOCK_ROOMS: Room[] = [
       {
         id: 'r1-machine-2',
         name: 'Machine #2 - Strawberry 🍓',
+        model: 'AEREA2 mini',
+        deviceId: '39281',
         online: false,
         ppm: 980,
         ph: 5.8,
@@ -103,6 +130,8 @@ export const MOCK_ROOMS: Room[] = [
       {
         id: 'r1-machine-3',
         name: 'Machine #3 - Pepper 🌶️',
+        model: 'AEREA1',
+        deviceId: '98732',
         online: true,
         ppm: 1100,
         ph: 6.5,
@@ -121,6 +150,8 @@ export const MOCK_ROOMS: Room[] = [
       {
         id: 'r2-machine-1',
         name: 'Machine #1 - Cucumber 🥒',
+        model: 'AEREA1',
+        deviceId: '45621',
         online: true,
         ppm: 1050,
         ph: 6.1,
@@ -133,6 +164,8 @@ export const MOCK_ROOMS: Room[] = [
       {
         id: 'r2-machine-2',
         name: 'Machine #2 - Mint 🍃',
+        model: 'AEREA2 mini',
+        deviceId: '77309',
         online: false,
         ppm: 640,
         ph: 5.9,
@@ -151,6 +184,8 @@ export const MOCK_ROOMS: Room[] = [
       {
         id: 'r3-machine-1',
         name: 'Machine #1 - Kale 🥗',
+        model: 'AEREA1',
+        deviceId: '58194',
         online: true,
         ppm: 900,
         ph: 6.4,

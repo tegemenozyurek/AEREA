@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MetricHistorySection, { type MetricHistoryItem } from '../components/MetricHistorySection';
 import MetricRing from '../components/MetricRing';
 import type { Machine } from '../types/machine';
+import { formatDeviceId } from '../types/machine';
 import type { Room } from '../types/room';
 import { formatUpdatedAt } from '../utils/formatDate';
 import { useResponsive } from '../utils/responsive';
@@ -267,6 +268,16 @@ export default function MachineDetailScreen({
               ]}
             >
               {machine.online ? 'Online' : 'Offline'}
+            </Text>
+          </View>
+          <View style={[styles.statusRow, { marginTop: r.scale(10) }]}>
+            <Text style={[styles.statusLabel, { fontSize: r.scale(13) }]}>Model</Text>
+            <Text style={[styles.statusValue, { fontSize: r.scale(15) }]}>{machine.model}</Text>
+          </View>
+          <View style={[styles.statusRow, { marginTop: r.scale(10) }]}>
+            <Text style={[styles.statusLabel, { fontSize: r.scale(13) }]}>ID</Text>
+            <Text style={[styles.statusValue, { fontSize: r.scale(15) }]}>
+              {formatDeviceId(machine.deviceId)}
             </Text>
           </View>
           <View style={[styles.statusRow, { marginTop: r.scale(10), zIndex: roomOpen ? 2 : 0 }]}>

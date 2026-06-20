@@ -1,6 +1,8 @@
 export type Machine = {
   id: string;
   name: string;
+  model: string;
+  deviceId: string;
   online: boolean;
   ppm: number;
   ph: number;
@@ -10,3 +12,8 @@ export type Machine = {
   waterLevel: number;
   updatedAt: string;
 };
+
+export function formatDeviceId(deviceId: string): string {
+  const normalized = deviceId.replace(/^#/, '');
+  return `#${normalized}`;
+}
