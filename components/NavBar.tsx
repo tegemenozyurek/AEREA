@@ -1,8 +1,10 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useChat } from '../contexts/ChatContext';
+import { useHomeNotifications } from '../contexts/HomeNotificationsContext';
 import { AppRoute, useNavigation } from '../contexts/NavigationContext';
 import { useResponsive } from '../utils/responsive';
 
@@ -48,10 +50,26 @@ function NavIcon({
   return <Ionicons name={icon.name} size={size} color={color} />;
 }
 
+function formatBadgeCount(count: number): string {
+  if (count > 99) return '99+';
+  if (count > 9) return '9+';
+  return String(count);
+}
+
 export default function NavBar() {
   const { route, navigate } = useNavigation();
   const insets = useSafeAreaInsets();
   const r = useResponsive();
+  const { unreadCount: homeUnreadCount } = useHomeNotifications();
+  const { totalUnread: communityUnreadCount } = useChat();
+
+  const badgeByRoute = useMemo<Partial<Record<AppRoute, number>>>(
+    () => ({
+      home: homeUnreadCount,
+      community: communityUnreadCount,
+    }),
+    [homeUnreadCount, communityUnreadCount],
+  );
 
   const iconSize = r.isTablet ? 24 : 22;
   const labelSize = r.isTablet ? 11 : 10;
@@ -81,6 +99,7 @@ export default function NavBar() {
         {NAV_ITEMS.map((item) => {
           const active = route === item.route;
           const color = active ? '#fff' : 'rgba(255,255,255,0.55)';
+          const badgeCount = badgeByRoute[item.route] ?? 0;
           return (
             <Pressable
               key={item.route}
@@ -91,7 +110,14 @@ export default function NavBar() {
               accessibilityState={{ selected: active }}
               hitSlop={6}
             >
-              <NavIcon icon={item.icon} size={iconSize} color={color} />
+              <View style={styles.iconWrap}>
+                <NavIcon icon={item.icon} size={iconSize} color={color} />
+                {badgeCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{formatBadgeCount(badgeCount)}</Text>
+                  </View>
+                )}
+              </View>
               <Text
                 style={[
                   styles.label,
@@ -141,6 +167,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 6,
     gap: 4,
+  },
+  iconWrap: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF6B8A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.35)',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
   },
   label: {
     letterSpacing: 0.2,

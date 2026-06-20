@@ -16,6 +16,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CommunityTopic, CreatePostInput } from '../types/community';
+import GlassCard from './GlassCard';
+import GradientBackground from './GradientBackground';
+import { FORUM, RADIUS, TopicBadge } from './communityPostShared';
 
 const TOPICS: CommunityTopic[] = ['Question', 'Advice', 'My Experience'];
 const TITLE_MAX = 300;
@@ -103,10 +106,7 @@ export default function CreatePostModal({
     });
 
     if (!result.canceled && result.assets.length > 0) {
-      setPhotoUris((prev) => [
-        ...prev,
-        ...result.assets.map((asset) => asset.uri),
-      ]);
+      setPhotoUris((prev) => [...prev, ...result.assets.map((asset) => asset.uri)]);
     }
   };
 
@@ -120,36 +120,29 @@ export default function CreatePostModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <KeyboardAvoidingView
-        style={[styles.root, { paddingTop: insets.top }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Reddit-style header */}
+    <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
+      <GradientBackground style={styles.root}>
+        <KeyboardAvoidingView
+          style={[styles.fill, { paddingTop: insets.top }]}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
         <View style={styles.header}>
           <TouchableOpacity
             onPress={handleClose}
-            hitSlop={10}
+            hitSlop={8}
             style={styles.headerIconBtn}
             accessibilityLabel="Close"
           >
-            <Ionicons name="close" size={24} color="#1A1A1B" />
+            <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create a post</Text>
+          <Text style={styles.headerTitle}>Create post</Text>
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!canPost}
             style={[styles.postBtn, !canPost && styles.postBtnDisabled]}
             activeOpacity={0.85}
           >
-            <Text style={[styles.postBtnText, !canPost && styles.postBtnTextDisabled]}>
-              Post
-            </Text>
+            <Text style={styles.postBtnText}>Post</Text>
           </TouchableOpacity>
         </View>
 
@@ -159,26 +152,21 @@ export default function CreatePostModal({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Topic picker */}
-          <View style={styles.communitySection}>
+          <GlassCard style={styles.section}>
             <TouchableOpacity
-              style={styles.communityPicker}
+              style={styles.topicPicker}
               onPress={() => setTopicPickerOpen((v) => !v)}
               activeOpacity={0.8}
             >
-              <View style={styles.communityAvatar}>
-                <Text style={styles.communityAvatarText}>
-                  {topic.charAt(0)}
-                </Text>
-              </View>
-              <View style={styles.communityInfo}>
-                <Text style={styles.communityLabel}>Topic</Text>
-                <Text style={styles.communityName}>{topic}</Text>
+              <TopicBadge topic={topic} />
+              <View style={styles.topicInfo}>
+                <Text style={styles.topicLabel}>Topic</Text>
+                <Text style={styles.topicName}>{topic}</Text>
               </View>
               <Ionicons
                 name={topicPickerOpen ? 'chevron-up' : 'chevron-down'}
                 size={18}
-                color="#878A8C"
+                color={FORUM.muted}
               />
             </TouchableOpacity>
 
@@ -193,71 +181,62 @@ export default function CreatePostModal({
                       setTopicPickerOpen(false);
                     }}
                   >
-                    <View style={styles.topicOptionAvatar}>
-                      <Text style={styles.topicOptionAvatarText}>
-                        {t.charAt(0)}
-                      </Text>
-                    </View>
-                    <View style={styles.topicOptionText}>
-                      <Text style={styles.topicOptionName}>{t}</Text>
-                      <Text style={styles.topicOptionDesc}>Post category</Text>
-                    </View>
+                    <TopicBadge topic={t} />
+                    <Text style={styles.topicOptionName}>{t}</Text>
                     {topic === t && (
-                      <Ionicons name="checkmark" size={18} color="#FF4500" />
+                      <Ionicons name="checkmark-circle" size={20} color={FORUM.accent} />
                     )}
                   </TouchableOpacity>
                 ))}
               </View>
             )}
-          </View>
+          </GlassCard>
 
-          {/* Post type tabs — Text | Images & Video */}
-          <View style={styles.tabBar}>
+          <View style={styles.tabRow}>
             <TouchableOpacity
-              style={[styles.tab, tab === 'text' && styles.tabActive]}
+              style={[styles.tabChip, tab === 'text' && styles.tabChipActive]}
               onPress={() => switchTab('text')}
             >
               <Ionicons
                 name="document-text-outline"
-                size={18}
-                color={tab === 'text' ? '#FF4500' : '#878A8C'}
+                size={15}
+                color={tab === 'text' ? '#fff' : 'rgba(255,255,255,0.6)'}
               />
               <Text style={[styles.tabText, tab === 'text' && styles.tabTextActive]}>
                 Text
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, tab === 'image' && styles.tabActive]}
+              style={[styles.tabChip, tab === 'image' && styles.tabChipActive]}
               onPress={() => switchTab('image')}
             >
               <Ionicons
-                name="image-outline"
-                size={18}
-                color={tab === 'image' ? '#FF4500' : '#878A8C'}
+                name="images-outline"
+                size={15}
+                color={tab === 'image' ? '#fff' : 'rgba(255,255,255,0.6)'}
               />
               <Text style={[styles.tabText, tab === 'image' && styles.tabTextActive]}>
-                Images & Video
+                Photos
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Form card */}
-          <View style={styles.formCard}>
+          <GlassCard style={styles.formCard}>
             <TextInput
               style={styles.titleInput}
               placeholder="Title"
-              placeholderTextColor="#878A8C"
+              placeholderTextColor="rgba(255,255,255,0.45)"
               value={title}
               onChangeText={setTitle}
               maxLength={TITLE_MAX}
             />
-            <View style={styles.titleDivider} />
+            <View style={styles.divider} />
 
             {tab === 'text' ? (
               <TextInput
                 style={styles.bodyInput}
-                placeholder="Text"
-                placeholderTextColor="#878A8C"
+                placeholder="What's on your mind?"
+                placeholderTextColor="rgba(255,255,255,0.45)"
                 value={body}
                 onChangeText={setBody}
                 multiline
@@ -272,9 +251,9 @@ export default function CreatePostModal({
                     onPress={pickImages}
                     activeOpacity={0.85}
                   >
-                    <Ionicons name="cloud-upload-outline" size={36} color="#878A8C" />
-                    <Text style={styles.dropzoneTitle}>Drag and drop images or</Text>
-                    <Text style={styles.dropzoneAction}>Upload</Text>
+                    <Ionicons name="camera-outline" size={32} color={FORUM.muted} />
+                    <Text style={styles.dropzoneTitle}>Add photos to your post</Text>
+                    <Text style={styles.dropzoneAction}>Choose from library</Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.imageGrid}>
@@ -285,20 +264,20 @@ export default function CreatePostModal({
                           style={styles.removeImageBtn}
                           onPress={() => removePhoto(uri)}
                         >
-                          <Ionicons name="close-circle" size={22} color="#1A1A1B" />
+                          <Ionicons name="close-circle" size={22} color="#fff" />
                         </TouchableOpacity>
                       </View>
                     ))}
                     <TouchableOpacity style={styles.addMoreTile} onPress={pickImages}>
-                      <Ionicons name="add" size={28} color="#878A8C" />
+                      <Ionicons name="add" size={28} color={FORUM.muted} />
                     </TouchableOpacity>
                   </View>
                 )}
 
                 <TextInput
-                  style={styles.imageBodyInput}
-                  placeholder="Add an optional body text..."
-                  placeholderTextColor="#878A8C"
+                  style={styles.optionalBodyInput}
+                  placeholder="Optional caption..."
+                  placeholderTextColor="rgba(255,255,255,0.45)"
                   value={body}
                   onChangeText={setBody}
                   multiline
@@ -307,17 +286,18 @@ export default function CreatePostModal({
                 />
               </View>
             )}
-          </View>
+          </GlassCard>
 
-          {/* Reddit-style rules hint */}
-          <View style={styles.rulesCard}>
-            <Text style={styles.rulesTitle}>Posting in: {topic}</Text>
-            <Text style={styles.rulesItem}>1. Remember the human</Text>
-            <Text style={styles.rulesItem}>2. Behave like you would in real life</Text>
-            <Text style={styles.rulesItem}>3. Look for the original source of content</Text>
+          <View style={styles.hintCard}>
+            <Ionicons name="leaf-outline" size={16} color={FORUM.accent} />
+            <Text style={styles.hintText}>
+              Share growing tips, ask questions, or tell the community about your experience.
+              Be kind and stay on topic.
+            </Text>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </GradientBackground>
     </Modal>
   );
 }
@@ -325,47 +305,50 @@ export default function CreatePostModal({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#DAE0E6',
+  },
+  fill: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDEFF1',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: FORUM.border,
   },
   headerIconBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   headerTitle: {
-    color: '#1A1A1B',
-    fontSize: 16,
+    color: '#fff',
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
   postBtn: {
-    backgroundColor: '#FF4500',
+    backgroundColor: FORUM.accent,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: RADIUS.pill,
     minWidth: 64,
     alignItems: 'center',
   },
   postBtnDisabled: {
-    backgroundColor: '#FF450033',
+    opacity: 0.45,
   },
   postBtnText: {
-    color: '#FFFFFF',
+    color: '#fff',
     fontSize: 14,
     fontWeight: '700',
-  },
-  postBtnTextDisabled: {
-    color: '#FFFFFF99',
   },
   scroll: {
     flex: 1,
@@ -374,143 +357,102 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 12,
   },
-  communitySection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#EDEFF1',
+  section: {
     overflow: 'hidden',
   },
-  communityPicker: {
+  topicPicker: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 14,
     gap: 10,
   },
-  communityAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#0079D3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  communityAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  communityInfo: {
+  topicInfo: {
     flex: 1,
   },
-  communityLabel: {
-    color: '#878A8C',
+  topicLabel: {
+    color: FORUM.muted,
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  communityName: {
-    color: '#1A1A1B',
-    fontSize: 14,
+  topicName: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '700',
-    marginTop: 1,
+    marginTop: 2,
   },
   topicDropdown: {
-    borderTopWidth: 1,
-    borderTopColor: '#EDEFF1',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: FORUM.border,
   },
   topicOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EDEFF1',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   topicOptionActive: {
-    backgroundColor: '#FFF7F5',
-  },
-  topicOptionAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 16,
-    backgroundColor: '#FF4500',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topicOptionAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  topicOptionText: {
-    flex: 1,
+    backgroundColor: 'rgba(0,141,65,0.12)',
   },
   topicOptionName: {
-    color: '#1A1A1B',
-    fontSize: 13,
-    fontWeight: '700',
+    flex: 1,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  topicOptionDesc: {
-    color: '#878A8C',
-    fontSize: 11,
-    marginTop: 1,
-  },
-  tabBar: {
+  tabRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#EDEFF1',
-    overflow: 'hidden',
+    gap: 8,
   },
-  tab: {
+  tabChip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 14,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    paddingVertical: 10,
+    borderRadius: RADIUS.pill,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  tabActive: {
-    borderBottomColor: '#FF4500',
-    backgroundColor: '#FFFFFF',
+  tabChipActive: {
+    backgroundColor: FORUM.accent,
+    borderColor: FORUM.accent,
   },
   tabText: {
-    color: '#878A8C',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 13,
+    fontWeight: '600',
   },
   tabTextActive: {
-    color: '#FF4500',
+    color: '#fff',
   },
   formCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#EDEFF1',
     overflow: 'hidden',
     minHeight: 200,
   },
   titleInput: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A1B',
+    fontWeight: '700',
+    color: '#fff',
   },
-  titleDivider: {
-    height: 1,
-    backgroundColor: '#EDEFF1',
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: FORUM.border,
+    marginHorizontal: 14,
   },
   bodyInput: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#1A1A1B',
+    color: FORUM.body,
     minHeight: 160,
     lineHeight: 22,
   },
@@ -519,21 +461,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   imageDropzone: {
-    borderWidth: 2,
+    borderWidth: StyleSheet.hairlineWidth,
     borderStyle: 'dashed',
-    borderColor: '#CCD0D5',
-    borderRadius: 16,
-    paddingVertical: 36,
+    borderColor: FORUM.border,
+    borderRadius: RADIUS.inner,
+    paddingVertical: 32,
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F6F7F8',
+    backgroundColor: FORUM.inputBg,
   },
   dropzoneTitle: {
-    color: '#878A8C',
+    color: FORUM.muted,
     fontSize: 14,
   },
   dropzoneAction: {
-    color: '#0079D3',
+    color: FORUM.accent,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -550,54 +492,52 @@ const styles = StyleSheet.create({
   imagePreview: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
-    backgroundColor: '#EDEFF1',
+    borderRadius: RADIUS.inner,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   removeImageBtn: {
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 12,
   },
   addMoreTile: {
     width: 100,
     height: 100,
-    borderRadius: 16,
-    borderWidth: 2,
+    borderRadius: RADIUS.inner,
+    borderWidth: StyleSheet.hairlineWidth,
     borderStyle: 'dashed',
-    borderColor: '#CCD0D5',
+    borderColor: FORUM.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F6F7F8',
+    backgroundColor: FORUM.inputBg,
   },
-  imageBodyInput: {
-    borderWidth: 1,
-    borderColor: '#EDEFF1',
-    borderRadius: 16,
+  optionalBodyInput: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: FORUM.border,
+    borderRadius: RADIUS.inner,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#1A1A1B',
+    color: '#fff',
     minHeight: 80,
-    backgroundColor: '#F6F7F8',
+    backgroundColor: FORUM.inputBg,
   },
-  rulesCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#EDEFF1',
+  hintCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
     padding: 14,
+    borderRadius: RADIUS.inner,
+    backgroundColor: 'rgba(0,141,65,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,141,65,0.25)',
   },
-  rulesTitle: {
-    color: '#1A1A1B',
+  hintText: {
+    flex: 1,
+    color: FORUM.muted,
     fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  rulesItem: {
-    color: '#878A8C',
-    fontSize: 12,
-    lineHeight: 20,
+    lineHeight: 19,
   },
 });
