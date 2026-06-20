@@ -40,7 +40,61 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
   }));
 }
 
-/** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */export const MOCK_ROOMS: Room[] = [
+export function createDefaultRoom(name: string): Room {
+  return {
+    id: `room-${Date.now()}`,
+    name,
+    machines: [],
+  };
+}
+
+export const DEFAULT_ROOM_ID = 'room-default';
+export const DEFAULT_ROOM_NAME = 'Default Room';
+
+export function isDefaultRoom(roomId: string): boolean {
+  return roomId === DEFAULT_ROOM_ID;
+}
+
+export function createDefaultMachine(
+  roomId: string,
+  name: string,
+  pair?: { deviceId: string; model: string },
+): Machine {
+  return {
+    id: pair ? `aerea-${pair.deviceId}` : `${roomId}-machine-${Date.now()}`,
+    name,
+    model: pair?.model ?? 'AEREA1',
+    deviceId: pair?.deviceId ?? String(Math.floor(10000 + Math.random() * 90000)),
+    online: !!pair,
+    ppm: 800,
+    ph: 6.0,
+    phDown: 0,
+    phUp: 0,
+    waterLevel: 50,
+    tankLevel: 50,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export type NearbyMachine = {
+  id: string;
+  model: string;
+  label: string;
+};
+
+export const MOCK_NEARBY_MACHINES: NearbyMachine[] = [
+  { id: '34932', model: 'AEREA1', label: 'AEREA1 - #34932' },
+  { id: '94857', model: 'AEREA2 mini', label: 'AEREA2 mini - #94857' },
+];
+
+/** Simulates scanning for nearby unpaired AEREA devices. */
+export async function fetchNearbyMachines(): Promise<NearbyMachine[]> {
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  return MOCK_NEARBY_MACHINES;
+}
+
+/** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */
+export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-1',
     name: 'Room #1',
@@ -48,6 +102,8 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
       {
         id: 'r1-machine-1',
         name: 'Machine #1 - Tomato 🍅',
+        model: 'AEREA1',
+        deviceId: '12487',
         online: true,
         ppm: 1200,
         ph: 6.2,
@@ -60,6 +116,8 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
       {
         id: 'r1-machine-2',
         name: 'Machine #2 - Strawberry 🍓',
+        model: 'AEREA2 mini',
+        deviceId: '39281',
         online: false,
         ppm: 980,
         ph: 5.8,
@@ -72,6 +130,8 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
       {
         id: 'r1-machine-3',
         name: 'Machine #3 - Pepper 🌶️',
+        model: 'AEREA1',
+        deviceId: '98732',
         online: true,
         ppm: 1100,
         ph: 6.5,
@@ -80,30 +140,6 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         waterLevel: 92,
         tankLevel: 78,
         updatedAt: '2026-06-19T16:48:03.000Z',
-      },
-      {
-        id: 'r1-machine-4',
-        name: 'Machine #4 - Lettuce 🥬',
-        online: true,
-        ppm: 850,
-        ph: 6.0,
-        phDown: 1,
-        phUp: 0,
-        waterLevel: 67,
-        tankLevel: 54,
-        updatedAt: '2026-06-19T09:15:30.000Z',
-      },
-      {
-        id: 'r1-machine-5',
-        name: 'Machine #5 - Basil 🌿',
-        online: true,
-        ppm: 720,
-        ph: 6.3,
-        phDown: 0,
-        phUp: 0,
-        waterLevel: 88,
-        tankLevel: 72,
-        updatedAt: '2026-06-19T13:22:11.000Z',
       },
     ],
   },
@@ -114,6 +150,8 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
       {
         id: 'r2-machine-1',
         name: 'Machine #1 - Cucumber 🥒',
+        model: 'AEREA1',
+        deviceId: '45621',
         online: true,
         ppm: 1050,
         ph: 6.1,
@@ -126,6 +164,8 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
       {
         id: 'r2-machine-2',
         name: 'Machine #2 - Mint 🍃',
+        model: 'AEREA2 mini',
+        deviceId: '77309',
         online: false,
         ppm: 640,
         ph: 5.9,
@@ -144,6 +184,8 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
       {
         id: 'r3-machine-1',
         name: 'Machine #1 - Kale 🥗',
+        model: 'AEREA1',
+        deviceId: '58194',
         online: true,
         ppm: 900,
         ph: 6.4,
@@ -153,30 +195,11 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         tankLevel: 68,
         updatedAt: '2026-06-19T08:05:20.000Z',
       },
-      {
-        id: 'r3-machine-2',
-        name: 'Machine #2 - Spinach 🌱',
-        online: true,
-        ppm: 780,
-        ph: 6.0,
-        phDown: 0,
-        phUp: 0,
-        waterLevel: 95,
-        tankLevel: 83,
-        updatedAt: '2026-06-19T15:33:44.000Z',
-      },
-      {
-        id: 'r3-machine-3',
-        name: 'Machine #3 - Blueberry 🫐',
-        online: false,
-        ppm: 1150,
-        ph: 5.5,
-        phDown: 1,
-        phUp: 2,
-        waterLevel: 52,
-        tankLevel: 44,
-        updatedAt: '2026-06-19T07:50:12.000Z',
-      },
     ],
+  },
+  {
+    id: 'room-default',
+    name: 'Default Room',
+    machines: [],
   },
 ];
