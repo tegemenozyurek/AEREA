@@ -17,6 +17,7 @@ export default function NotificationBox({
   onMarkAllRead,
 }: NotificationBoxProps) {
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const canMarkAllRead = unreadCount > 0;
 
   if (notifications.length === 0) {
     return (
@@ -30,10 +31,17 @@ export default function NotificationBox({
 
   return (
     <View style={styles.section}>
-      {unreadCount > 0 && onMarkAllRead && (
+      {onMarkAllRead && (
         <View style={styles.actions}>
-          <TouchableOpacity onPress={onMarkAllRead} hitSlop={8}>
-            <Text style={styles.markRead}>Mark all read</Text>
+          <TouchableOpacity
+            onPress={onMarkAllRead}
+            disabled={!canMarkAllRead}
+            activeOpacity={canMarkAllRead ? 0.7 : 1}
+            hitSlop={8}
+          >
+            <Text style={[styles.markRead, !canMarkAllRead && styles.markReadDisabled]}>
+              Mark all read
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -63,6 +71,9 @@ const styles = StyleSheet.create({
     color: FORUM.muted,
     fontSize: 13,
     fontWeight: '600',
+  },
+  markReadDisabled: {
+    color: 'rgba(255,255,255,0.28)',
   },
   empty: {
     alignItems: 'center',
