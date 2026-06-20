@@ -26,6 +26,7 @@ type Props = {
   rooms: Room[];
   onRoomChange: (roomId: string) => void;
   onNameChange: (name: string) => void;
+  onAddRoom?: () => void;
   onBack: () => void;
   onRefresh?: () => Promise<void>;
 };
@@ -37,6 +38,7 @@ export default function MachineDetailScreen({
   rooms,
   onRoomChange,
   onNameChange,
+  onAddRoom,
   onBack,
   onRefresh,
 }: Props) {
@@ -61,6 +63,11 @@ export default function MachineDetailScreen({
 
   const selectMetric = (index: number) => {
     setSelectedMetricIndex(index);
+  };
+
+  const handleAddRoomPress = () => {
+    setRoomOpen(false);
+    onAddRoom?.();
   };
 
   const handleRoomSelect = (nextRoomId: string) => {
@@ -335,6 +342,31 @@ export default function MachineDetailScreen({
                       </TouchableOpacity>
                     );
                   })}
+                  {onAddRoom ? (
+                    <>
+                      <View style={styles.roomOptionDivider} />
+                      <TouchableOpacity
+                        style={[
+                          styles.roomOption,
+                          styles.roomOptionAdd,
+                          {
+                            paddingVertical: r.scale(10),
+                            paddingHorizontal: r.scale(12),
+                            gap: r.scale(8),
+                          },
+                        ]}
+                        activeOpacity={0.7}
+                        onPress={handleAddRoomPress}
+                        accessibilityRole="button"
+                        accessibilityLabel="Add room"
+                      >
+                        <Ionicons name="add" size={r.scale(16)} color="#60A5FA" />
+                        <Text style={[styles.roomOptionAddText, { fontSize: r.scale(14) }]}>
+                          Add room
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : null}
                 </View>
               )}
             </View>
@@ -553,6 +585,18 @@ const styles = StyleSheet.create({
   roomOptionTextSelected: {
     color: '#fff',
     fontWeight: '700',
+  },
+  roomOptionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginVertical: 4,
+  },
+  roomOptionAdd: {
+    justifyContent: 'flex-start',
+  },
+  roomOptionAddText: {
+    color: '#60A5FA',
+    fontWeight: '600',
   },
   metricsCard: {
     backgroundColor: 'rgba(0,0,0,0.35)',

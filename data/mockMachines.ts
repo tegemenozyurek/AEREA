@@ -40,7 +40,38 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
   }));
 }
 
-/** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */export const MOCK_ROOMS: Room[] = [
+export function createDefaultRoom(name: string): Room {
+  return {
+    id: `room-${Date.now()}`,
+    name,
+    machines: [],
+  };
+}
+
+export const DEFAULT_ROOM_ID = 'room-default';
+export const DEFAULT_ROOM_NAME = 'Default Room';
+
+export function isDefaultRoom(roomId: string): boolean {
+  return roomId === DEFAULT_ROOM_ID;
+}
+
+export function createDefaultMachine(roomId: string, name: string): Machine {
+  return {
+    id: `${roomId}-machine-${Date.now()}`,
+    name,
+    online: false,
+    ppm: 800,
+    ph: 6.0,
+    phDown: 0,
+    phUp: 0,
+    waterLevel: 50,
+    tankLevel: 50,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */
+export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-1',
     name: 'Room #1',
@@ -178,5 +209,10 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
         updatedAt: '2026-06-19T07:50:12.000Z',
       },
     ],
+  },
+  {
+    id: 'room-default',
+    name: 'Default Room',
+    machines: [],
   },
 ];

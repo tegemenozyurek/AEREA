@@ -1,0 +1,336 @@
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import type { Room } from '../types/room';
+import { useResponsive } from '../utils/responsive';
+
+type Props = {
+  visible: boolean;
+  rooms: Room[];
+  onClose: () => void;
+  onSave: (name: string, roomId: string) => void;
+};
+
+function suggestMachineName(room: Room | undefined): string {
+  if (!room) {
+    return 'Machine #1';
+  }
+  return `Machine #${room.machines.length + 1}`;
+}
+
+export default function AddMachineModal({ visible, rooms, onClose, onSave }: Props) {
+  const r = useResponsive();
+  const [draftName, setDraftName] = useState('');
+  const [roomId, setRoomId] = useState(rooms[0]?.id ?? '');
+  const [roomOpen, setRoomOpen] = useState(false);
+
+  const selectedRoom = useMemo(
+    () => rooms.find((room) => room.id === roomId) ?? rooms[0],
+    [roomId, rooms],
+  );
+
+  useEffect(() => {
+    if (visible) {
+      const initialRoom = rooms[0];
+      setRoomId(initialRoom?.id ?? '');
+      setDraftName(suggestMachineName(initialRoom));
+      setRoomOpen(false);
+    }
+  }, [visible, rooms]);
+
+  const handleRoomSelect = (nextRoomId: string) => {
+    setRoomId(nextRoomId);
+    setRoomOpen(false);
+    const room = rooms.find((item) => item.id === nextRoomId);
+    setDraftName(suggestMachineName(room));
+  };
+
+  const handleSave = () => {
+    const trimmed = draftName.trim();
+    if (!trimmed || !roomId) {
+      return;
+    }
+    onSave(trimmed, roomId);
+  };
+
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable
+          style={[
+            styles.sheet,
+            {
+              borderRadius: r.scale(18),
+              padding: r.scale(18),
+              maxWidth: r.contentMaxWidth,
+            },
+          ]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.header}>
+            <Text style={[styles.title, { fontSize: r.scale(18) }]}>Add machine</Text>
+            <Pressable
+              style={[
+                styles.closeButton,
+                { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+              ]}
+              onPress={onClose}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Close add machine dialog"
+            >
+              <Ionicons name="close" size={r.scale(18)} color="#fff" />
+            </Pressable>
+          </View>
+
+          <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(16) }]}>
+            Machine name
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                marginTop: r.scale(8),
+                paddingVertical: r.scale(12),
+                paddingHorizontal: r.scale(14),
+                borderRadius: r.scale(12),
+                fontSize: r.scale(16),
+              },
+            ]}
+            value={draftName}
+            onChangeText={setDraftName}
+            placeholder="Machine name"
+            placeholderTextColor="rgba(255,255,255,0.45)"
+            autoFocus
+            selectTextOnFocus
+            maxLength={64}
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
+          />
+
+          <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
+            Room
+          </Text>
+          <View style={[styles.roomPickerWrap, { marginTop: r.scale(8), zIndex: roomOpen ? 2 : 0 }]}>
+            <TouchableOpacity
+              style={[
+                styles.roomPicker,
+                {
+                  paddingVertical: r.scale(12),
+                  paddingHorizontal: r.scale(14),
+                  borderRadius: r.scale(12),
+                  gap: r.scale(6),
+                },
+                roomOpen && styles.roomPickerOpen,
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setRoomOpen((open) => !open)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: roomOpen }}
+              accessibilityLabel={`Room ${selectedRoom?.name ?? 'none'}, change room`}
+            >
+              <Text style={[styles.roomPickerText, { fontSize: r.scale(16) }]}>
+                {selectedRoom?.name ?? 'Select room'}
+              </Text>
+              <Ionicons
+                name={roomOpen ? 'chevron-up' : 'chevron-down'}
+                size={r.scale(18)}
+                color="rgba(255,255,255,0.65)"
+              />
+            </TouchableOpacity>
+
+            {roomOpen ? (
+              <View
+                style={[
+                  styles.roomDropdown,
+                  {
+                    borderRadius: r.scale(12),
+                    marginTop: r.scale(6),
+                    paddingVertical: r.scale(4),
+                  },
+                ]}
+              >
+                {rooms.map((room) => {
+                  const selected = room.id === roomId;
+                  return (
+                    <TouchableOpacity
+                      key={room.id}
+                      style={[
+                        styles.roomOption,
+                        {
+                          paddingVertical: r.scale(10),
+                          paddingHorizontal: r.scale(12),
+                        },
+                        selected && styles.roomOptionSelected,
+                      ]}
+                      activeOpacity={0.7}
+                      onPress={() => handleRoomSelect(room.id)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                    >
+                      <Text
+                        style={[
+                          styles.roomOptionText,
+                          { fontSize: r.scale(14) },
+                          selected && styles.roomOptionTextSelected,
+                        ]}
+                      >
+                        {room.name}
+                      </Text>
+                      {selected ? (
+                        <Ionicons name="checkmark" size={r.scale(16)} color="#60A5FA" />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null}
+          </View>
+
+          <View style={[styles.actions, { marginTop: r.scale(18), gap: r.scale(10) }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.actionButtonSecondary, { borderRadius: r.scale(12) }]}
+              activeOpacity={0.7}
+              onPress={onClose}
+            >
+              <Text style={[styles.actionText, { fontSize: r.scale(15) }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.actionButtonPrimary, { borderRadius: r.scale(12) }]}
+              activeOpacity={0.7}
+              onPress={handleSave}
+              disabled={!draftName.trim() || !roomId}
+            >
+              <Text style={[styles.actionText, styles.actionTextPrimary, { fontSize: r.scale(15) }]}>
+                Add
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  sheet: {
+    width: '100%',
+    backgroundColor: 'rgba(15,23,42,0.96)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  title: {
+    color: '#fff',
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  closeButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  fieldLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
+  },
+  input: {
+    color: '#fff',
+    fontWeight: '600',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  roomPickerWrap: {
+    position: 'relative',
+  },
+  roomPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  roomPickerOpen: {
+    borderColor: 'rgba(96,165,250,0.45)',
+  },
+  roomPickerText: {
+    color: '#fff',
+    fontWeight: '600',
+    flex: 1,
+  },
+  roomDropdown: {
+    backgroundColor: 'rgba(10,15,28,0.98)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  roomOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roomOptionSelected: {
+    backgroundColor: 'rgba(96,165,250,0.12)',
+  },
+  roomOptionText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+  },
+  roomOptionTextSelected: {
+    color: '#fff',
+  },
+  actions: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  actionButtonSecondary: {
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  actionButtonPrimary: {
+    borderColor: 'rgba(96,165,250,0.5)',
+    backgroundColor: 'rgba(96,165,250,0.2)',
+  },
+  actionText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+  },
+  actionTextPrimary: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+});

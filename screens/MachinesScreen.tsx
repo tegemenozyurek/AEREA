@@ -3,9 +3,18 @@ import React, { useCallback, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AddMachineModal from '../components/AddMachineModal';
 import RoomEditModal from '../components/RoomEditModal';
 import RoomSection from '../components/RoomSection';
-import { MOCK_ROOMS, refreshRoomMetrics } from '../data/mockMachines';
+import {
+  createDefaultMachine,
+  createDefaultRoom,
+  DEFAULT_ROOM_ID,
+  DEFAULT_ROOM_NAME,
+  isDefaultRoom,
+  MOCK_ROOMS,
+  refreshRoomMetrics,
+} from '../data/mockMachines';
 import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
@@ -28,6 +37,9 @@ export default function MachinesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
   const [editingRoom, setEditingRoom] = useState<EditingRoom | null>(null);
+  const [addMachineOpen, setAddMachineOpen] = useState(false);
+  const [addRoomOpen, setAddRoomOpen] = useState(false);
+  const [addRoomForMachineId, setAddRoomForMachineId] = useState<string | null>(null);
 
   const handleMachinesChange = useCallback((roomId: string, machines: Machine[]) => {
     setRooms((prev) =>
@@ -96,6 +108,106 @@ export default function MachinesScreen() {
     [rooms],
   );
 
+  const handleAddRoom = useCallback((name: string, position: number, moveMachineId?: string | null) => {
+    const room = createDefaultRoom(name);
+
+    setRooms((prev) => {
+      const next = [...prev];
+      const targetIndex = Math.max(0, Math.min(next.length, position - 1));
+      next.splice(targetIndex, 0, room);
+
+      if (!moveMachineId) {
+        return next;
+      }
+
+      const fromRoom = next.find((item) => item.machines.some((m) => m.id === moveMachineId));
+      const machine = fromRoom?.machines.find((m) => m.id === moveMachineId);
+      if (!fromRoom || !machine) {
+        return next;
+      }
+
+      return next.map((item) => {
+        if (item.id === fromRoom.id) {
+          return { ...item, machines: item.machines.filter((m) => m.id !== moveMachineId) };
+        }
+        if (item.id === room.id) {
+          return { ...item, machines: [...item.machines, machine] };
+        }
+        return item;
+      });
+    });
+
+    if (moveMachineId) {
+      setSelectedMachine((current) =>
+        current?.machine.id === moveMachineId
+          ? { ...current, roomId: room.id, roomName: room.name }
+          : current,
+      );
+    }
+
+    setAddRoomForMachineId(null);
+    setAddRoomOpen(false);
+  }, []);
+
+  const closeAddRoomModal = useCallback(() => {
+    setAddRoomOpen(false);
+    setAddRoomForMachineId(null);
+  }, []);
+
+  const openAddRoomModal = useCallback((moveMachineId?: string) => {
+    setAddRoomForMachineId(moveMachineId ?? null);
+    setAddRoomOpen(true);
+  }, []);
+
+  const handleAddMachine = useCallback((name: string, roomId: string) => {
+    const machine = createDefaultMachine(roomId, name);
+    setRooms((prev) =>
+      prev.map((room) =>
+        room.id === roomId ? { ...room, machines: [...room.machines, machine] } : room,
+      ),
+    );
+    setAddMachineOpen(false);
+  }, []);
+
+  const handleDeleteRoom = useCallback((roomId: string) => {
+    if (isDefaultRoom(roomId)) {
+      return;
+    }
+
+    setRooms((prev) => {
+      if (prev.length <= 1) {
+        return prev;
+      }
+
+      const roomToDelete = prev.find((room) => room.id === roomId);
+      const defaultRoom = prev.find((room) => room.id === DEFAULT_ROOM_ID);
+      if (!roomToDelete || !defaultRoom) {
+        return prev;
+      }
+
+      return prev
+        .filter((room) => room.id !== roomId)
+        .map((room) =>
+          room.id === DEFAULT_ROOM_ID
+            ? { ...room, machines: [...room.machines, ...roomToDelete.machines] }
+            : room,
+        );
+    });
+
+    setSelectedMachine((current) => {
+      if (!current || current.roomId !== roomId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        roomId: DEFAULT_ROOM_ID,
+        roomName: DEFAULT_ROOM_NAME,
+      };
+    });
+    setEditingRoom(null);
+  }, []);
+
   const handleSaveRoom = useCallback((roomId: string, name: string, position: number) => {
     setRooms((prev) => {
       const currentIndex = prev.findIndex((room) => room.id === roomId);
@@ -149,16 +261,31 @@ export default function MachinesScreen() {
 
   if (selectedMachine) {
     return (
-      <MachineDetailScreen
-        machine={selectedMachine.machine}
-        roomId={selectedMachine.roomId}
-        roomName={selectedMachine.roomName}
-        rooms={rooms}
-        onRoomChange={(roomId) => handleMoveMachine(selectedMachine.machine.id, roomId)}
-        onNameChange={(name) => handleRenameMachine(selectedMachine.machine.id, name)}
-        onBack={() => setSelectedMachine(null)}
-        onRefresh={refreshMachineDetail}
-      />
+      <>
+        <MachineDetailScreen
+          machine={selectedMachine.machine}
+          roomId={selectedMachine.roomId}
+          roomName={
+            rooms.find((room) => room.id === selectedMachine.roomId)?.name ??
+            selectedMachine.roomName
+          }
+          rooms={rooms}
+          onRoomChange={(roomId) => handleMoveMachine(selectedMachine.machine.id, roomId)}
+          onNameChange={(name) => handleRenameMachine(selectedMachine.machine.id, name)}
+          onAddRoom={() => openAddRoomModal(selectedMachine.machine.id)}
+          onBack={() => setSelectedMachine(null)}
+          onRefresh={refreshMachineDetail}
+        />
+        <RoomEditModal
+          visible={addRoomOpen}
+          mode="add"
+          roomName={`Room #${rooms.length + 1}`}
+          position={rooms.length + 1}
+          totalRooms={rooms.length + 1}
+          onClose={closeAddRoomModal}
+          onSave={(name, position) => handleAddRoom(name, position, addRoomForMachineId)}
+        />
+      </>
     );
   }
 
@@ -170,10 +297,31 @@ export default function MachinesScreen() {
           roomName={editingRoom.room.name}
           position={editingRoom.index + 1}
           totalRooms={rooms.length}
+          machineCount={editingRoom.room.machines.length}
           onClose={() => setEditingRoom(null)}
           onSave={(name, position) => handleSaveRoom(editingRoom.room.id, name, position)}
+          onDelete={
+            isDefaultRoom(editingRoom.room.id)
+              ? undefined
+              : () => handleDeleteRoom(editingRoom.room.id)
+          }
         />
       ) : null}
+      <AddMachineModal
+        visible={addMachineOpen}
+        rooms={rooms}
+        onClose={() => setAddMachineOpen(false)}
+        onSave={handleAddMachine}
+      />
+      <RoomEditModal
+        visible={addRoomOpen}
+        mode="add"
+        roomName={`Room #${rooms.length + 1}`}
+        position={rooms.length + 1}
+        totalRooms={rooms.length + 1}
+        onClose={closeAddRoomModal}
+        onSave={(name, position) => handleAddRoom(name, position, addRoomForMachineId)}
+      />
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
         <Text style={[styles.headerTitle, { fontSize: r.scale(22) }]}>Machines</Text>
         <View style={[styles.headerActionWrap, { right: r.horizontalPadding }]}>
@@ -187,7 +335,7 @@ export default function MachinesScreen() {
               },
             ]}
             activeOpacity={0.7}
-            onPress={() => {}}
+            onPress={() => setAddMachineOpen(true)}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Add machine"
@@ -242,7 +390,7 @@ export default function MachinesScreen() {
               },
             ]}
             activeOpacity={0.7}
-            onPress={() => {}}
+            onPress={() => openAddRoomModal()}
             accessibilityRole="button"
             accessibilityLabel="Add room"
           >

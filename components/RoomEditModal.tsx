@@ -9,33 +9,42 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { DEFAULT_ROOM_NAME } from '../data/mockMachines';
 import { useResponsive } from '../utils/responsive';
 
 type Props = {
   visible: boolean;
+  mode?: 'add' | 'edit';
   roomName: string;
   position: number;
   totalRooms: number;
+  machineCount?: number;
   onClose: () => void;
   onSave: (name: string, position: number) => void;
+  onDelete?: () => void;
 };
 
 export default function RoomEditModal({
   visible,
+  mode = 'edit',
   roomName,
   position,
   totalRooms,
+  machineCount = 0,
   onClose,
   onSave,
+  onDelete,
 }: Props) {
   const r = useResponsive();
   const [draftName, setDraftName] = useState(roomName);
   const [draftPosition, setDraftPosition] = useState(position);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setDraftName(roomName);
       setDraftPosition(position);
+      setConfirmDeleteOpen(false);
     }
   }, [visible, roomName, position]);
 
@@ -55,13 +64,41 @@ export default function RoomEditModal({
     onSave(trimmed, draftPosition);
   };
 
+  const handleDeletePress = () => {
+    if (!onDelete || totalRooms <= 1) {
+      return;
+    }
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setConfirmDeleteOpen(false);
+    onDelete?.();
+  };
+
+  const canDelete = mode === 'edit' && !!onDelete && totalRooms > 1;
+  const displayRoomName = draftName.trim() || roomName;
+
+  const handleBackdropPress = () => {
+    if (confirmDeleteOpen) {
+      setConfirmDeleteOpen(false);
+      return;
+    }
+    onClose();
+  };
+
   if (!visible) {
     return null;
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={handleBackdropPress}
+    >
+      <Pressable style={styles.backdrop} onPress={handleBackdropPress}>
         <Pressable
           style={[
             styles.sheet,
@@ -73,8 +110,141 @@ export default function RoomEditModal({
           ]}
           onPress={(e) => e.stopPropagation()}
         >
+          {confirmDeleteOpen ? (
+            <>
+              <View style={styles.header}>
+                <Pressable
+                  style={[
+                    styles.backButton,
+                    { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+                  ]}
+                  onPress={() => setConfirmDeleteOpen(false)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to edit room"
+                >
+                  <Ionicons name="chevron-back" size={r.scale(18)} color="#fff" />
+                </Pressable>
+                <Text style={[styles.title, styles.confirmTitle, { fontSize: r.scale(18) }]}>
+                  Delete room?
+                </Text>
+                <Pressable
+                  style={[
+                    styles.closeButton,
+                    { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+                  ]}
+                  onPress={onClose}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close delete room dialog"
+                >
+                  <Ionicons name="close" size={r.scale(18)} color="#fff" />
+                </Pressable>
+              </View>
+
+              <View
+                style={[
+                  styles.confirmIconWrap,
+                  {
+                    width: r.scale(52),
+                    height: r.scale(52),
+                    borderRadius: r.scale(26),
+                    marginTop: r.scale(20),
+                  },
+                ]}
+              >
+                <Ionicons name="trash-outline" size={r.scale(24)} color="#FCA5A5" />
+              </View>
+
+              <Text
+                style={[
+                  styles.confirmMessage,
+                  { fontSize: r.scale(14), marginTop: r.scale(16), lineHeight: r.scale(21) },
+                ]}
+              >
+                <Text style={styles.confirmMessageMuted}>Room </Text>
+                <Text style={styles.confirmMessageStrong}>"{displayRoomName}"</Text>
+                <Text style={styles.confirmMessageMuted}> will be permanently deleted.</Text>
+              </Text>
+
+              {machineCount > 0 ? (
+                <View
+                  style={[
+                    styles.moveInfoCard,
+                    {
+                      marginTop: r.scale(16),
+                      paddingVertical: r.scale(12),
+                      paddingHorizontal: r.scale(14),
+                      borderRadius: r.scale(12),
+                      gap: r.scale(10),
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.moveInfoIcon,
+                      { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+                    ]}
+                  >
+                    <Ionicons name="hardware-chip-outline" size={r.scale(16)} color="#93C5FD" />
+                  </View>
+                  <View style={styles.moveInfoContent}>
+                    <Text style={[styles.moveInfoTitle, { fontSize: r.scale(13) }]}>
+                      {machineCount} machine{machineCount === 1 ? '' : 's'} will be kept
+                    </Text>
+                    <View style={[styles.moveInfoRow, { marginTop: r.scale(4), gap: r.scale(6) }]}>
+                      <Text style={[styles.moveInfoDetail, { fontSize: r.scale(12) }]}>
+                        Moved to
+                      </Text>
+                      <View style={[styles.moveInfoBadge, { paddingHorizontal: r.scale(8), paddingVertical: r.scale(3), borderRadius: r.scale(8) }]}>
+                        <Text style={[styles.moveInfoBadgeText, { fontSize: r.scale(11) }]}>
+                          {DEFAULT_ROOM_NAME}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Ionicons name="arrow-forward" size={r.scale(16)} color="rgba(255,255,255,0.35)" />
+                </View>
+              ) : null}
+
+              <Text
+                style={[
+                  styles.confirmFootnote,
+                  { fontSize: r.scale(12), marginTop: r.scale(14), lineHeight: r.scale(17) },
+                ]}
+              >
+                This action cannot be undone.
+              </Text>
+
+              <View style={[styles.actions, { marginTop: r.scale(20), gap: r.scale(10) }]}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.actionButtonSecondary, { borderRadius: r.scale(12) }]}
+                  activeOpacity={0.7}
+                  onPress={() => setConfirmDeleteOpen(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel delete room"
+                >
+                  <Text style={[styles.actionText, { fontSize: r.scale(15) }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.actionButtonDanger, { borderRadius: r.scale(12) }]}
+                  activeOpacity={0.7}
+                  onPress={handleConfirmDelete}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Confirm delete ${displayRoomName}`}
+                >
+                  <Text style={[styles.actionText, styles.actionTextDanger, { fontSize: r.scale(15) }]}>
+                    Delete room
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
           <View style={styles.header}>
-            <Text style={[styles.title, { fontSize: r.scale(18) }]}>Edit room</Text>
+            <Text style={[styles.title, { fontSize: r.scale(18) }]}>
+              {mode === 'add' ? 'Add room' : 'Edit room'}
+            </Text>
             <Pressable
               style={[
                 styles.closeButton,
@@ -83,7 +253,7 @@ export default function RoomEditModal({
               onPress={onClose}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Close edit room dialog"
+              accessibilityLabel={mode === 'add' ? 'Close add room dialog' : 'Close edit room dialog'}
             >
               <Ionicons name="close" size={r.scale(18)} color="#fff" />
             </Pressable>
@@ -178,10 +348,33 @@ export default function RoomEditModal({
               disabled={!draftName.trim()}
             >
               <Text style={[styles.actionText, styles.actionTextPrimary, { fontSize: r.scale(15) }]}>
-                Save
+                {mode === 'add' ? 'Add' : 'Save'}
               </Text>
             </TouchableOpacity>
           </View>
+
+          {canDelete ? (
+            <TouchableOpacity
+              style={[
+                styles.deleteButton,
+                {
+                  marginTop: r.scale(12),
+                  borderRadius: r.scale(12),
+                  paddingVertical: r.scale(12),
+                  gap: r.scale(8),
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={handleDeletePress}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${draftName.trim() || roomName}`}
+            >
+              <Ionicons name="trash-outline" size={r.scale(18)} color="#FCA5A5" />
+              <Text style={[styles.deleteText, { fontSize: r.scale(15) }]}>Delete room</Text>
+            </TouchableOpacity>
+          ) : null}
+            </>
+          )}
         </Pressable>
       </Pressable>
     </Modal>
@@ -206,6 +399,82 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  confirmTitle: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  backButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  confirmIconWrap: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(248,113,113,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(248,113,113,0.28)',
+  },
+  confirmMessage: {
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
+  confirmMessageMuted: {
+    color: 'rgba(255,255,255,0.58)',
+    fontWeight: '500',
+  },
+  confirmMessageStrong: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  moveInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(96,165,250,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.22)',
+  },
+  moveInfoIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96,165,250,0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.25)',
+  },
+  moveInfoContent: {
+    flex: 1,
+  },
+  moveInfoTitle: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  moveInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  moveInfoDetail: {
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+  },
+  moveInfoBadge: {
+    backgroundColor: 'rgba(96,165,250,0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.35)',
+  },
+  moveInfoBadgeText: {
+    color: '#93C5FD',
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  confirmFootnote: {
+    color: 'rgba(255,255,255,0.38)',
+    fontWeight: '500',
+    textAlign: 'center',
   },
   title: {
     color: '#fff',
@@ -273,12 +542,32 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(96,165,250,0.5)',
     backgroundColor: 'rgba(96,165,250,0.2)',
   },
+  actionButtonDanger: {
+    borderColor: 'rgba(248,113,113,0.45)',
+    backgroundColor: 'rgba(248,113,113,0.16)',
+  },
   actionText: {
     color: 'rgba(255,255,255,0.85)',
     fontWeight: '600',
   },
   actionTextPrimary: {
     color: '#fff',
+    fontWeight: '700',
+  },
+  actionTextDanger: {
+    color: '#FCA5A5',
+    fontWeight: '700',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(248,113,113,0.45)',
+    backgroundColor: 'rgba(248,113,113,0.12)',
+  },
+  deleteText: {
+    color: '#FCA5A5',
     fontWeight: '700',
   },
 });
