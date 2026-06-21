@@ -58,13 +58,14 @@ export function isDefaultRoom(roomId: string): boolean {
 export function createDefaultMachine(
   roomId: string,
   name: string,
-  pair?: { deviceId: string; model: string },
+  pair?: { deviceId: string; model: string; plantProfileId?: string },
 ): Machine {
   return {
     id: pair ? `aerea-${pair.deviceId}` : `${roomId}-machine-${Date.now()}`,
     name,
     model: pair?.model ?? 'AEREA1',
     deviceId: pair?.deviceId ?? String(Math.floor(10000 + Math.random() * 90000)),
+    plantProfileId: pair?.plantProfileId,
     online: !!pair,
     ppm: 800,
     ph: 6.0,

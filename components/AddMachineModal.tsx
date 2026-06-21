@@ -11,8 +11,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { fetchNearbyMachines, type NearbyMachine } from '../data/mockMachines';
+import { DEFAULT_ROOM_ID, fetchNearbyMachines, type NearbyMachine } from '../data/mockMachines';
+import { fetchPlantProfiles } from '../services/plantProfiles';
 import { formatDeviceId } from '../types/machine';
+import type { PlantProfile } from '../types/plantProfile';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
 
@@ -22,8 +24,12 @@ type Props = {
   visible: boolean;
   rooms: Room[];
   onClose: () => void;
-  onSave: (name: string, roomId: string, device: NearbyMachine) => void;
+  onSave: (name: string, roomId: string, device: NearbyMachine, plantProfileId: string) => void;
 };
+
+function getDefaultRoom(rooms: Room[]): Room | undefined {
+  return rooms.find((room) => room.id === DEFAULT_ROOM_ID) ?? rooms[0];
+}
 
 function suggestMachineName(room: Room | undefined): string {
   if (!room) {
@@ -140,8 +146,13 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
   const [scanning, setScanning] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<NearbyMachine | null>(null);
   const [draftName, setDraftName] = useState('');
-  const [roomId, setRoomId] = useState(rooms[0]?.id ?? '');
+  const [roomId, setRoomId] = useState(getDefaultRoom(rooms)?.id ?? '');
   const [roomOpen, setRoomOpen] = useState(false);
+  const [plantProfiles, setPlantProfiles] = useState<PlantProfile[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [plantProfileId, setPlantProfileId] = useState('');
+  const [plantProfileOpen, setPlantProfileOpen] = useState(false);
 
   const pairedDeviceIds = useMemo(() => getPairedDeviceIds(rooms), [rooms]);
 
@@ -151,9 +162,37 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
   );
 
   const selectedRoom = useMemo(
-    () => rooms.find((room) => room.id === roomId) ?? rooms[0],
+    () => rooms.find((room) => room.id === roomId) ?? getDefaultRoom(rooms),
     [roomId, rooms],
   );
+
+  const selectedPlantProfile = useMemo(
+    () => plantProfiles.find((profile) => profile.id === plantProfileId) ?? plantProfiles[0],
+    [plantProfileId, plantProfiles],
+  );
+
+  const loadPlantProfiles = useCallback(async () => {
+    setLoadingProfiles(true);
+    setProfilesError(null);
+    try {
+      const profiles = await fetchPlantProfiles();
+      setPlantProfiles(profiles);
+      setPlantProfileId((current) =>
+        profiles.some((profile) => profile.id === current) ? current : (profiles[0]?.id ?? ''),
+      );
+      if (profiles.length === 0) {
+        setProfilesError('No plant profiles in Firestore.');
+      }
+    } catch (error) {
+      setPlantProfiles([]);
+      setPlantProfileId('');
+      setProfilesError(
+        error instanceof Error ? error.message : 'Could not load plant profiles.',
+      );
+    } finally {
+      setLoadingProfiles(false);
+    }
+  }, []);
 
   const loadNearbyDevices = useCallback(async () => {
     setScanning(true);
@@ -170,32 +209,45 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
       setStep('pair');
       setSelectedDevice(null);
       setRoomOpen(false);
-      const initialRoom = rooms[0];
+      setPlantProfileOpen(false);
+      const initialRoom = getDefaultRoom(rooms);
       setRoomId(initialRoom?.id ?? '');
       setDraftName(suggestMachineName(initialRoom));
       void loadNearbyDevices();
+      void loadPlantProfiles();
     }
-  }, [visible, rooms, loadNearbyDevices]);
+  }, [visible, rooms, loadNearbyDevices, loadPlantProfiles]);
 
   const handleDeviceSelect = (device: NearbyMachine) => {
     setSelectedDevice(device);
     setDraftName(`${device.model} - ${formatDeviceId(device.id)}`);
-    setRoomId(rooms[0]?.id ?? '');
+    setRoomId(getDefaultRoom(rooms)?.id ?? '');
     setRoomOpen(false);
+    setPlantProfileOpen(false);
     setStep('setup');
+    if (plantProfiles.length === 0 && !loadingProfiles) {
+      void loadPlantProfiles();
+    }
   };
 
   const handleRoomSelect = (nextRoomId: string) => {
     setRoomId(nextRoomId);
     setRoomOpen(false);
+    setPlantProfileOpen(false);
+  };
+
+  const handlePlantProfileSelect = (nextProfileId: string) => {
+    setPlantProfileId(nextProfileId);
+    setPlantProfileOpen(false);
+    setRoomOpen(false);
   };
 
   const handleSave = () => {
     const trimmed = draftName.trim();
-    if (!trimmed || !roomId || !selectedDevice) {
+    if (!trimmed || !roomId || !selectedDevice || !plantProfileId) {
       return;
     }
-    onSave(trimmed, roomId, selectedDevice);
+    onSave(trimmed, roomId, selectedDevice, plantProfileId);
   };
 
   const handleBackdropPress = () => {
@@ -553,7 +605,10 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                     roomOpen && styles.roomPickerOpen,
                   ]}
                   activeOpacity={0.7}
-                  onPress={() => setRoomOpen((open) => !open)}
+                  onPress={() => {
+                    setRoomOpen((open) => !open);
+                    setPlantProfileOpen(false);
+                  }}
                   accessibilityRole="button"
                   accessibilityState={{ expanded: roomOpen }}
                   accessibilityLabel={`Room ${selectedRoom?.name ?? 'none'}, change room`}
@@ -616,6 +671,118 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                 ) : null}
               </View>
 
+              <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
+                Plant profile
+              </Text>
+              <View
+                style={[
+                  styles.roomPickerWrap,
+                  { marginTop: r.scale(8), zIndex: plantProfileOpen ? 2 : 0 },
+                ]}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.roomPicker,
+                    {
+                      paddingVertical: r.scale(12),
+                      paddingHorizontal: r.scale(14),
+                      borderRadius: r.scale(12),
+                      gap: r.scale(6),
+                    },
+                    plantProfileOpen && styles.roomPickerOpen,
+                    loadingProfiles && styles.pickerDisabled,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    if (loadingProfiles) {
+                      return;
+                    }
+                    if (profilesError || plantProfiles.length === 0) {
+                      void loadPlantProfiles();
+                      return;
+                    }
+                    setPlantProfileOpen((open) => !open);
+                    setRoomOpen(false);
+                  }}
+                  disabled={loadingProfiles}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: plantProfileOpen }}
+                  accessibilityLabel={`Plant profile ${selectedPlantProfile?.name ?? 'none'}, change plant profile`}
+                >
+                  {loadingProfiles ? (
+                    <ActivityIndicator size="small" color="#93C5FD" style={{ flex: 1 }} />
+                  ) : (
+                    <Text style={[styles.roomPickerText, { fontSize: r.scale(16) }]}>
+                      {profilesError
+                        ? 'Tap to retry'
+                        : selectedPlantProfile?.name ?? 'No profiles found'}
+                    </Text>
+                  )}
+                  <Ionicons
+                    name={plantProfileOpen ? 'chevron-up' : 'chevron-down'}
+                    size={r.scale(18)}
+                    color="rgba(255,255,255,0.65)"
+                  />
+                </TouchableOpacity>
+
+                {plantProfileOpen ? (
+                  <View
+                    style={[
+                      styles.roomDropdown,
+                      {
+                        borderRadius: r.scale(12),
+                        marginTop: r.scale(6),
+                        paddingVertical: r.scale(4),
+                      },
+                    ]}
+                  >
+                    {plantProfiles.map((profile) => {
+                      const selected = profile.id === plantProfileId;
+                      return (
+                        <TouchableOpacity
+                          key={profile.id}
+                          style={[
+                            styles.roomOption,
+                            {
+                              paddingVertical: r.scale(10),
+                              paddingHorizontal: r.scale(12),
+                            },
+                            selected && styles.roomOptionSelected,
+                          ]}
+                          activeOpacity={0.7}
+                          onPress={() => handlePlantProfileSelect(profile.id)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                        >
+                          <Text
+                            style={[
+                              styles.roomOptionText,
+                              { fontSize: r.scale(14) },
+                              selected && styles.roomOptionTextSelected,
+                            ]}
+                          >
+                            {profile.name}
+                          </Text>
+                          {selected ? (
+                            <Ionicons name="checkmark" size={r.scale(16)} color="#60A5FA" />
+                          ) : null}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </View>
+              {profilesError ? (
+                <Text
+                  style={[
+                    styles.profileErrorText,
+                    { fontSize: r.scale(11), marginTop: r.scale(6), lineHeight: r.scale(15) },
+                  ]}
+                >
+                  {profilesError}
+                </Text>
+              ) : null}
+
               <View style={[styles.actions, { marginTop: r.scale(18), gap: r.scale(10) }]}>
                 <TouchableOpacity
                   style={[
@@ -636,7 +803,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                   ]}
                   activeOpacity={0.7}
                   onPress={handleSave}
-                  disabled={!draftName.trim() || !roomId}
+                  disabled={!draftName.trim() || !roomId || !plantProfileId}
                 >
                   <Text style={[styles.actionText, styles.actionTextPrimary, { fontSize: r.scale(15) }]}>
                     Add
@@ -912,6 +1079,13 @@ const styles = StyleSheet.create({
   },
   roomPickerOpen: {
     borderColor: 'rgba(96,165,250,0.45)',
+  },
+  pickerDisabled: {
+    opacity: 0.65,
+  },
+  profileErrorText: {
+    color: 'rgba(248,113,113,0.85)',
+    fontWeight: '500',
   },
   roomPickerText: {
     color: '#fff',

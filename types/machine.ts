@@ -3,6 +3,7 @@ export type Machine = {
   name: string;
   model: string;
   deviceId: string;
+  plantProfileId?: string;
   online: boolean;
   ppm: number;
   ph: number;

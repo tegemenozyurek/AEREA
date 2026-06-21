@@ -160,18 +160,22 @@ export default function MachinesScreen() {
     setAddRoomOpen(true);
   }, []);
 
-  const handleAddMachine = useCallback((name: string, roomId: string, device: NearbyMachine) => {
-    const machine = createDefaultMachine(roomId, name, {
-      deviceId: device.id,
-      model: device.model,
-    });
-    setRooms((prev) =>
-      prev.map((room) =>
-        room.id === roomId ? { ...room, machines: [...room.machines, machine] } : room,
-      ),
-    );
-    setAddMachineOpen(false);
-  }, []);
+  const handleAddMachine = useCallback(
+    (name: string, roomId: string, device: NearbyMachine, plantProfileId: string) => {
+      const machine = createDefaultMachine(roomId, name, {
+        deviceId: device.id,
+        model: device.model,
+        plantProfileId,
+      });
+      setRooms((prev) =>
+        prev.map((room) =>
+          room.id === roomId ? { ...room, machines: [...room.machines, machine] } : room,
+        ),
+      );
+      setAddMachineOpen(false);
+    },
+    [],
+  );
 
   const handleDeleteRoom = useCallback((roomId: string) => {
     if (isDefaultRoom(roomId)) {
