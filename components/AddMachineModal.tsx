@@ -50,22 +50,66 @@ function getPairedDeviceIds(rooms: Room[]): Set<string> {
   return ids;
 }
 
-function mockSignalStrength(deviceId: string): number {
-  let hash = 0;
-  for (let i = 0; i < deviceId.length; i += 1) {
-    hash = deviceId.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return (Math.abs(hash) % 3) + 2;
-}
+type ModalHeaderProps = {
+  title: string;
+  subtitle?: string;
+  stepLabel?: string;
+  onClose: () => void;
+  onBack?: () => void;
+  rightAction?: React.ReactNode;
+  scale: (value: number) => number;
+};
 
-function signalLabel(strength: number): string {
-  if (strength >= 4) {
-    return 'Strong';
-  }
-  if (strength >= 3) {
-    return 'Good';
-  }
-  return 'Fair';
+function ModalHeader({
+  title,
+  subtitle,
+  stepLabel,
+  onClose,
+  onBack,
+  rightAction,
+  scale,
+}: ModalHeaderProps) {
+  return (
+    <View style={styles.header}>
+      <View style={[styles.headerSide, { width: scale(32) }]}>
+        {onBack ? (
+          <Pressable
+            style={[styles.iconButton, { width: scale(32), height: scale(32), borderRadius: scale(16) }]}
+            onPress={onBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={scale(18)} color="#fff" />
+          </Pressable>
+        ) : null}
+      </View>
+
+      <View style={styles.headerCenter}>
+        {stepLabel ? (
+          <Text style={[styles.stepLabel, { fontSize: scale(11) }]}>{stepLabel}</Text>
+        ) : null}
+        <Text style={[styles.title, { fontSize: scale(18) }]}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.subtitle, { fontSize: scale(13), marginTop: scale(4) }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+
+      <View style={[styles.headerSide, styles.headerSideRight, { width: scale(32) }]}>
+        {rightAction ?? (
+          <Pressable
+            style={[styles.iconButton, { width: scale(32), height: scale(32), borderRadius: scale(16) }]}
+            onPress={onClose}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <Ionicons name="close" size={scale(18)} color="#fff" />
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
 }
 
 type DeviceRowProps = {
@@ -75,34 +119,30 @@ type DeviceRowProps = {
 };
 
 function DeviceRow({ device, onPress, scale }: DeviceRowProps) {
-  const strength = mockSignalStrength(device.id);
-
   return (
     <TouchableOpacity
       style={[
         styles.deviceRow,
         {
-          paddingVertical: scale(14),
+          paddingVertical: scale(12),
           paddingHorizontal: scale(14),
-          borderRadius: scale(14),
-          marginBottom: scale(10),
-          gap: scale(12),
+          borderRadius: scale(12),
+          marginBottom: scale(8),
         },
       ]}
-      activeOpacity={0.75}
+      activeOpacity={0.7}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Pair ${device.model} ${formatDeviceId(device.id)}`}
+      accessibilityLabel={`Select ${device.model} ${formatDeviceId(device.id)}`}
     >
       <View
         style={[
           styles.deviceIcon,
-          { width: scale(44), height: scale(44), borderRadius: scale(22) },
+          { width: scale(36), height: scale(36), borderRadius: scale(18) },
         ]}
       >
-        <Ionicons name="hardware-chip-outline" size={scale(20)} color="#93C5FD" />
+        <Ionicons name="hardware-chip-outline" size={scale(18)} color="#93C5FD" />
       </View>
-
       <View style={styles.deviceContent}>
         <Text style={[styles.deviceModel, { fontSize: scale(15) }]} numberOfLines={1}>
           {device.model}
@@ -110,31 +150,144 @@ function DeviceRow({ device, onPress, scale }: DeviceRowProps) {
         <Text style={[styles.deviceId, { fontSize: scale(12), marginTop: scale(2) }]}>
           {formatDeviceId(device.id)}
         </Text>
-        <View style={[styles.signalRow, { marginTop: scale(6), gap: scale(4) }]}>
-          {[1, 2, 3, 4].map((bar) => (
-            <View
-              key={bar}
-              style={[
-                styles.signalBar,
-                {
-                  width: scale(3),
-                  height: scale(4 + bar * 2),
-                  borderRadius: scale(1),
-                  opacity: bar <= strength ? 1 : 0.22,
-                },
-              ]}
-            />
-          ))}
-          <Text style={[styles.signalText, { fontSize: scale(11), marginLeft: scale(4) }]}>
-            {signalLabel(strength)}
-          </Text>
-        </View>
       </View>
+      <Ionicons name="chevron-forward" size={scale(18)} color="rgba(255,255,255,0.35)" />
+    </TouchableOpacity>
+  );
+}
 
-      <View style={[styles.pairButton, { paddingVertical: scale(8), paddingHorizontal: scale(12), borderRadius: scale(10), gap: scale(4) }]}>
-        <Text style={[styles.pairButtonText, { fontSize: scale(13) }]}>Pair</Text>
-        <Ionicons name="arrow-forward" size={scale(14)} color="#BFDBFE" />
+type DropdownFieldProps = {
+  label: string;
+  value: string;
+  open: boolean;
+  onToggle: () => void;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+  children: React.ReactNode;
+  scale: (value: number) => number;
+};
+
+function DropdownField({
+  label,
+  value,
+  open,
+  onToggle,
+  loading,
+  error,
+  onRetry,
+  children,
+  scale,
+}: DropdownFieldProps) {
+  const showRetry = Boolean(error) && !loading;
+
+  return (
+    <View style={[styles.formSection, { marginTop: scale(20), zIndex: open ? 2 : 0 }]}>
+      <Text style={[styles.fieldLabel, { fontSize: scale(12), marginBottom: scale(8) }]}>
+        {label}
+      </Text>
+      <View style={styles.dropdownWrap}>
+        <TouchableOpacity
+          style={[
+            styles.dropdownTrigger,
+            {
+              paddingVertical: scale(12),
+              paddingHorizontal: scale(14),
+              borderRadius: scale(12),
+            },
+            open && styles.dropdownTriggerOpen,
+            loading && styles.dropdownTriggerDisabled,
+          ]}
+          activeOpacity={0.7}
+          onPress={() => {
+            if (loading) {
+              return;
+            }
+            if (showRetry && onRetry) {
+              onRetry();
+              return;
+            }
+            onToggle();
+          }}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#93C5FD" style={{ flex: 1 }} />
+          ) : (
+            <Text style={[styles.dropdownValue, { fontSize: scale(16) }]}>
+              {showRetry ? 'Tap to retry' : value}
+            </Text>
+          )}
+          {!showRetry ? (
+            <Ionicons
+              name={open ? 'chevron-up' : 'chevron-down'}
+              size={scale(18)}
+              color="rgba(255,255,255,0.55)"
+            />
+          ) : null}
+        </TouchableOpacity>
+
+        {open ? (
+          <View
+            style={[
+              styles.dropdownMenu,
+              {
+                borderRadius: scale(12),
+                marginTop: scale(6),
+                paddingVertical: scale(4),
+              },
+            ]}
+          >
+            {children}
+          </View>
+        ) : null}
       </View>
+      {error && !open ? (
+        <Text style={[styles.fieldError, { fontSize: scale(11), marginTop: scale(6) }]}>{error}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+type OptionRowProps = {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  scale: (value: number) => number;
+  inMenu?: boolean;
+};
+
+function OptionRow({ label, selected, onPress, scale, inMenu }: OptionRowProps) {
+  return (
+    <TouchableOpacity
+      style={[
+        inMenu ? styles.menuOption : styles.optionRow,
+        {
+          paddingVertical: scale(11),
+          paddingHorizontal: scale(12),
+          borderRadius: inMenu ? 0 : scale(10),
+        },
+        selected && (inMenu ? styles.menuOptionSelected : styles.optionRowSelected),
+      ]}
+      activeOpacity={0.7}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+    >
+      <Text
+        style={[
+          styles.optionText,
+          { fontSize: scale(14) },
+          selected && styles.optionTextSelected,
+        ]}
+      >
+        {label}
+      </Text>
+      {selected ? (
+        <Ionicons name={inMenu ? 'checkmark' : 'checkmark-circle'} size={scale(18)} color="#60A5FA" />
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -181,7 +334,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
         profiles.some((profile) => profile.id === current) ? current : (profiles[0]?.id ?? ''),
       );
       if (profiles.length === 0) {
-        setProfilesError('No plant profiles in Firestore.');
+        setProfilesError('No plant profiles found.');
       }
     } catch (error) {
       setPlantProfiles([]);
@@ -230,18 +383,6 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
     }
   };
 
-  const handleRoomSelect = (nextRoomId: string) => {
-    setRoomId(nextRoomId);
-    setRoomOpen(false);
-    setPlantProfileOpen(false);
-  };
-
-  const handlePlantProfileSelect = (nextProfileId: string) => {
-    setPlantProfileId(nextProfileId);
-    setPlantProfileOpen(false);
-    setRoomOpen(false);
-  };
-
   const handleSave = () => {
     const trimmed = draftName.trim();
     if (!trimmed || !roomId || !selectedDevice || !plantProfileId) {
@@ -259,6 +400,8 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
     onClose();
   };
 
+  const canSave = Boolean(draftName.trim() && roomId && plantProfileId && selectedDevice);
+
   if (!visible) {
     return null;
   }
@@ -273,48 +416,65 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
               borderRadius: r.scale(18),
               padding: r.scale(18),
               maxWidth: r.contentMaxWidth,
+              maxHeight: '88%',
             },
           ]}
           onPress={(e) => e.stopPropagation()}
         >
           {step === 'pair' ? (
             <>
-              <View style={styles.header}>
-                <Text style={[styles.title, { fontSize: r.scale(18) }]}>Pair Machine</Text>
-                <Pressable
-                  style={[
-                    styles.closeButton,
-                    { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
-                  ]}
-                  onPress={onClose}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close pair machine dialog"
-                >
-                  <Ionicons name="close" size={r.scale(18)} color="#fff" />
-                </Pressable>
-              </View>
+              <ModalHeader
+                title="Pair machine"
+                stepLabel="Step 1 of 2"
+                subtitle={
+                  scanning
+                    ? 'Scanning for nearby devices…'
+                    : 'Select a device to continue'
+                }
+                onClose={onClose}
+                scale={r.scale}
+                rightAction={
+                  <Pressable
+                    style={[
+                      styles.iconButton,
+                      { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+                      scanning && styles.iconButtonDisabled,
+                    ]}
+                    onPress={() => void loadNearbyDevices()}
+                    disabled={scanning}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Refresh scan"
+                  >
+                    {scanning ? (
+                      <ActivityIndicator size="small" color="#93C5FD" />
+                    ) : (
+                      <Ionicons name="refresh" size={r.scale(17)} color="#fff" />
+                    )}
+                  </Pressable>
+                }
+              />
 
               <View
                 style={[
-                  styles.scanHero,
+                  styles.bluetoothBanner,
                   {
                     marginTop: r.scale(16),
                     paddingVertical: r.scale(16),
                     paddingHorizontal: r.scale(14),
                     borderRadius: r.scale(14),
                   },
+                  scanning && styles.bluetoothBannerActive,
                 ]}
               >
                 <View
                   style={[
-                    styles.scanIconWrap,
+                    styles.bluetoothIconWrap,
                     {
-                      width: r.scale(52),
-                      height: r.scale(52),
-                      borderRadius: r.scale(26),
+                      width: r.scale(48),
+                      height: r.scale(48),
+                      borderRadius: r.scale(24),
                     },
-                    scanning && styles.scanIconWrapActive,
                   ]}
                 >
                   {scanning ? (
@@ -323,144 +483,36 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                     <Ionicons name="bluetooth" size={r.scale(24)} color="#93C5FD" />
                   )}
                 </View>
-                <Text style={[styles.scanTitle, { fontSize: r.scale(15), marginTop: r.scale(12) }]}>
-                  {scanning ? 'Scanning nearby...' : 'Ready to pair'}
+                <Text style={[styles.bluetoothTitle, { fontSize: r.scale(14), marginTop: r.scale(10) }]}>
+                  {scanning ? 'Scanning nearby…' : 'Ready to pair'}
                 </Text>
-                <Text
-                  style={[
-                    styles.scanSubtitle,
-                    { fontSize: r.scale(12), marginTop: r.scale(6), lineHeight: r.scale(17) },
-                  ]}
-                >
-                  Power on your AEREA device and keep it close to this phone.
+                <Text style={[styles.bluetoothHint, { fontSize: r.scale(12), marginTop: r.scale(4) }]}>
+                  Keep your AEREA device powered on and nearby.
                 </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.listHeader,
-                  { marginTop: r.scale(18), marginBottom: r.scale(10) },
-                ]}
-              >
-                <View style={styles.listHeaderLeft}>
-                  <Text style={[styles.fieldLabel, { fontSize: r.scale(12) }]}>Nearby</Text>
-                  {!scanning ? (
-                    <View
-                      style={[
-                        styles.countBadge,
-                        {
-                          marginLeft: r.scale(8),
-                          paddingHorizontal: r.scale(8),
-                          paddingVertical: r.scale(3),
-                          borderRadius: r.scale(8),
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.countBadgeText, { fontSize: r.scale(11) }]}>
-                        {availableDevices.length}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.refreshButton,
-                    {
-                      paddingVertical: r.scale(7),
-                      paddingHorizontal: r.scale(12),
-                      borderRadius: r.scale(10),
-                      gap: r.scale(6),
-                    },
-                    scanning && styles.refreshButtonDisabled,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => void loadNearbyDevices()}
-                  disabled={scanning}
-                  accessibilityRole="button"
-                  accessibilityLabel="Refresh nearby machines"
-                >
-                  <Ionicons
-                    name="refresh"
-                    size={r.scale(15)}
-                    color={scanning ? 'rgba(147,197,253,0.45)' : '#93C5FD'}
-                  />
-                  <Text
-                    style={[
-                      styles.refreshText,
-                      { fontSize: r.scale(13) },
-                      scanning && styles.refreshTextDisabled,
-                    ]}
-                  >
-                    Refresh
-                  </Text>
-                </TouchableOpacity>
               </View>
 
               <ScrollView
-                style={[styles.deviceList, { maxHeight: r.scale(260) }]}
+                style={{ marginTop: r.scale(14) }}
+                contentContainerStyle={{ paddingBottom: r.scale(4) }}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
                 {scanning && availableDevices.length === 0 ? (
-                  <View
-                    style={[
-                      styles.emptyState,
-                      {
-                        paddingVertical: r.scale(32),
-                        borderRadius: r.scale(14),
-                      },
-                    ]}
-                  >
-                    <View style={[styles.scanPulse, { width: r.scale(56), height: r.scale(56), borderRadius: r.scale(28) }]}>
-                      <View style={[styles.scanPulseInner, { width: r.scale(40), height: r.scale(40), borderRadius: r.scale(20) }]}>
-                        <Ionicons name="radio-outline" size={r.scale(20)} color="#93C5FD" />
-                      </View>
-                    </View>
-                    <Text style={[styles.emptyText, { fontSize: r.scale(14), marginTop: r.scale(14) }]}>
-                      Looking for AEREA devices...
-                    </Text>
-                    <Text style={[styles.emptyHint, { fontSize: r.scale(12), marginTop: r.scale(6) }]}>
-                      This usually takes a few seconds.
+                  <View style={[styles.centerState, { paddingVertical: r.scale(40) }]}>
+                    <ActivityIndicator size="small" color="#93C5FD" />
+                    <Text style={[styles.centerStateText, { fontSize: r.scale(14), marginTop: r.scale(12) }]}>
+                      Looking for devices…
                     </Text>
                   </View>
                 ) : availableDevices.length === 0 ? (
-                  <View
-                    style={[
-                      styles.emptyState,
-                      styles.emptyStateCard,
-                      {
-                        paddingVertical: r.scale(28),
-                        paddingHorizontal: r.scale(16),
-                        borderRadius: r.scale(14),
-                      },
-                    ]}
-                  >
-                    <Ionicons name="search-outline" size={r.scale(30)} color="rgba(255,255,255,0.35)" />
-                    <Text style={[styles.emptyText, { fontSize: r.scale(14), marginTop: r.scale(12) }]}>
-                      No nearby machines found
+                  <View style={[styles.centerState, { paddingVertical: r.scale(32) }]}>
+                    <Ionicons name="bluetooth-outline" size={r.scale(28)} color="rgba(255,255,255,0.3)" />
+                    <Text style={[styles.centerStateText, { fontSize: r.scale(14), marginTop: r.scale(12) }]}>
+                      No devices found
                     </Text>
-                    <Text style={[styles.emptyHint, { fontSize: r.scale(12), marginTop: r.scale(6), lineHeight: r.scale(17) }]}>
-                      Check that the device is on and in pairing mode, then tap refresh.
+                    <Text style={[styles.centerStateHint, { fontSize: r.scale(12), marginTop: r.scale(6) }]}>
+                      Make sure your AEREA is powered on, then tap refresh.
                     </Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.emptyRefreshButton,
-                        {
-                          marginTop: r.scale(14),
-                          paddingVertical: r.scale(10),
-                          paddingHorizontal: r.scale(16),
-                          borderRadius: r.scale(10),
-                          gap: r.scale(6),
-                        },
-                      ]}
-                      activeOpacity={0.7}
-                      onPress={() => void loadNearbyDevices()}
-                      accessibilityRole="button"
-                      accessibilityLabel="Scan again for nearby machines"
-                    >
-                      <Ionicons name="refresh" size={r.scale(16)} color="#93C5FD" />
-                      <Text style={[styles.refreshText, { fontSize: r.scale(13) }]}>Scan again</Text>
-                    </TouchableOpacity>
                   </View>
                 ) : (
                   availableDevices.map((device) => (
@@ -473,344 +525,125 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                   ))
                 )}
               </ScrollView>
-
-              <View
-                style={[
-                  styles.helpTip,
-                  {
-                    marginTop: r.scale(14),
-                    paddingVertical: r.scale(10),
-                    paddingHorizontal: r.scale(12),
-                    borderRadius: r.scale(12),
-                    gap: r.scale(8),
-                  },
-                ]}
-              >
-                <Ionicons name="information-circle-outline" size={r.scale(16)} color="rgba(255,255,255,0.45)" />
-                <Text style={[styles.helpTipText, { fontSize: r.scale(12), lineHeight: r.scale(17), flex: 1 }]}>
-                  Select a device to continue with naming and room assignment.
-                </Text>
-              </View>
             </>
           ) : (
-            <>
-              <View style={styles.header}>
-                <Pressable
-                  style={[
-                    styles.backButton,
-                    { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
-                  ]}
-                  onPress={() => {
-                    setStep('pair');
-                    setSelectedDevice(null);
-                  }}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Back to pair machine"
-                >
-                  <Ionicons name="chevron-back" size={r.scale(18)} color="#fff" />
-                </Pressable>
-                <Text style={[styles.title, styles.setupTitle, { fontSize: r.scale(18) }]}>
-                  Set up machine
-                </Text>
-                <Pressable
-                  style={[
-                    styles.closeButton,
-                    { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
-                  ]}
-                  onPress={onClose}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close add machine dialog"
-                >
-                  <Ionicons name="close" size={r.scale(18)} color="#fff" />
-                </Pressable>
-              </View>
-
-              {selectedDevice ? (
-                <View
-                  style={[
-                    styles.pairedDeviceBadge,
-                    {
-                      marginTop: r.scale(14),
-                      paddingVertical: r.scale(12),
-                      paddingHorizontal: r.scale(14),
-                      borderRadius: r.scale(12),
-                      gap: r.scale(12),
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.pairedDeviceIcon,
-                      { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
-                    ]}
-                  >
-                    <Ionicons name="checkmark" size={r.scale(18)} color="#34D399" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.pairedDeviceTitle, { fontSize: r.scale(12) }]}>
-                      Selected device
-                    </Text>
-                    <Text style={[styles.pairedDeviceModel, { fontSize: r.scale(14), marginTop: r.scale(2) }]}>
-                      {selectedDevice.model}
-                    </Text>
-                    <Text style={[styles.pairedDeviceId, { fontSize: r.scale(12), marginTop: r.scale(2) }]}>
-                      {formatDeviceId(selectedDevice.id)}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-
-              <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(16) }]}>
-                Machine name
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    marginTop: r.scale(8),
-                    paddingVertical: r.scale(12),
-                    paddingHorizontal: r.scale(14),
-                    borderRadius: r.scale(12),
-                    fontSize: r.scale(16),
-                  },
-                ]}
-                value={draftName}
-                onChangeText={setDraftName}
-                placeholder="Machine name"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                autoFocus
-                selectTextOnFocus
-                maxLength={64}
-                returnKeyType="done"
-                onSubmitEditing={handleSave}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: r.scale(4) }}
+            >
+              <ModalHeader
+                title="Set up machine"
+                stepLabel="Step 2 of 2"
+                subtitle={
+                  selectedDevice
+                    ? `${selectedDevice.model} · ${formatDeviceId(selectedDevice.id)}`
+                    : undefined
+                }
+                onClose={onClose}
+                onBack={() => {
+                  setStep('pair');
+                  setSelectedDevice(null);
+                }}
+                scale={r.scale}
               />
 
-              <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
-                Room
-              </Text>
-              <View
-                style={[styles.roomPickerWrap, { marginTop: r.scale(8), zIndex: roomOpen ? 2 : 0 }]}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.roomPicker,
-                    {
-                      paddingVertical: r.scale(12),
-                      paddingHorizontal: r.scale(14),
-                      borderRadius: r.scale(12),
-                      gap: r.scale(6),
-                    },
-                    roomOpen && styles.roomPickerOpen,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    setRoomOpen((open) => !open);
-                    setPlantProfileOpen(false);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: roomOpen }}
-                  accessibilityLabel={`Room ${selectedRoom?.name ?? 'none'}, change room`}
-                >
-                  <Text style={[styles.roomPickerText, { fontSize: r.scale(16) }]}>
-                    {selectedRoom?.name ?? 'Select room'}
-                  </Text>
-                  <Ionicons
-                    name={roomOpen ? 'chevron-up' : 'chevron-down'}
-                    size={r.scale(18)}
-                    color="rgba(255,255,255,0.65)"
-                  />
-                </TouchableOpacity>
-
-                {roomOpen ? (
-                  <View
-                    style={[
-                      styles.roomDropdown,
-                      {
-                        borderRadius: r.scale(12),
-                        marginTop: r.scale(6),
-                        paddingVertical: r.scale(4),
-                      },
-                    ]}
-                  >
-                    {rooms.map((room) => {
-                      const selected = room.id === roomId;
-                      return (
-                        <TouchableOpacity
-                          key={room.id}
-                          style={[
-                            styles.roomOption,
-                            {
-                              paddingVertical: r.scale(10),
-                              paddingHorizontal: r.scale(12),
-                            },
-                            selected && styles.roomOptionSelected,
-                          ]}
-                          activeOpacity={0.7}
-                          onPress={() => handleRoomSelect(room.id)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected }}
-                        >
-                          <Text
-                            style={[
-                              styles.roomOptionText,
-                              { fontSize: r.scale(14) },
-                              selected && styles.roomOptionTextSelected,
-                            ]}
-                          >
-                            {room.name}
-                          </Text>
-                          {selected ? (
-                            <Ionicons name="checkmark" size={r.scale(16)} color="#60A5FA" />
-                          ) : null}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </View>
-
-              <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
-                Plant profile
-              </Text>
-              <View
-                style={[
-                  styles.roomPickerWrap,
-                  { marginTop: r.scale(8), zIndex: plantProfileOpen ? 2 : 0 },
-                ]}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.roomPicker,
-                    {
-                      paddingVertical: r.scale(12),
-                      paddingHorizontal: r.scale(14),
-                      borderRadius: r.scale(12),
-                      gap: r.scale(6),
-                    },
-                    plantProfileOpen && styles.roomPickerOpen,
-                    loadingProfiles && styles.pickerDisabled,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    if (loadingProfiles) {
-                      return;
-                    }
-                    if (profilesError || plantProfiles.length === 0) {
-                      void loadPlantProfiles();
-                      return;
-                    }
-                    setPlantProfileOpen((open) => !open);
-                    setRoomOpen(false);
-                  }}
-                  disabled={loadingProfiles}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: plantProfileOpen }}
-                  accessibilityLabel={`Plant profile ${selectedPlantProfile?.name ?? 'none'}, change plant profile`}
-                >
-                  {loadingProfiles ? (
-                    <ActivityIndicator size="small" color="#93C5FD" style={{ flex: 1 }} />
-                  ) : (
-                    <Text style={[styles.roomPickerText, { fontSize: r.scale(16) }]}>
-                      {profilesError
-                        ? 'Tap to retry'
-                        : selectedPlantProfile?.name ?? 'No profiles found'}
-                    </Text>
-                  )}
-                  <Ionicons
-                    name={plantProfileOpen ? 'chevron-up' : 'chevron-down'}
-                    size={r.scale(18)}
-                    color="rgba(255,255,255,0.65)"
-                  />
-                </TouchableOpacity>
-
-                {plantProfileOpen ? (
-                  <View
-                    style={[
-                      styles.roomDropdown,
-                      {
-                        borderRadius: r.scale(12),
-                        marginTop: r.scale(6),
-                        paddingVertical: r.scale(4),
-                      },
-                    ]}
-                  >
-                    {plantProfiles.map((profile) => {
-                      const selected = profile.id === plantProfileId;
-                      return (
-                        <TouchableOpacity
-                          key={profile.id}
-                          style={[
-                            styles.roomOption,
-                            {
-                              paddingVertical: r.scale(10),
-                              paddingHorizontal: r.scale(12),
-                            },
-                            selected && styles.roomOptionSelected,
-                          ]}
-                          activeOpacity={0.7}
-                          onPress={() => handlePlantProfileSelect(profile.id)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected }}
-                        >
-                          <Text
-                            style={[
-                              styles.roomOptionText,
-                              { fontSize: r.scale(14) },
-                              selected && styles.roomOptionTextSelected,
-                            ]}
-                          >
-                            {profile.name}
-                          </Text>
-                          {selected ? (
-                            <Ionicons name="checkmark" size={r.scale(16)} color="#60A5FA" />
-                          ) : null}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </View>
-              {profilesError ? (
-                <Text
-                  style={[
-                    styles.profileErrorText,
-                    { fontSize: r.scale(11), marginTop: r.scale(6), lineHeight: r.scale(15) },
-                  ]}
-                >
-                  {profilesError}
+              <View style={[styles.formSection, { marginTop: r.scale(20) }]}>
+                <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginBottom: r.scale(8) }]}>
+                  Name
                 </Text>
-              ) : null}
-
-              <View style={[styles.actions, { marginTop: r.scale(18), gap: r.scale(10) }]}>
-                <TouchableOpacity
+                <TextInput
                   style={[
-                    styles.actionButton,
-                    styles.actionButtonSecondary,
-                    { borderRadius: r.scale(12) },
+                    styles.input,
+                    {
+                      paddingVertical: r.scale(12),
+                      paddingHorizontal: r.scale(14),
+                      borderRadius: r.scale(12),
+                      fontSize: r.scale(16),
+                    },
                   ]}
-                  activeOpacity={0.7}
-                  onPress={onClose}
-                >
-                  <Text style={[styles.actionText, { fontSize: r.scale(15) }]}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    styles.actionButtonPrimary,
-                    { borderRadius: r.scale(12) },
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={handleSave}
-                  disabled={!draftName.trim() || !roomId || !plantProfileId}
-                >
-                  <Text style={[styles.actionText, styles.actionTextPrimary, { fontSize: r.scale(15) }]}>
-                    Add
-                  </Text>
-                </TouchableOpacity>
+                  value={draftName}
+                  onChangeText={setDraftName}
+                  placeholder="Machine name"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  autoFocus
+                  selectTextOnFocus
+                  maxLength={64}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSave}
+                />
               </View>
-            </>
+
+              <DropdownField
+                label="Room"
+                value={selectedRoom?.name ?? 'Select room'}
+                open={roomOpen}
+                onToggle={() => {
+                  setRoomOpen((open) => !open);
+                  setPlantProfileOpen(false);
+                }}
+                scale={r.scale}
+              >
+                {rooms.map((room) => (
+                  <OptionRow
+                    key={room.id}
+                    label={room.name}
+                    selected={room.id === roomId}
+                    inMenu
+                    onPress={() => {
+                      setRoomId(room.id);
+                      setRoomOpen(false);
+                    }}
+                    scale={r.scale}
+                  />
+                ))}
+              </DropdownField>
+
+              <DropdownField
+                label="Plant profile"
+                value={selectedPlantProfile?.name ?? 'Select profile'}
+                open={plantProfileOpen}
+                loading={loadingProfiles}
+                error={profilesError}
+                onRetry={() => void loadPlantProfiles()}
+                onToggle={() => {
+                  setPlantProfileOpen((open) => !open);
+                  setRoomOpen(false);
+                }}
+                scale={r.scale}
+              >
+                {plantProfiles.map((profile) => (
+                  <OptionRow
+                    key={profile.id}
+                    label={profile.name}
+                    selected={profile.id === plantProfileId}
+                    inMenu
+                    onPress={() => {
+                      setPlantProfileId(profile.id);
+                      setPlantProfileOpen(false);
+                    }}
+                    scale={r.scale}
+                  />
+                ))}
+              </DropdownField>
+
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  {
+                    marginTop: r.scale(24),
+                    paddingVertical: r.scale(14),
+                    borderRadius: r.scale(12),
+                  },
+                  !canSave && styles.primaryButtonDisabled,
+                ]}
+                activeOpacity={0.7}
+                onPress={handleSave}
+                disabled={!canSave}
+              >
+                <Text style={[styles.primaryButtonText, { fontSize: r.scale(15) }]}>Add machine</Text>
+              </TouchableOpacity>
+            </ScrollView>
           )}
         </Pressable>
       </Pressable>
@@ -834,116 +667,87 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  setupTitle: {
+  headerSide: {
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  headerSideRight: {
+    alignItems: 'flex-end',
+  },
+  headerCenter: {
     flex: 1,
-    textAlign: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  stepLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
   title: {
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.2,
+    textAlign: 'center',
   },
-  scanHero: {
+  subtitle: {
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  iconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  iconButtonDisabled: {
+    opacity: 0.6,
+  },
+  bluetoothBanner: {
     alignItems: 'center',
     backgroundColor: 'rgba(96,165,250,0.08)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.2)',
+    borderColor: 'rgba(96,165,250,0.18)',
   },
-  scanIconWrap: {
+  bluetoothBannerActive: {
+    borderColor: 'rgba(96,165,250,0.35)',
+    backgroundColor: 'rgba(96,165,250,0.12)',
+  },
+  bluetoothIconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(96,165,250,0.14)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(96,165,250,0.28)',
   },
-  scanIconWrapActive: {
-    backgroundColor: 'rgba(96,165,250,0.2)',
-    borderColor: 'rgba(147,197,253,0.45)',
-  },
-  scanTitle: {
+  bluetoothTitle: {
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
-  scanSubtitle: {
-    color: 'rgba(255,255,255,0.52)',
+  bluetoothHint: {
+    color: 'rgba(255,255,255,0.45)',
     fontWeight: '500',
     textAlign: 'center',
-  },
-  closeButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.25)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  backButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.25)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  listHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  listHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  countBadge: {
-    backgroundColor: 'rgba(96,165,250,0.18)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.35)',
-  },
-  countBadgeText: {
-    color: '#93C5FD',
-    fontWeight: '700',
-  },
-  fieldLabel: {
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    textTransform: 'uppercase',
-  },
-  refreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.35)',
-    backgroundColor: 'rgba(96,165,250,0.12)',
-  },
-  refreshButtonDisabled: {
-    opacity: 0.65,
-  },
-  refreshText: {
-    color: '#93C5FD',
-    fontWeight: '600',
-  },
-  refreshTextDisabled: {
-    color: 'rgba(147,197,253,0.55)',
-  },
-  deviceList: {
-    flexGrow: 0,
   },
   deviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   deviceIcon: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(96,165,250,0.14)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.25)',
+    backgroundColor: 'rgba(96,165,250,0.12)',
   },
   deviceContent: {
     flex: 1,
@@ -951,190 +755,111 @@ const styles = StyleSheet.create({
   },
   deviceModel: {
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   deviceId: {
-    color: 'rgba(255,255,255,0.48)',
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  signalRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  signalBar: {
-    backgroundColor: '#34D399',
-  },
-  signalText: {
-    color: 'rgba(255,255,255,0.42)',
+    color: 'rgba(255,255,255,0.45)',
     fontWeight: '500',
   },
-  pairButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(96,165,250,0.18)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.35)',
-  },
-  pairButtonText: {
-    color: '#BFDBFE',
-    fontWeight: '700',
-  },
-  emptyState: {
+  centerState: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyStateCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  scanPulse: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(96,165,250,0.08)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.18)',
-  },
-  scanPulseInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(96,165,250,0.16)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.28)',
-  },
-  emptyRefreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.35)',
-    backgroundColor: 'rgba(96,165,250,0.12)',
-  },
-  emptyText: {
+  centerStateText: {
     color: 'rgba(255,255,255,0.65)',
     fontWeight: '500',
     textAlign: 'center',
   },
-  emptyHint: {
+  centerStateHint: {
     color: 'rgba(255,255,255,0.38)',
     fontWeight: '500',
     textAlign: 'center',
+    lineHeight: 18,
   },
-  helpTip: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  helpTipText: {
+  formSection: {},
+  fieldLabel: {
     color: 'rgba(255,255,255,0.45)',
-    fontWeight: '500',
-  },
-  pairedDeviceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(52,211,153,0.1)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(52,211,153,0.28)',
-  },
-  pairedDeviceIcon: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(52,211,153,0.16)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(52,211,153,0.32)',
-  },
-  pairedDeviceTitle: {
-    color: 'rgba(110,231,183,0.75)',
     fontWeight: '600',
+    letterSpacing: 0.2,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  pairedDeviceModel: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  pairedDeviceId: {
-    color: 'rgba(255,255,255,0.55)',
-    fontWeight: '600',
   },
   input: {
     color: '#fff',
     fontWeight: '600',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  roomPickerWrap: {
+  dropdownWrap: {
     position: 'relative',
   },
-  roomPicker: {
+  dropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  roomPickerOpen: {
-    borderColor: 'rgba(96,165,250,0.45)',
+  dropdownTriggerOpen: {
+    borderColor: 'rgba(96,165,250,0.4)',
   },
-  pickerDisabled: {
+  dropdownTriggerDisabled: {
     opacity: 0.65,
   },
-  profileErrorText: {
+  dropdownValue: {
+    color: '#fff',
+    fontWeight: '600',
+    flex: 1,
+  },
+  dropdownMenu: {
+    backgroundColor: 'rgba(10,15,28,0.98)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  fieldError: {
     color: 'rgba(248,113,113,0.85)',
     fontWeight: '500',
   },
-  roomPickerText: {
-    color: '#fff',
-    fontWeight: '600',
-    flex: 1,
-  },
-  roomDropdown: {
-    backgroundColor: 'rgba(10,15,28,0.98)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  roomOption: {
+  menuOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  roomOptionSelected: {
+  menuOptionSelected: {
     backgroundColor: 'rgba(96,165,250,0.12)',
   },
-  roomOptionText: {
-    color: 'rgba(255,255,255,0.85)',
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  optionRowSelected: {
+    backgroundColor: 'rgba(96,165,250,0.1)',
+    borderColor: 'rgba(96,165,250,0.3)',
+  },
+  optionText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+  },
+  optionTextSelected: {
+    color: '#fff',
     fontWeight: '600',
   },
-  roomOptionTextSelected: {
-    color: '#fff',
-  },
-  actions: {
-    flexDirection: 'row',
-  },
-  actionButton: {
-    flex: 1,
+  primaryButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    backgroundColor: 'rgba(96,165,250,0.25)',
     borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.45)',
   },
-  actionButtonSecondary: {
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+  primaryButtonDisabled: {
+    opacity: 0.45,
   },
-  actionButtonPrimary: {
-    borderColor: 'rgba(96,165,250,0.5)',
-    backgroundColor: 'rgba(96,165,250,0.2)',
-  },
-  actionText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: '600',
-  },
-  actionTextPrimary: {
+  primaryButtonText: {
     color: '#fff',
     fontWeight: '700',
   },
