@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +22,7 @@ import type { Machine } from '../types/machine';
 import type { PlantProfile } from '../types/plantProfile';
 import { CUSTOM_PLANT_PROFILE_ID } from '../types/plantProfile';
 import type { Room } from '../types/room';
+import { useMachinesAlerts } from '../contexts/MachinesAlertsContext';
 import { useResponsive } from '../utils/responsive';
 import MachineDetailScreen from './MachineDetailScreen';
 
@@ -38,6 +39,7 @@ type EditingRoom = {
 
 export default function MachinesScreen() {
   const r = useResponsive();
+  const { syncRooms } = useMachinesAlerts();
   const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
@@ -46,6 +48,10 @@ export default function MachinesScreen() {
   const [addRoomOpen, setAddRoomOpen] = useState(false);
   const [addRoomForMachineId, setAddRoomForMachineId] = useState<string | null>(null);
   const [refreshingRoomId, setRefreshingRoomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    syncRooms(rooms);
+  }, [rooms, syncRooms]);
 
   const handleMachinePress = useCallback((machine: Machine, roomId: string, roomName: string) => {
     setSelectedMachine({ machine, roomId, roomName });

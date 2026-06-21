@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import type { RoomEnvironment } from '../types/room';
 import { getRoomColorTheme, type RoomColorId } from '../constants/roomColors';
+import CriticalBlinkText from './CriticalBlinkText';
+import { getRoomMetricDisplays } from '../utils/roomEnvironmentAlerts';
 
 type Props = {
   roomName: string;
@@ -30,27 +32,40 @@ type MetricItemProps = {
   value: string;
   scale: (value: number) => number;
   showDivider?: boolean;
+  critical?: boolean;
 };
 
-function MetricItem({ label, value, scale, showDivider }: MetricItemProps) {
+function MetricItem({ label, value, scale, showDivider, critical }: MetricItemProps) {
   return (
     <View style={[styles.metricCell, showDivider && styles.metricCellDivider]}>
       <Text
-        style={[styles.metricLabel, { fontSize: scale(10) }]}
+        style={[
+          styles.metricLabel,
+          { fontSize: scale(10) },
+          critical && styles.metricLabelCritical,
+        ]}
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.75}
       >
         {label}
       </Text>
-      <Text
-        style={[styles.metricValue, { fontSize: scale(14), marginTop: scale(4) }]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
-      >
-        {value}
-      </Text>
+      {critical ? (
+        <CriticalBlinkText
+          style={[styles.metricValue, { fontSize: scale(14), marginTop: scale(4) }]}
+        >
+          {value}
+        </CriticalBlinkText>
+      ) : (
+        <Text
+          style={[styles.metricValue, { fontSize: scale(14), marginTop: scale(4) }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+        >
+          {value}
+        </Text>
+      )}
     </View>
   );
 }
@@ -60,12 +75,12 @@ function MetricRow({
   scale,
   columns,
 }: {
-  items: { label: string; value: string }[];
+  items: { label: string; value: string; critical?: boolean }[];
   scale: (value: number) => number;
   columns?: number;
 }) {
   const columnCount = columns ?? items.length;
-  const cells: ({ label: string; value: string } | null)[] = [...items];
+  const cells: ({ label: string; value: string; critical?: boolean } | null)[] = [...items];
   while (cells.length < columnCount) {
     cells.push(null);
   }
@@ -80,6 +95,7 @@ function MetricRow({
             value={metric.value}
             scale={scale}
             showDivider={index < columnCount - 1}
+            critical={metric.critical}
           />
         ) : (
           <View
@@ -108,17 +124,10 @@ export default function RoomPanel({
 }: Props) {
   const machinesVisible = showContent ?? expanded;
   const theme = getRoomColorTheme(colorId);
+  const metrics = getRoomMetricDisplays(environment);
 
-  const topMetrics = [
-    { label: 'Temp', value: `${environment.temperatureC.toFixed(1)}°C` },
-    { label: 'Humidity', value: `${environment.humidityPct}%` },
-    { label: 'Water', value: `${environment.waterLevelL.toFixed(1)} L` },
-  ];
-
-  const bottomMetrics = [
-    { label: 'pH Up', value: `${environment.phUpLevelL.toFixed(1)} L` },
-    { label: 'pH Down', value: `${environment.phDownLevelL.toFixed(1)} L` },
-  ];
+  const topMetrics = metrics.slice(0, 3);
+  const bottomMetrics = metrics.slice(3);
 
   return (
     <View
@@ -202,6 +211,7 @@ export default function RoomPanel({
               value={metric.value}
               scale={scale}
               showDivider
+              critical={metric.critical}
             />
           ))}
           <View style={styles.metricCell}>
@@ -315,6 +325,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.2,
     textAlign: 'center',
+  },
+  metricLabelCritical: {
+    color: 'rgba(248,113,113,0.75)',
   },
   metricValue: {
     color: '#fff',
