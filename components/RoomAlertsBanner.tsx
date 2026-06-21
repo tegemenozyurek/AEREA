@@ -35,12 +35,27 @@ export default function RoomAlertsBanner({ summaries, onDismiss }: Props) {
         styles.card,
         {
           marginBottom: r.scale(16),
-          borderColor: 'rgba(230,126,34,0.32)',
+          borderColor: 'rgba(248,113,113,0.42)',
+          backgroundColor: 'rgba(248,113,113,0.08)',
         },
       ]}
     >
       <View style={[styles.header, { paddingHorizontal: r.scale(14), paddingTop: r.scale(12) }]}>
-        <Text style={[styles.headerLabel, { fontSize: r.scale(11) }]}>Suggestions</Text>
+        <View style={[styles.headerLeft, { gap: r.scale(8) }]}>
+          <View
+            style={[
+              styles.alertIconWrap,
+              {
+                width: r.scale(24),
+                height: r.scale(24),
+                borderRadius: r.scale(12),
+              },
+            ]}
+          >
+            <Ionicons name="alert-circle" size={r.scale(16)} color="#FCA5A5" />
+          </View>
+          <Text style={[styles.headerLabel, { fontSize: r.scale(11) }]}>Suggestions</Text>
+        </View>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={onDismiss}
@@ -87,7 +102,7 @@ export default function RoomAlertsBanner({ summaries, onDismiss }: Props) {
                     <Ionicons
                       name={RECOMMENDATION_ICONS[recommendation.issue]}
                       size={r.scale(14)}
-                      color="#FDBA74"
+                      color="#FCA5A5"
                     />
                   </View>
                   <Text
@@ -115,9 +130,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  alertIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(248,113,113,0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(248,113,113,0.35)',
+  },
   headerLabel: {
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '600',
+    color: '#FCA5A5',
+    fontWeight: '700',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -127,9 +155,9 @@ const styles = StyleSheet.create({
   },
   rooms: {},
   roomBlock: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(248,113,113,0.07)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(248,113,113,0.18)',
   },
   roomName: {
     color: '#fff',
@@ -143,7 +171,9 @@ const styles = StyleSheet.create({
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(230,126,34,0.14)',
+    backgroundColor: 'rgba(248,113,113,0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(248,113,113,0.22)',
     flexShrink: 0,
   },
   recommendationText: {
