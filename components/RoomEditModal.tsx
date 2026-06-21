@@ -10,6 +10,11 @@ import {
   View,
 } from 'react-native';
 import { DEFAULT_ROOM_NAME } from '../data/mockMachines';
+import {
+  DEFAULT_ROOM_COLOR_ID,
+  ROOM_COLORS,
+  type RoomColorId,
+} from '../constants/roomColors';
 import { useResponsive } from '../utils/responsive';
 
 type Props = {
@@ -18,9 +23,10 @@ type Props = {
   roomName: string;
   position: number;
   totalRooms: number;
+  roomColorId?: RoomColorId;
   machineCount?: number;
   onClose: () => void;
-  onSave: (name: string, position: number) => void;
+  onSave: (name: string, position: number, colorId: RoomColorId) => void;
   onDelete?: () => void;
 };
 
@@ -30,6 +36,7 @@ export default function RoomEditModal({
   roomName,
   position,
   totalRooms,
+  roomColorId = DEFAULT_ROOM_COLOR_ID,
   machineCount = 0,
   onClose,
   onSave,
@@ -38,15 +45,17 @@ export default function RoomEditModal({
   const r = useResponsive();
   const [draftName, setDraftName] = useState(roomName);
   const [draftPosition, setDraftPosition] = useState(position);
+  const [draftColorId, setDraftColorId] = useState<RoomColorId>(roomColorId);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setDraftName(roomName);
       setDraftPosition(position);
+      setDraftColorId(roomColorId);
       setConfirmDeleteOpen(false);
     }
-  }, [visible, roomName, position]);
+  }, [visible, roomName, position, roomColorId]);
 
   const moveUp = () => {
     setDraftPosition((current) => Math.max(1, current - 1));
@@ -61,7 +70,7 @@ export default function RoomEditModal({
     if (!trimmed) {
       return;
     }
-    onSave(trimmed, draftPosition);
+    onSave(trimmed, draftPosition, draftColorId);
   };
 
   const handleDeletePress = () => {
@@ -333,6 +342,47 @@ export default function RoomEditModal({
             </TouchableOpacity>
           </View>
 
+          <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
+            Color
+          </Text>
+          <View
+            style={[
+              styles.colorRow,
+              {
+                marginTop: r.scale(8),
+                gap: r.scale(10),
+              },
+            ]}
+          >
+            {ROOM_COLORS.map((color) => {
+              const selected = draftColorId === color.id;
+              return (
+                <TouchableOpacity
+                  key={color.id}
+                  style={[
+                    styles.colorSwatch,
+                    {
+                      width: r.scale(40),
+                      height: r.scale(40),
+                      borderRadius: r.scale(20),
+                      backgroundColor: color.swatch,
+                    },
+                    selected && styles.colorSwatchSelected,
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => setDraftColorId(color.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${color.label} color`}
+                  accessibilityState={{ selected }}
+                >
+                  {selected ? (
+                    <Ionicons name="checkmark" size={r.scale(18)} color="#fff" />
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <View style={[styles.actions, { marginTop: r.scale(18), gap: r.scale(10) }]}>
             <TouchableOpacity
               style={[styles.actionButton, styles.actionButtonSecondary, { borderRadius: r.scale(12) }]}
@@ -523,6 +573,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  colorSwatch: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  colorSwatchSelected: {
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   actions: {
     flexDirection: 'row',

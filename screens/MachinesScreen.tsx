@@ -17,6 +17,7 @@ import {
   refreshSingleRoom,
   type NearbyMachine,
 } from '../data/mockMachines';
+import type { RoomColorId } from '../constants/roomColors';
 import type { Machine } from '../types/machine';
 import type { PlantProfile } from '../types/plantProfile';
 import { CUSTOM_PLANT_PROFILE_ID } from '../types/plantProfile';
@@ -150,8 +151,8 @@ export default function MachinesScreen() {
     [rooms],
   );
 
-  const handleAddRoom = useCallback((name: string, position: number, moveMachineId?: string | null) => {
-    const room = createDefaultRoom(name);
+  const handleAddRoom = useCallback((name: string, position: number, colorId: RoomColorId, moveMachineId?: string | null) => {
+    const room = createDefaultRoom(name, colorId);
 
     setRooms((prev) => {
       const next = [...prev];
@@ -260,7 +261,7 @@ export default function MachinesScreen() {
     setEditingRoom(null);
   }, []);
 
-  const handleSaveRoom = useCallback((roomId: string, name: string, position: number) => {
+  const handleSaveRoom = useCallback((roomId: string, name: string, position: number, colorId: RoomColorId) => {
     setRooms((prev) => {
       const currentIndex = prev.findIndex((room) => room.id === roomId);
       if (currentIndex === -1) {
@@ -269,7 +270,7 @@ export default function MachinesScreen() {
 
       const next = [...prev];
       const [room] = next.splice(currentIndex, 1);
-      const updatedRoom = { ...room, name };
+      const updatedRoom = { ...room, name, colorId };
       const targetIndex = Math.max(0, Math.min(next.length, position - 1));
       next.splice(targetIndex, 0, updatedRoom);
       return next;
@@ -347,7 +348,7 @@ export default function MachinesScreen() {
           position={rooms.length + 1}
           totalRooms={rooms.length + 1}
           onClose={closeAddRoomModal}
-          onSave={(name, position) => handleAddRoom(name, position, addRoomForMachineId)}
+          onSave={(name, position, colorId) => handleAddRoom(name, position, colorId, addRoomForMachineId)}
         />
       </>
     );
@@ -361,9 +362,10 @@ export default function MachinesScreen() {
           roomName={editingRoom.room.name}
           position={editingRoom.index + 1}
           totalRooms={rooms.length}
+          roomColorId={editingRoom.room.colorId}
           machineCount={editingRoom.room.machines.length}
           onClose={() => setEditingRoom(null)}
-          onSave={(name, position) => handleSaveRoom(editingRoom.room.id, name, position)}
+          onSave={(name, position, colorId) => handleSaveRoom(editingRoom.room.id, name, position, colorId)}
           onDelete={
             isDefaultRoom(editingRoom.room.id)
               ? undefined
@@ -384,7 +386,7 @@ export default function MachinesScreen() {
         position={rooms.length + 1}
         totalRooms={rooms.length + 1}
         onClose={closeAddRoomModal}
-        onSave={(name, position) => handleAddRoom(name, position, addRoomForMachineId)}
+        onSave={(name, position, colorId) => handleAddRoom(name, position, colorId, addRoomForMachineId)}
       />
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
         <Text style={[styles.headerTitle, { fontSize: r.scale(22) }]}>Machines</Text>

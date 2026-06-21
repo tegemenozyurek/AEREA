@@ -165,6 +165,7 @@ export default function RoomSection({
         roomName={room.name}
         machineCount={machines.length}
         environment={room.environment}
+        colorId={room.colorId}
         expanded={roomExpanded}
         showContent={showMachines}
         refreshing={refreshingRoom}

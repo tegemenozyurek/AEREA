@@ -1,4 +1,6 @@
 import type { Machine } from './machine';
+import type { RoomColorId } from '../constants/roomColors';
+import { DEFAULT_ROOM_COLOR_ID } from '../constants/roomColors';
 
 export type RoomEnvironment = {
   temperatureC: number;
@@ -13,4 +15,5 @@ export type Room = {
   name: string;
   machines: Machine[];
   environment: RoomEnvironment;
+  colorId: RoomColorId;
 };

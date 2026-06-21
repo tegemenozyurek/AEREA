@@ -8,11 +8,13 @@ import {
   View,
 } from 'react-native';
 import type { RoomEnvironment } from '../types/room';
+import { getRoomColorTheme, type RoomColorId } from '../constants/roomColors';
 
 type Props = {
   roomName: string;
   machineCount: number;
   environment: RoomEnvironment;
+  colorId?: RoomColorId;
   expanded: boolean;
   showContent?: boolean;
   refreshing?: boolean;
@@ -94,6 +96,7 @@ export default function RoomPanel({
   roomName,
   machineCount,
   environment,
+  colorId,
   expanded,
   showContent,
   refreshing = false,
@@ -104,6 +107,7 @@ export default function RoomPanel({
   children,
 }: Props) {
   const machinesVisible = showContent ?? expanded;
+  const theme = getRoomColorTheme(colorId);
 
   const topMetrics = [
     { label: 'Temp', value: `${environment.temperatureC.toFixed(1)}°C` },
@@ -120,13 +124,18 @@ export default function RoomPanel({
     <View
       style={[
         styles.panel,
-        expanded && styles.panelExpanded,
-        expanded && styles.panelExpandedOverflow,
         {
+          backgroundColor: theme.panelBg,
+          borderColor: theme.panelBorder,
           borderRadius: scale(14),
           paddingTop: scale(12),
           paddingBottom: scale(12),
           paddingHorizontal: scale(12),
+        },
+        expanded && {
+          backgroundColor: theme.panelExpandedBg,
+          borderColor: theme.panelExpandedBorder,
+          overflow: 'visible',
         },
       ]}
     >
@@ -159,13 +168,13 @@ export default function RoomPanel({
           accessibilityRole="button"
           accessibilityLabel={expanded ? `Show less in ${roomName}` : `Show more in ${roomName}`}
         >
-          <Text style={[styles.toggleText, { fontSize: scale(12) }]}>
+          <Text style={[styles.toggleText, { fontSize: scale(12), color: theme.toggleText }]}>
             {expanded ? 'Show less' : `Show more (${machineCount})`}
           </Text>
           <Ionicons
             name={expanded ? 'chevron-up' : 'chevron-down'}
             size={scale(14)}
-            color="rgba(147,197,253,0.85)"
+            color={theme.toggleText}
             style={{ marginLeft: scale(2) }}
           />
         </TouchableOpacity>
@@ -204,6 +213,8 @@ export default function RoomPanel({
                   paddingVertical: scale(8),
                   borderRadius: scale(12),
                   minWidth: scale(44),
+                  backgroundColor: theme.refreshBg,
+                  borderColor: theme.refreshBorder,
                 },
               ]}
               activeOpacity={0.7}
@@ -213,7 +224,7 @@ export default function RoomPanel({
               accessibilityLabel="Refresh room metrics"
             >
               {refreshing ? (
-                <ActivityIndicator size="small" color="#93C5FD" />
+                <ActivityIndicator size="small" color={theme.toggleText} />
               ) : (
                 <Ionicons name="refresh" size={scale(18)} color="rgba(255,255,255,0.85)" />
               )}
@@ -239,16 +250,7 @@ export default function RoomPanel({
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: 'rgba(38, 46, 62, 0.82)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.14)',
-  },
-  panelExpanded: {
-    backgroundColor: 'rgba(44, 54, 72, 0.92)',
-    borderColor: 'rgba(96,165,250,0.28)',
-  },
-  panelExpandedOverflow: {
-    overflow: 'visible',
   },
   topRow: {
     flexDirection: 'row',
@@ -279,7 +281,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   toggleText: {
-    color: 'rgba(147,197,253,0.9)',
     fontWeight: '600',
     letterSpacing: 0.15,
   },
@@ -323,9 +324,7 @@ const styles = StyleSheet.create({
   refreshButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(96,165,250,0.14)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(96,165,250,0.3)',
   },
   divider: {
     height: StyleSheet.hairlineWidth,

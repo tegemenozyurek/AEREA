@@ -1,5 +1,6 @@
 import type { Machine } from '../types/machine';
 import type { Room, RoomEnvironment } from '../types/room';
+import { DEFAULT_ROOM_COLOR_ID, type RoomColorId } from '../constants/roomColors';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -86,12 +87,13 @@ export function refreshRoomMetrics(rooms: Room[]): Room[] {
   }));
 }
 
-export function createDefaultRoom(name: string): Room {
+export function createDefaultRoom(name: string, colorId: RoomColorId = DEFAULT_ROOM_COLOR_ID): Room {
   return {
     id: `room-${Date.now()}`,
     name,
     machines: [],
     environment: createDefaultRoomEnvironment(),
+    colorId,
   };
 }
 
@@ -155,6 +157,7 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-1',
     name: 'Room #1',
+    colorId: 'slate',
     environment: {
       temperatureC: 24.2,
       humidityPct: 58,
@@ -213,6 +216,7 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-2',
     name: 'Room #2',
+    colorId: 'sky',
     environment: {
       temperatureC: 23.6,
       humidityPct: 64,
@@ -256,6 +260,7 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-3',
     name: 'Room #3',
+    colorId: 'lavender',
     environment: {
       temperatureC: 25.1,
       humidityPct: 55,
@@ -284,6 +289,7 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-default',
     name: 'Default Room',
+    colorId: 'slate',
     environment: createDefaultRoomEnvironment(),
     machines: [],
   },
