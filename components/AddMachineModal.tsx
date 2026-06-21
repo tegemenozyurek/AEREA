@@ -90,9 +90,13 @@ function ModalHeader({
           <Text style={[styles.stepLabel, { fontSize: scale(11) }]}>{stepLabel}</Text>
         ) : null}
         <Text style={[styles.title, { fontSize: scale(18) }]}>{title}</Text>
-        {subtitle ? (
-          <Text style={[styles.subtitle, { fontSize: scale(13), marginTop: scale(4) }]}>{subtitle}</Text>
-        ) : null}
+        <View style={{ minHeight: scale(34), justifyContent: 'center' }}>
+          {subtitle ? (
+            <Text style={[styles.subtitle, { fontSize: scale(13), marginTop: scale(4) }]} numberOfLines={2}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       <View style={[styles.headerSide, styles.headerSideRight, { width: scale(32) }]}>
@@ -254,40 +258,62 @@ function DropdownField({
 type OptionRowProps = {
   label: string;
   selected: boolean;
-  onPress: () => void;
+  onPress?: () => void;
   scale: (value: number) => number;
   inMenu?: boolean;
+  disabled?: boolean;
+  badge?: string;
 };
 
-function OptionRow({ label, selected, onPress, scale, inMenu }: OptionRowProps) {
-  return (
-    <TouchableOpacity
-      style={[
-        inMenu ? styles.menuOption : styles.optionRow,
-        {
-          paddingVertical: scale(11),
-          paddingHorizontal: scale(12),
-          borderRadius: inMenu ? 0 : scale(10),
-        },
-        selected && (inMenu ? styles.menuOptionSelected : styles.optionRowSelected),
-      ]}
-      activeOpacity={0.7}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-    >
+function OptionRow({ label, selected, onPress, scale, inMenu, disabled, badge }: OptionRowProps) {
+  const content = (
+    <>
       <Text
         style={[
           styles.optionText,
           { fontSize: scale(14) },
           selected && styles.optionTextSelected,
+          disabled && styles.optionTextDisabled,
         ]}
       >
         {label}
       </Text>
-      {selected ? (
+      {badge ? (
+        <Text style={[styles.optionBadge, { fontSize: scale(11) }]}>{badge}</Text>
+      ) : selected ? (
         <Ionicons name={inMenu ? 'checkmark' : 'checkmark-circle'} size={scale(18)} color="#60A5FA" />
       ) : null}
+    </>
+  );
+
+  const rowStyle = [
+    inMenu ? styles.menuOption : styles.optionRow,
+    {
+      paddingVertical: scale(11),
+      paddingHorizontal: scale(12),
+      borderRadius: inMenu ? 0 : scale(10),
+    },
+    selected && !disabled && (inMenu ? styles.menuOptionSelected : styles.optionRowSelected),
+    disabled && styles.menuOptionDisabled,
+  ];
+
+  if (disabled) {
+    return (
+      <View style={rowStyle} accessibilityRole="text" accessibilityLabel={`${label}, ${badge ?? 'unavailable'}`}>
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={rowStyle}
+      activeOpacity={0.7}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+    >
+      {content}
     </TouchableOpacity>
   );
 }
@@ -320,9 +346,11 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
   );
 
   const selectedPlantProfile = useMemo(
-    () => plantProfiles.find((profile) => profile.id === plantProfileId) ?? plantProfiles[0],
+    () => plantProfiles.find((profile) => profile.id === plantProfileId),
     [plantProfileId, plantProfiles],
   );
+
+  const plantProfileLabel = selectedPlantProfile?.name ?? 'None';
 
   const loadPlantProfiles = useCallback(async () => {
     setLoadingProfiles(true);
@@ -331,7 +359,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
       const profiles = await fetchPlantProfiles();
       setPlantProfiles(profiles);
       setPlantProfileId((current) =>
-        profiles.some((profile) => profile.id === current) ? current : (profiles[0]?.id ?? ''),
+        current && profiles.some((profile) => profile.id === current) ? current : '',
       );
       if (profiles.length === 0) {
         setProfilesError('No plant profiles found.');
@@ -363,6 +391,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
       setSelectedDevice(null);
       setRoomOpen(false);
       setPlantProfileOpen(false);
+      setPlantProfileId('');
       const initialRoom = getDefaultRoom(rooms);
       setRoomId(initialRoom?.id ?? '');
       setDraftName(suggestMachineName(initialRoom));
@@ -377,6 +406,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
     setRoomId(getDefaultRoom(rooms)?.id ?? '');
     setRoomOpen(false);
     setPlantProfileOpen(false);
+    setPlantProfileId('');
     setStep('setup');
     if (plantProfiles.length === 0 && !loadingProfiles) {
       void loadPlantProfiles();
@@ -402,6 +432,17 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
 
   const canSave = Boolean(draftName.trim() && roomId && plantProfileId && selectedDevice);
 
+  const sheetHeight = Math.min(r.height * 0.72, r.scale(560));
+  const sheetPadding = r.scale(18);
+  const headerSubtitle =
+    step === 'pair'
+      ? scanning
+        ? 'Scanning for nearby devices…'
+        : 'Select a device to continue'
+      : selectedDevice
+        ? `${selectedDevice.model} · ${formatDeviceId(selectedDevice.id)}`
+        : 'Configure your machine';
+
   if (!visible) {
     return null;
   }
@@ -414,47 +455,53 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
             styles.sheet,
             {
               borderRadius: r.scale(18),
-              padding: r.scale(18),
+              padding: sheetPadding,
               maxWidth: r.contentMaxWidth,
-              maxHeight: '88%',
+              height: sheetHeight,
             },
           ]}
           onPress={(e) => e.stopPropagation()}
         >
+          <ModalHeader
+            title={step === 'pair' ? 'Pair machine' : 'Set up machine'}
+            stepLabel={step === 'pair' ? 'Step 1 of 2' : 'Step 2 of 2'}
+            subtitle={headerSubtitle}
+            onClose={onClose}
+            onBack={
+              step === 'setup'
+                ? () => {
+                    setStep('pair');
+                    setSelectedDevice(null);
+                  }
+                : undefined
+            }
+            scale={r.scale}
+            rightAction={
+              step === 'pair' ? (
+                <Pressable
+                  style={[
+                    styles.iconButton,
+                    { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+                    scanning && styles.iconButtonDisabled,
+                  ]}
+                  onPress={() => void loadNearbyDevices()}
+                  disabled={scanning}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Refresh scan"
+                >
+                  {scanning ? (
+                    <ActivityIndicator size="small" color="#93C5FD" />
+                  ) : (
+                    <Ionicons name="refresh" size={r.scale(17)} color="#fff" />
+                  )}
+                </Pressable>
+              ) : undefined
+            }
+          />
+
           {step === 'pair' ? (
             <>
-              <ModalHeader
-                title="Pair machine"
-                stepLabel="Step 1 of 2"
-                subtitle={
-                  scanning
-                    ? 'Scanning for nearby devices…'
-                    : 'Select a device to continue'
-                }
-                onClose={onClose}
-                scale={r.scale}
-                rightAction={
-                  <Pressable
-                    style={[
-                      styles.iconButton,
-                      { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
-                      scanning && styles.iconButtonDisabled,
-                    ]}
-                    onPress={() => void loadNearbyDevices()}
-                    disabled={scanning}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Refresh scan"
-                  >
-                    {scanning ? (
-                      <ActivityIndicator size="small" color="#93C5FD" />
-                    ) : (
-                      <Ionicons name="refresh" size={r.scale(17)} color="#fff" />
-                    )}
-                  </Pressable>
-                }
-              />
-
               <View
                 style={[
                   styles.bluetoothBanner,
@@ -492,20 +539,23 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
               </View>
 
               <ScrollView
-                style={{ marginTop: r.scale(14) }}
-                contentContainerStyle={{ paddingBottom: r.scale(4) }}
+                style={styles.stepBody}
+                contentContainerStyle={[
+                  styles.stepBodyContent,
+                  { paddingTop: r.scale(14), paddingBottom: r.scale(4) },
+                ]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
                 {scanning && availableDevices.length === 0 ? (
-                  <View style={[styles.centerState, { paddingVertical: r.scale(40) }]}>
+                  <View style={[styles.centerState, styles.stepBodyFill]}>
                     <ActivityIndicator size="small" color="#93C5FD" />
                     <Text style={[styles.centerStateText, { fontSize: r.scale(14), marginTop: r.scale(12) }]}>
                       Looking for devices…
                     </Text>
                   </View>
                 ) : availableDevices.length === 0 ? (
-                  <View style={[styles.centerState, { paddingVertical: r.scale(32) }]}>
+                  <View style={[styles.centerState, styles.stepBodyFill]}>
                     <Ionicons name="bluetooth-outline" size={r.scale(28)} color="rgba(255,255,255,0.3)" />
                     <Text style={[styles.centerStateText, { fontSize: r.scale(14), marginTop: r.scale(12) }]}>
                       No devices found
@@ -527,111 +577,119 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
               </ScrollView>
             </>
           ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingBottom: r.scale(4) }}
-            >
-              <ModalHeader
-                title="Set up machine"
-                stepLabel="Step 2 of 2"
-                subtitle={
-                  selectedDevice
-                    ? `${selectedDevice.model} · ${formatDeviceId(selectedDevice.id)}`
-                    : undefined
-                }
-                onClose={onClose}
-                onBack={() => {
-                  setStep('pair');
-                  setSelectedDevice(null);
-                }}
-                scale={r.scale}
-              />
-
-              <View style={[styles.formSection, { marginTop: r.scale(20) }]}>
-                <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginBottom: r.scale(8) }]}>
-                  Name
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      paddingVertical: r.scale(12),
-                      paddingHorizontal: r.scale(14),
-                      borderRadius: r.scale(12),
-                      fontSize: r.scale(16),
-                    },
-                  ]}
-                  value={draftName}
-                  onChangeText={setDraftName}
-                  placeholder="Machine name"
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  autoFocus
-                  selectTextOnFocus
-                  maxLength={64}
-                  returnKeyType="done"
-                  onSubmitEditing={handleSave}
-                />
-              </View>
-
-              <DropdownField
-                label="Room"
-                value={selectedRoom?.name ?? 'Select room'}
-                open={roomOpen}
-                onToggle={() => {
-                  setRoomOpen((open) => !open);
-                  setPlantProfileOpen(false);
-                }}
-                scale={r.scale}
+            <>
+              <ScrollView
+                style={styles.stepBody}
+                contentContainerStyle={[
+                  styles.stepBodyContent,
+                  { paddingTop: r.scale(20), paddingBottom: r.scale(8) },
+                ]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
-                {rooms.map((room) => (
-                  <OptionRow
-                    key={room.id}
-                    label={room.name}
-                    selected={room.id === roomId}
-                    inMenu
-                    onPress={() => {
-                      setRoomId(room.id);
-                      setRoomOpen(false);
-                    }}
-                    scale={r.scale}
+                <View style={styles.formSection}>
+                  <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginBottom: r.scale(8) }]}>
+                    Name
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        paddingVertical: r.scale(12),
+                        paddingHorizontal: r.scale(14),
+                        borderRadius: r.scale(12),
+                        fontSize: r.scale(16),
+                      },
+                    ]}
+                    value={draftName}
+                    onChangeText={setDraftName}
+                    placeholder="Machine name"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    autoFocus
+                    selectTextOnFocus
+                    maxLength={64}
+                    returnKeyType="done"
+                    onSubmitEditing={handleSave}
                   />
-                ))}
-              </DropdownField>
+                </View>
 
-              <DropdownField
-                label="Plant profile"
-                value={selectedPlantProfile?.name ?? 'Select profile'}
-                open={plantProfileOpen}
-                loading={loadingProfiles}
-                error={profilesError}
-                onRetry={() => void loadPlantProfiles()}
-                onToggle={() => {
-                  setPlantProfileOpen((open) => !open);
-                  setRoomOpen(false);
-                }}
-                scale={r.scale}
-              >
-                {plantProfiles.map((profile) => (
+                <DropdownField
+                  label="Room"
+                  value={selectedRoom?.name ?? 'Select room'}
+                  open={roomOpen}
+                  onToggle={() => {
+                    setRoomOpen((open) => !open);
+                    setPlantProfileOpen(false);
+                  }}
+                  scale={r.scale}
+                >
+                  {rooms.map((room) => (
+                    <OptionRow
+                      key={room.id}
+                      label={room.name}
+                      selected={room.id === roomId}
+                      inMenu
+                      onPress={() => {
+                        setRoomId(room.id);
+                        setRoomOpen(false);
+                      }}
+                      scale={r.scale}
+                    />
+                  ))}
+                </DropdownField>
+
+                <DropdownField
+                  label="Plant profile"
+                  value={plantProfileLabel}
+                  open={plantProfileOpen}
+                  loading={loadingProfiles}
+                  error={profilesError}
+                  onRetry={() => void loadPlantProfiles()}
+                  onToggle={() => {
+                    setPlantProfileOpen((open) => !open);
+                    setRoomOpen(false);
+                  }}
+                  scale={r.scale}
+                >
                   <OptionRow
-                    key={profile.id}
-                    label={profile.name}
-                    selected={profile.id === plantProfileId}
+                    label="None"
+                    selected={!plantProfileId}
                     inMenu
                     onPress={() => {
-                      setPlantProfileId(profile.id);
+                      setPlantProfileId('');
                       setPlantProfileOpen(false);
                     }}
                     scale={r.scale}
                   />
-                ))}
-              </DropdownField>
+                  {plantProfiles.map((profile) => (
+                    <OptionRow
+                      key={profile.id}
+                      label={profile.name}
+                      selected={profile.id === plantProfileId}
+                      inMenu
+                      onPress={() => {
+                        setPlantProfileId(profile.id);
+                        setPlantProfileOpen(false);
+                      }}
+                      scale={r.scale}
+                    />
+                  ))}
+                  <OptionRow
+                    label="Custom profile"
+                    selected={false}
+                    inMenu
+                    disabled
+                    badge="Soon"
+                    scale={r.scale}
+                  />
+                </DropdownField>
+              </ScrollView>
 
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
                   {
-                    marginTop: r.scale(24),
+                    marginTop: r.scale(12),
                     paddingVertical: r.scale(14),
                     borderRadius: r.scale(12),
                   },
@@ -643,7 +701,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
               >
                 <Text style={[styles.primaryButtonText, { fontSize: r.scale(15) }]}>Add machine</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </>
           )}
         </Pressable>
       </Pressable>
@@ -664,6 +722,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15,23,42,0.96)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
+  },
+  stepBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+  stepBodyContent: {
+    flexGrow: 1,
+  },
+  stepBodyFill: {
+    flex: 1,
+    minHeight: 120,
+    justifyContent: 'center',
+    paddingVertical: 24,
   },
   header: {
     flexDirection: 'row',
@@ -828,6 +900,18 @@ const styles = StyleSheet.create({
   },
   menuOptionSelected: {
     backgroundColor: 'rgba(96,165,250,0.12)',
+  },
+  menuOptionDisabled: {
+    opacity: 0.55,
+  },
+  optionBadge: {
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  optionTextDisabled: {
+    color: 'rgba(255,255,255,0.45)',
   },
   optionRow: {
     flexDirection: 'row',
