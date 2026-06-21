@@ -94,6 +94,15 @@ export async function fetchNearbyMachines(): Promise<NearbyMachine[]> {
   return MOCK_NEARBY_MACHINES;
 }
 
+/** Firestore `plantProfiles` document ids — keep in sync with seeded collection. */
+export const PLANT_PROFILE_IDS = {
+  lettuce: 'lettuce',
+  basil: 'basil',
+  strawberry: 'strawberry',
+  mint: 'mint',
+  cherryTomato: 'cherry-tomato',
+} as const;
+
 /** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */
 export const MOCK_ROOMS: Room[] = [
   {
@@ -102,12 +111,13 @@ export const MOCK_ROOMS: Room[] = [
     machines: [
       {
         id: 'r1-machine-1',
-        name: 'Machine #1 - Tomato 🍅',
+        name: 'Machine #1 - Cherry Tomato 🍅',
         model: 'AEREA1',
         deviceId: '12487',
+        plantProfileId: PLANT_PROFILE_IDS.cherryTomato,
         online: true,
-        ppm: 1200,
-        ph: 6.2,
+        ppm: 1580,
+        ph: 6.3,
         phDown: 0,
         phUp: 0,
         waterLevel: 80,
@@ -119,6 +129,7 @@ export const MOCK_ROOMS: Room[] = [
         name: 'Machine #2 - Strawberry 🍓',
         model: 'AEREA2 mini',
         deviceId: '39281',
+        plantProfileId: PLANT_PROFILE_IDS.strawberry,
         online: false,
         ppm: 980,
         ph: 5.8,
@@ -130,12 +141,13 @@ export const MOCK_ROOMS: Room[] = [
       },
       {
         id: 'r1-machine-3',
-        name: 'Machine #3 - Pepper 🌶️',
+        name: 'Machine #3 - Basil 🌿',
         model: 'AEREA1',
         deviceId: '98732',
+        plantProfileId: PLANT_PROFILE_IDS.basil,
         online: true,
-        ppm: 1100,
-        ph: 6.5,
+        ppm: 900,
+        ph: 6.2,
         phDown: 0,
         phUp: 1,
         waterLevel: 92,
@@ -150,12 +162,13 @@ export const MOCK_ROOMS: Room[] = [
     machines: [
       {
         id: 'r2-machine-1',
-        name: 'Machine #1 - Cucumber 🥒',
+        name: 'Machine #1 - Lettuce 🥬',
         model: 'AEREA1',
         deviceId: '45621',
+        plantProfileId: PLANT_PROFILE_IDS.lettuce,
         online: true,
-        ppm: 1050,
-        ph: 6.1,
+        ppm: 700,
+        ph: 6.0,
         phDown: 0,
         phUp: 0,
         waterLevel: 74,
@@ -167,6 +180,7 @@ export const MOCK_ROOMS: Room[] = [
         name: 'Machine #2 - Mint 🍃',
         model: 'AEREA2 mini',
         deviceId: '77309',
+        plantProfileId: PLANT_PROFILE_IDS.mint,
         online: false,
         ppm: 640,
         ph: 5.9,
@@ -184,12 +198,13 @@ export const MOCK_ROOMS: Room[] = [
     machines: [
       {
         id: 'r3-machine-1',
-        name: 'Machine #1 - Kale 🥗',
+        name: 'Machine #1 - Basil 🌿',
         model: 'AEREA1',
         deviceId: '58194',
+        plantProfileId: PLANT_PROFILE_IDS.basil,
         online: true,
-        ppm: 900,
-        ph: 6.4,
+        ppm: 880,
+        ph: 6.2,
         phDown: 0,
         phUp: 1,
         waterLevel: 81,
