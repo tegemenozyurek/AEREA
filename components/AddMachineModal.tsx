@@ -18,7 +18,7 @@ import type { PlantProfile } from '../types/plantProfile';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
 
-type Step = 'pair' | 'setup';
+type Step = 'pair' | 'setup' | 'profile';
 
 type Props = {
   visible: boolean;
@@ -263,21 +263,25 @@ type OptionRowProps = {
   inMenu?: boolean;
   disabled?: boolean;
   badge?: string;
+  icon?: string;
 };
 
-function OptionRow({ label, selected, onPress, scale, inMenu, disabled, badge }: OptionRowProps) {
+function OptionRow({ label, selected, onPress, scale, inMenu, disabled, badge, icon }: OptionRowProps) {
   const content = (
     <>
-      <Text
-        style={[
-          styles.optionText,
-          { fontSize: scale(14) },
-          selected && styles.optionTextSelected,
-          disabled && styles.optionTextDisabled,
-        ]}
-      >
-        {label}
-      </Text>
+      <View style={styles.optionLabelWrap}>
+        {icon ? <Text style={[styles.optionIcon, { fontSize: scale(16) }]}>{icon}</Text> : null}
+        <Text
+          style={[
+            styles.optionText,
+            { fontSize: scale(14) },
+            selected && styles.optionTextSelected,
+            disabled && styles.optionTextDisabled,
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
       {badge ? (
         <Text style={[styles.optionBadge, { fontSize: scale(11) }]}>{badge}</Text>
       ) : selected ? (
@@ -318,6 +322,278 @@ function OptionRow({ label, selected, onPress, scale, inMenu, disabled, badge }:
   );
 }
 
+type ProfileMetricsDetailsProps = {
+  profile: PlantProfile;
+  scale: (value: number) => number;
+};
+
+function ProfileMetricsDetails({ profile, scale }: ProfileMetricsDetailsProps) {
+  const optimumGroupWidth = scale(118);
+
+  const renderRow = (
+    optimumLabel: string,
+    optimumValue: string | number,
+    toleranceValue: string | number,
+  ) => (
+    <View style={[styles.profileMetricRow, { gap: scale(12) }]}>
+      <View style={[styles.profileMetricGroup, { width: optimumGroupWidth, gap: scale(6) }]}>
+        <Text style={[styles.profileMetricLabel, { fontSize: scale(10) }]}>{optimumLabel}</Text>
+        <Text style={[styles.profileMetricValue, { fontSize: scale(11) }]}>{optimumValue}</Text>
+      </View>
+      <View style={[styles.profileMetricGroup, { gap: scale(6) }]}>
+        <Text style={[styles.profileMetricLabel, { fontSize: scale(10) }]}>Tolerance</Text>
+        <Text style={[styles.profileMetricValue, { fontSize: scale(11) }]}>±{toleranceValue}</Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={[styles.profileMetrics, { marginTop: scale(6), gap: scale(6) }]}>
+      {renderRow('Optimum pH', profile.optimum_pH, profile.pH_tolerance)}
+      {renderRow('Optimum PPM', profile.optimumPPM, profile.PPM_tolerance)}
+    </View>
+  );
+}
+
+type ProfileBadgeProps = {
+  emoji?: string;
+  ionIcon?: React.ComponentProps<typeof Ionicons>['name'];
+  ionColor?: string;
+  isNone?: boolean;
+  selected?: boolean;
+  scale: (value: number) => number;
+  size?: 'sm' | 'md';
+};
+
+function ProfileBadge({
+  emoji,
+  ionIcon,
+  ionColor,
+  isNone,
+  selected,
+  scale,
+  size = 'md',
+}: ProfileBadgeProps) {
+  const dimension = size === 'md' ? scale(44) : scale(40);
+  const iconSize = size === 'md' ? scale(24) : scale(20);
+
+  return (
+    <View
+      style={[
+        styles.profileEmojiBadge,
+        {
+          width: dimension,
+          height: dimension,
+          borderRadius: dimension / 2,
+        },
+        isNone && styles.profileEmojiBadgeNone,
+        isNone && selected && styles.profileEmojiBadgeNoneSelected,
+        ionIcon && styles.profileEmojiBadgeCustom,
+        !isNone && !ionIcon && selected && styles.profileEmojiBadgeSelected,
+        !isNone && !ionIcon && !selected && styles.profileEmojiBadgeMuted,
+      ]}
+    >
+      {isNone ? (
+        <Ionicons name="remove-circle" size={iconSize} color="#F87171" />
+      ) : ionIcon ? (
+        <Ionicons name={ionIcon} size={iconSize} color={ionColor ?? '#C4B5FD'} />
+      ) : (
+        <Text style={[styles.profileEmoji, { fontSize: iconSize - 2 }]}>{emoji}</Text>
+      )}
+    </View>
+  );
+}
+
+type PlantProfileOptionProps = {
+  name: string;
+  icon?: string;
+  ionIcon?: React.ComponentProps<typeof Ionicons>['name'];
+  ionColor?: string;
+  profile?: PlantProfile;
+  subtitle?: string;
+  selected: boolean;
+  disabled?: boolean;
+  badge?: string;
+  isNone?: boolean;
+  onPress?: () => void;
+  scale: (value: number) => number;
+};
+
+function PlantProfileOption({
+  name,
+  icon,
+  ionIcon,
+  ionColor,
+  profile,
+  subtitle,
+  selected,
+  disabled,
+  badge,
+  isNone,
+  onPress,
+  scale,
+}: PlantProfileOptionProps) {
+  const row = (
+    <>
+      <ProfileBadge
+        emoji={icon}
+        ionIcon={ionIcon}
+        ionColor={ionColor}
+        isNone={isNone}
+        selected={selected}
+        scale={scale}
+        size="sm"
+      />
+      <View style={styles.profileOptionText}>
+        <Text
+          style={[
+            styles.profileOptionName,
+            { fontSize: scale(14) },
+            selected && styles.profileOptionNameSelected,
+            disabled && styles.profileOptionNameDisabled,
+          ]}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
+        {profile ? (
+          <ProfileMetricsDetails profile={profile} scale={scale} />
+        ) : subtitle ? (
+          <Text style={[styles.profileOptionSubtitle, { fontSize: scale(11), marginTop: scale(2) }]}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {badge ? (
+        <View style={[styles.soonBadge, { paddingHorizontal: scale(8), paddingVertical: scale(3), borderRadius: scale(8) }]}>
+          <Text style={[styles.soonBadgeText, { fontSize: scale(10) }]}>{badge}</Text>
+        </View>
+      ) : selected ? (
+        <Ionicons name="checkmark-circle" size={scale(20)} color="#60A5FA" />
+      ) : null}
+    </>
+  );
+
+  const rowStyle = [
+    styles.profileOption,
+    {
+      paddingVertical: profile ? scale(14) : scale(11),
+      paddingHorizontal: scale(12),
+      borderRadius: scale(12),
+      marginBottom: scale(8),
+      gap: scale(12),
+      minHeight: profile ? scale(72) : undefined,
+    },
+    selected && !disabled && styles.profileOptionSelected,
+    disabled && styles.profileOptionDisabled,
+  ];
+
+  if (disabled) {
+    return (
+      <View style={rowStyle} accessibilityRole="text">
+        {row}
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={rowStyle}
+      activeOpacity={0.7}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+    >
+      {row}
+    </TouchableOpacity>
+  );
+}
+
+type PlantProfileFieldProps = {
+  profiles: PlantProfile[];
+  selectedId: string;
+  loading: boolean;
+  error: string | null;
+  onSelect: (id: string) => void;
+  onRetry: () => void;
+  scale: (value: number) => number;
+};
+
+function PlantProfileField({
+  profiles,
+  selectedId,
+  loading,
+  error,
+  onSelect,
+  onRetry,
+  scale,
+}: PlantProfileFieldProps) {
+  const showRetry = Boolean(error) && !loading;
+
+  return (
+    <View style={[styles.formSection, { marginTop: scale(12) }]}>
+      <Text style={[styles.fieldLabel, { fontSize: scale(12), marginBottom: scale(10) }]}>
+        Plant profile
+      </Text>
+
+      {loading ? (
+        <View style={[styles.centerState, { paddingVertical: scale(32) }]}>
+          <ActivityIndicator size="small" color="#93C5FD" />
+        </View>
+      ) : showRetry ? (
+        <TouchableOpacity
+          style={[styles.retryBox, { padding: scale(14), borderRadius: scale(12) }]}
+          activeOpacity={0.7}
+          onPress={onRetry}
+        >
+          <Text style={[styles.retryText, { fontSize: scale(13) }]}>{error}</Text>
+          <Text style={[styles.retryAction, { fontSize: scale(13), marginTop: scale(4) }]}>Tap to retry</Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.profileList}>
+          <PlantProfileOption
+            name="None"
+            subtitle="No plant profile"
+            selected={!selectedId}
+            isNone
+            onPress={() => onSelect('')}
+            scale={scale}
+          />
+
+          {profiles.length > 0 ? (
+            <View style={[styles.profileMenuDivider, { marginVertical: scale(6) }]} />
+          ) : null}
+
+          {profiles.map((profile) => (
+            <PlantProfileOption
+              key={profile.id}
+              name={profile.name}
+              icon={profile.icon}
+              profile={profile}
+              selected={profile.id === selectedId}
+              onPress={() => onSelect(profile.id)}
+              scale={scale}
+            />
+          ))}
+
+          <View style={[styles.profileMenuDivider, { marginVertical: scale(6) }]} />
+
+          <PlantProfileOption
+            name="Custom profile"
+            ionIcon="extension-puzzle-outline"
+            ionColor="rgba(196,181,253,0.75)"
+            subtitle="Define your own targets"
+            selected={false}
+            disabled
+            badge="Soon"
+            scale={scale}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function AddMachineModal({ visible, rooms, onClose, onSave }: Props) {
   const r = useResponsive();
   const [step, setStep] = useState<Step>('pair');
@@ -331,7 +607,6 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [profilesError, setProfilesError] = useState<string | null>(null);
   const [plantProfileId, setPlantProfileId] = useState('');
-  const [plantProfileOpen, setPlantProfileOpen] = useState(false);
 
   const pairedDeviceIds = useMemo(() => getPairedDeviceIds(rooms), [rooms]);
 
@@ -344,13 +619,6 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
     () => rooms.find((room) => room.id === roomId) ?? getDefaultRoom(rooms),
     [roomId, rooms],
   );
-
-  const selectedPlantProfile = useMemo(
-    () => plantProfiles.find((profile) => profile.id === plantProfileId),
-    [plantProfileId, plantProfiles],
-  );
-
-  const plantProfileLabel = selectedPlantProfile?.name ?? 'None';
 
   const loadPlantProfiles = useCallback(async () => {
     setLoadingProfiles(true);
@@ -390,7 +658,6 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
       setStep('pair');
       setSelectedDevice(null);
       setRoomOpen(false);
-      setPlantProfileOpen(false);
       setPlantProfileId('');
       const initialRoom = getDefaultRoom(rooms);
       setRoomId(initialRoom?.id ?? '');
@@ -405,9 +672,17 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
     setDraftName(`${device.model} - ${formatDeviceId(device.id)}`);
     setRoomId(getDefaultRoom(rooms)?.id ?? '');
     setRoomOpen(false);
-    setPlantProfileOpen(false);
     setPlantProfileId('');
     setStep('setup');
+  };
+
+  const handleContinueToProfile = () => {
+    if (!draftName.trim() || !roomId) {
+      return;
+    }
+    setRoomOpen(false);
+    setPlantProfileId('');
+    setStep('profile');
     if (plantProfiles.length === 0 && !loadingProfiles) {
       void loadPlantProfiles();
     }
@@ -422,6 +697,10 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
   };
 
   const handleBackdropPress = () => {
+    if (step === 'profile') {
+      setStep('setup');
+      return;
+    }
     if (step === 'setup') {
       setStep('pair');
       setSelectedDevice(null);
@@ -430,18 +709,35 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
     onClose();
   };
 
-  const canSave = Boolean(draftName.trim() && roomId && plantProfileId && selectedDevice);
+  const canContinueSetup = Boolean(draftName.trim() && roomId && selectedDevice);
+  const canSave = Boolean(plantProfileId && selectedDevice && roomId && draftName.trim());
 
   const sheetHeight = Math.min(r.height * 0.72, r.scale(560));
   const sheetPadding = r.scale(18);
-  const headerSubtitle =
-    step === 'pair'
-      ? scanning
-        ? 'Scanning for nearby devices…'
-        : 'Select a device to continue'
-      : selectedDevice
-        ? `${selectedDevice.model} · ${formatDeviceId(selectedDevice.id)}`
-        : 'Configure your machine';
+
+  const headerConfig = useMemo(() => {
+    if (step === 'pair') {
+      return {
+        title: 'Pair machine',
+        stepLabel: 'Step 1 of 3',
+        subtitle: scanning ? 'Scanning for nearby devices…' : 'Select a device to continue',
+      };
+    }
+    if (step === 'setup') {
+      return {
+        title: 'Set up machine',
+        stepLabel: 'Step 2 of 3',
+        subtitle: selectedDevice
+          ? `${selectedDevice.model} · ${formatDeviceId(selectedDevice.id)}`
+          : 'Name your machine and choose a room',
+      };
+    }
+    return {
+      title: 'Plant profile',
+      stepLabel: 'Step 3 of 3',
+      subtitle: `${draftName.trim() || 'Machine'} · ${selectedRoom?.name ?? 'Room'}`,
+    };
+  }, [step, scanning, selectedDevice, draftName, selectedRoom?.name]);
 
   if (!visible) {
     return null;
@@ -463,13 +759,17 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
           onPress={(e) => e.stopPropagation()}
         >
           <ModalHeader
-            title={step === 'pair' ? 'Pair machine' : 'Set up machine'}
-            stepLabel={step === 'pair' ? 'Step 1 of 2' : 'Step 2 of 2'}
-            subtitle={headerSubtitle}
+            title={headerConfig.title}
+            stepLabel={headerConfig.stepLabel}
+            subtitle={headerConfig.subtitle}
             onClose={onClose}
             onBack={
-              step === 'setup'
+              step === 'setup' || step === 'profile'
                 ? () => {
+                    if (step === 'profile') {
+                      setStep('setup');
+                      return;
+                    }
                     setStep('pair');
                     setSelectedDevice(null);
                   }
@@ -576,7 +876,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                 )}
               </ScrollView>
             </>
-          ) : (
+          ) : step === 'setup' ? (
             <>
               <ScrollView
                 style={styles.stepBody}
@@ -608,8 +908,8 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                     autoFocus
                     selectTextOnFocus
                     maxLength={64}
-                    returnKeyType="done"
-                    onSubmitEditing={handleSave}
+                    returnKeyType="next"
+                    onSubmitEditing={handleContinueToProfile}
                   />
                 </View>
 
@@ -617,10 +917,7 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                   label="Room"
                   value={selectedRoom?.name ?? 'Select room'}
                   open={roomOpen}
-                  onToggle={() => {
-                    setRoomOpen((open) => !open);
-                    setPlantProfileOpen(false);
-                  }}
+                  onToggle={() => setRoomOpen((open) => !open)}
                   scale={r.scale}
                 >
                   {rooms.map((room) => (
@@ -637,52 +934,45 @@ export default function AddMachineModal({ visible, rooms, onClose, onSave }: Pro
                     />
                   ))}
                 </DropdownField>
+              </ScrollView>
 
-                <DropdownField
-                  label="Plant profile"
-                  value={plantProfileLabel}
-                  open={plantProfileOpen}
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  {
+                    marginTop: r.scale(12),
+                    paddingVertical: r.scale(14),
+                    borderRadius: r.scale(12),
+                  },
+                  !canContinueSetup && styles.primaryButtonDisabled,
+                ]}
+                activeOpacity={0.7}
+                onPress={handleContinueToProfile}
+                disabled={!canContinueSetup}
+              >
+                <Text style={[styles.primaryButtonText, { fontSize: r.scale(15) }]}>Continue</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <ScrollView
+                style={styles.stepBody}
+                contentContainerStyle={[
+                  styles.stepBodyContent,
+                  { paddingTop: r.scale(12), paddingBottom: r.scale(8) },
+                ]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <PlantProfileField
+                  profiles={plantProfiles}
+                  selectedId={plantProfileId}
                   loading={loadingProfiles}
                   error={profilesError}
+                  onSelect={setPlantProfileId}
                   onRetry={() => void loadPlantProfiles()}
-                  onToggle={() => {
-                    setPlantProfileOpen((open) => !open);
-                    setRoomOpen(false);
-                  }}
                   scale={r.scale}
-                >
-                  <OptionRow
-                    label="None"
-                    selected={!plantProfileId}
-                    inMenu
-                    onPress={() => {
-                      setPlantProfileId('');
-                      setPlantProfileOpen(false);
-                    }}
-                    scale={r.scale}
-                  />
-                  {plantProfiles.map((profile) => (
-                    <OptionRow
-                      key={profile.id}
-                      label={profile.name}
-                      selected={profile.id === plantProfileId}
-                      inMenu
-                      onPress={() => {
-                        setPlantProfileId(profile.id);
-                        setPlantProfileOpen(false);
-                      }}
-                      scale={r.scale}
-                    />
-                  ))}
-                  <OptionRow
-                    label="Custom profile"
-                    selected={false}
-                    inMenu
-                    disabled
-                    badge="Soon"
-                    scale={r.scale}
-                  />
-                </DropdownField>
+                />
               </ScrollView>
 
               <TouchableOpacity
@@ -862,6 +1152,123 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
   },
+  profileList: {
+    gap: 0,
+  },
+  retryBox: {
+    backgroundColor: 'rgba(248,113,113,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(248,113,113,0.25)',
+    alignItems: 'center',
+  },
+  retryText: {
+    color: 'rgba(252,165,165,0.9)',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  retryAction: {
+    color: '#93C5FD',
+    fontWeight: '600',
+  },
+  profileMenuDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  profileOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  profileOptionSelected: {
+    backgroundColor: 'rgba(96,165,250,0.12)',
+    borderColor: 'rgba(96,165,250,0.35)',
+  },
+  profileOptionDisabled: {
+    opacity: 0.5,
+    borderStyle: 'dashed',
+  },
+  profileEmojiBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  profileEmojiBadgeSelected: {
+    backgroundColor: 'rgba(52,211,153,0.14)',
+    borderColor: 'rgba(52,211,153,0.35)',
+  },
+  profileEmojiBadgeNone: {
+    backgroundColor: 'rgba(248,113,113,0.1)',
+    borderColor: 'rgba(248,113,113,0.28)',
+  },
+  profileEmojiBadgeNoneSelected: {
+    backgroundColor: 'rgba(248,113,113,0.16)',
+    borderColor: 'rgba(248,113,113,0.45)',
+  },
+  profileEmojiBadgeCustom: {
+    backgroundColor: 'rgba(167,139,250,0.1)',
+    borderColor: 'rgba(167,139,250,0.25)',
+  },
+  profileEmojiBadgeMuted: {
+    opacity: 0.7,
+  },
+  profileEmojiBadgeDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  profileEmoji: {
+    textAlign: 'center',
+  },
+  profileOptionText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  profileOptionName: {
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+  },
+  profileOptionNameSelected: {
+    color: '#fff',
+  },
+  profileOptionNameDisabled: {
+    color: 'rgba(255,255,255,0.5)',
+  },
+  profileOptionSubtitle: {
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '500',
+  },
+  profileMetrics: {},
+  profileMetricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileMetricGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileMetricLabel: {
+    color: 'rgba(255,255,255,0.38)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
+  },
+  profileMetricValue: {
+    color: 'rgba(255,255,255,0.72)',
+    fontWeight: '600',
+  },
+  soonBadge: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  soonBadgeText: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   dropdownWrap: {
     position: 'relative',
   },
@@ -897,6 +1304,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  optionLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
+  },
+  optionIcon: {
+    lineHeight: 20,
   },
   menuOptionSelected: {
     backgroundColor: 'rgba(96,165,250,0.12)',

@@ -11,6 +11,7 @@ export async function fetchPlantProfiles(): Promise<PlantProfile[]> {
       return {
         id: doc.id,
         name: typeof data.name === 'string' ? data.name : doc.id,
+        icon: typeof data.icon === 'string' ? data.icon : '🌱',
         optimum_pH: Number(data.optimum_pH),
         pH_tolerance: Number(data.pH_tolerance),
         optimumPPM: Number(data.optimumPPM),
