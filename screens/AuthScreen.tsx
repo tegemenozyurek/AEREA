@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,10 +13,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinkableText from '../components/LinkableText';
 import { useAuth } from '../contexts/AuthContext';
 import { useResponsive } from '../utils/responsive';
 
+type AuthScreenProps = {
+  linkMessage?: string | null;
+  onClearLinkMessage?: () => void;
+};
+
 type AuthMode = 'login' | 'register';
+type LoginHelp = 'none' | 'credentials' | 'unverified';
 
 const LOGO_ASPECT_RATIO = 1390 / 694;
 
@@ -33,25 +41,46 @@ const PASSWORD_RULES: { test: (s: string) => boolean; label: string }[] = [
   { test: (s) => /\d/.test(s), label: 'One number' },
 ];
 
-export default function AuthScreen() {
+export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [loginHelp, setLoginHelp] = useState<LoginHelp>('none');
   const [loading, setLoading] = useState(false);
 
-  const { login, register } = useAuth();
+  const { login, register, resendVerificationEmail, resetPassword } = useAuth();
   const r = useResponsive();
   const isLogin = mode === 'login';
 
+  useEffect(() => {
+    if (linkMessage) {
+      setInfo(linkMessage);
+      onClearLinkMessage?.();
+    }
+  }, [linkMessage, onClearLinkMessage]);
+
+  const openEmailApp = () => {
+    void Linking.openURL(Platform.OS === 'ios' ? 'message://' : 'mailto:');
+  };
+
+  const clearFeedback = () => {
+    setError(null);
+    setInfo(null);
+    setLoginHelp('none');
+  };
+
   const handleModeChange = (next: AuthMode) => {
     setMode(next);
-    setError(null);
+    clearFeedback();
   };
 
   const handleSubmit = async () => {
     setError(null);
+    setInfo(null);
+    setLoginHelp('none');
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
@@ -65,6 +94,11 @@ export default function AuthScreen() {
       setLoading(false);
       if (!result.ok) {
         setError(result.error);
+        if (result.code === 'auth/email-not-verified') {
+          setLoginHelp('unverified');
+        } else {
+          setLoginHelp('credentials');
+        }
       }
       return;
     }
@@ -84,7 +118,49 @@ export default function AuthScreen() {
     setLoading(false);
     if (!result.ok) {
       setError(result.error);
+      return;
     }
+    setInfo(
+      `Verification email sent to ${trimmedEmail}. Open your inbox and tap the verification link, then sign in.`,
+    );
+    setLoginHelp('none');
+    setMode('login');
+  };
+
+  const handleResendVerification = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError('Enter your email and password to resend the verification email.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const result = await resendVerificationEmail(trimmedEmail, password);
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setInfo(`Verification email sent to ${trimmedEmail}.`);
+    setLoginHelp('none');
+  };
+
+  const handleResetPassword = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError('Enter your email to reset your password.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const result = await resetPassword(trimmedEmail);
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setInfo(`Password reset email sent to ${trimmedEmail}.`);
+    setLoginHelp('none');
   };
 
   return (
@@ -144,7 +220,11 @@ export default function AuthScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (loginHelp !== 'none') setLoginHelp('none');
+                    setError(null);
+                  }}
                   editable={!loading}
                 />
                 <View>
@@ -154,7 +234,11 @@ export default function AuthScreen() {
                     placeholderTextColor="rgba(255,255,255,0.6)"
                     secureTextEntry
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (loginHelp !== 'none') setLoginHelp('none');
+                      setError(null);
+                    }}
                     editable={!loading}
                   />
                   {!isLogin && (
@@ -185,7 +269,86 @@ export default function AuthScreen() {
                   />
                 )}
 
-                {error && <Text style={styles.errorText}>{error}</Text>}
+                {error && <LinkableText text={error} style={styles.errorText} linkStyle={styles.errorLink} />}
+
+                {info && (
+                  <View style={styles.infoBanner}>
+                    <LinkableText text={info} style={styles.infoText} linkStyle={styles.infoLink} />
+                    <View style={styles.infoActions}>
+                      <TouchableOpacity
+                        style={styles.openMailButton}
+                        onPress={openEmailApp}
+                        disabled={loading}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.openMailButtonText}>Open email app</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => setInfo(null)}
+                        hitSlop={8}
+                        accessibilityLabel="Dismiss message"
+                      >
+                        <Text style={styles.dismissText}>Dismiss</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {isLogin && loginHelp !== 'none' && (
+                  <View style={styles.helpBox}>
+                    <Text style={styles.helpTitle}>Need help?</Text>
+                    {loginHelp === 'unverified' ? (
+                      <>
+                        <Text style={styles.helpHint}>
+                          Your account exists but the email is not verified yet.
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.helpAction}
+                          onPress={() => void handleResendVerification()}
+                          disabled={loading}
+                        >
+                          <Text style={styles.helpActionText}>Resend verification email</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.helpActionSecondary}
+                          onPress={openEmailApp}
+                          disabled={loading}
+                        >
+                          <Text style={styles.helpActionSecondaryText}>Open email app</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.helpHint}>
+                          Check your email and password, or use one of the options below.
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.helpAction}
+                          onPress={() => void handleResetPassword()}
+                          disabled={loading}
+                        >
+                          <Text style={styles.helpActionText}>Reset password</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.helpActionSecondary}
+                          onPress={() => void handleResendVerification()}
+                          disabled={loading}
+                        >
+                          <Text style={styles.helpActionSecondaryText}>
+                            Resend verification email
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    <TouchableOpacity
+                      style={styles.helpDismiss}
+                      onPress={() => setLoginHelp('none')}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.dismissText}>Dismiss</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 <TouchableOpacity
                   style={[styles.submitButton, loading && styles.submitButtonDisabled]}
@@ -338,5 +501,98 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     marginTop: -2,
+  },
+  infoText: {
+    color: '#BAE6FD',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 18,
+    flex: 1,
+  },
+  infoBanner: {
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  infoActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  helpBox: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  helpTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  helpHint: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+  },
+  helpAction: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  helpActionText: {
+    color: '#BAE6FD',
+    fontSize: 13,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  helpActionSecondary: {
+    alignSelf: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  helpActionSecondaryText: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  helpDismiss: {
+    alignSelf: 'center',
+    paddingTop: 4,
+  },
+  dismissText: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  infoLink: {
+    color: '#E0F2FE',
+  },
+  errorLink: {
+    color: '#FFD4D4',
+  },
+  openMailButton: {
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  openMailButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
