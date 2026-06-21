@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AddMachineModal from '../components/AddMachineModal';
+import RoomAlertsBanner from '../components/RoomAlertsBanner';
 import RoomEditModal from '../components/RoomEditModal';
 import RoomSection from '../components/RoomSection';
 import {
@@ -14,11 +15,20 @@ import {
   isDefaultRoom,
   MOCK_ROOMS,
   refreshRoomMetrics,
+  refreshSingleRoom,
   type NearbyMachine,
 } from '../data/mockMachines';
+import type { RoomColorId } from '../constants/roomColors';
 import type { Machine } from '../types/machine';
+import type { PlantProfile } from '../types/plantProfile';
+import { CUSTOM_PLANT_PROFILE_ID } from '../types/plantProfile';
 import type { Room } from '../types/room';
+import { useMachinesAlerts } from '../contexts/MachinesAlertsContext';
 import { useResponsive } from '../utils/responsive';
+import {
+  getRoomAlertSummaries,
+  getRoomAlertSummariesSignature,
+} from '../utils/roomEnvironmentAlerts';
 import MachineDetailScreen from './MachineDetailScreen';
 
 type SelectedMachine = {
@@ -34,6 +44,7 @@ type EditingRoom = {
 
 export default function MachinesScreen() {
   const r = useResponsive();
+  const { syncRooms } = useMachinesAlerts();
   const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
@@ -41,12 +52,20 @@ export default function MachinesScreen() {
   const [addMachineOpen, setAddMachineOpen] = useState(false);
   const [addRoomOpen, setAddRoomOpen] = useState(false);
   const [addRoomForMachineId, setAddRoomForMachineId] = useState<string | null>(null);
+  const [refreshingRoomId, setRefreshingRoomId] = useState<string | null>(null);
+  const [dismissedAlertsSignature, setDismissedAlertsSignature] = useState<string | null>(null);
 
-  const handleMachinesChange = useCallback((roomId: string, machines: Machine[]) => {
-    setRooms((prev) =>
-      prev.map((room) => (room.id === roomId ? { ...room, machines } : room)),
-    );
-  }, []);
+  const roomAlertSummaries = useMemo(() => getRoomAlertSummaries(rooms), [rooms]);
+  const alertsSignature = useMemo(
+    () => getRoomAlertSummariesSignature(roomAlertSummaries),
+    [roomAlertSummaries],
+  );
+  const showAlertsBanner =
+    roomAlertSummaries.length > 0 && dismissedAlertsSignature !== alertsSignature;
+
+  useEffect(() => {
+    syncRooms(rooms);
+  }, [rooms, syncRooms]);
 
   const handleMachinePress = useCallback((machine: Machine, roomId: string, roomName: string) => {
     setSelectedMachine({ machine, roomId, roomName });
@@ -99,6 +118,43 @@ export default function MachinesScreen() {
     );
   }, []);
 
+  const handlePlantProfileChange = useCallback(
+    (machineId: string, plantProfileId: string, customPlantProfile?: PlantProfile) => {
+      const nextProfileId = plantProfileId || undefined;
+      const nextCustomProfile =
+        nextProfileId === CUSTOM_PLANT_PROFILE_ID ? customPlantProfile : undefined;
+
+      setRooms((prev) =>
+        prev.map((room) => ({
+          ...room,
+          machines: room.machines.map((machine) =>
+            machine.id === machineId
+              ? {
+                  ...machine,
+                  plantProfileId: nextProfileId,
+                  customPlantProfile: nextCustomProfile,
+                }
+              : machine,
+          ),
+        })),
+      );
+
+      setSelectedMachine((current) =>
+        current?.machine.id === machineId
+          ? {
+              ...current,
+              machine: {
+                ...current.machine,
+                plantProfileId: nextProfileId,
+                customPlantProfile: nextCustomProfile,
+              },
+            }
+          : current,
+      );
+    },
+    [],
+  );
+
   const handleEditRoomPress = useCallback(
     (room: Room) => {
       const index = rooms.findIndex((item) => item.id === room.id);
@@ -109,8 +165,8 @@ export default function MachinesScreen() {
     [rooms],
   );
 
-  const handleAddRoom = useCallback((name: string, position: number, moveMachineId?: string | null) => {
-    const room = createDefaultRoom(name);
+  const handleAddRoom = useCallback((name: string, position: number, colorId: RoomColorId, moveMachineId?: string | null) => {
+    const room = createDefaultRoom(name, colorId);
 
     setRooms((prev) => {
       const next = [...prev];
@@ -160,18 +216,25 @@ export default function MachinesScreen() {
     setAddRoomOpen(true);
   }, []);
 
-  const handleAddMachine = useCallback((name: string, roomId: string, device: NearbyMachine) => {
-    const machine = createDefaultMachine(roomId, name, {
-      deviceId: device.id,
-      model: device.model,
-    });
-    setRooms((prev) =>
-      prev.map((room) =>
-        room.id === roomId ? { ...room, machines: [...room.machines, machine] } : room,
-      ),
-    );
-    setAddMachineOpen(false);
-  }, []);
+  const handleAddMachine = useCallback(
+    (name: string, roomId: string, device: NearbyMachine, plantProfileId: string) => {
+      const machine = createDefaultMachine(roomId, name, {
+        deviceId: device.id,
+        model: device.model,
+        plantProfileId,
+      });
+      const roomName = rooms.find((room) => room.id === roomId)?.name ?? DEFAULT_ROOM_NAME;
+
+      setRooms((prev) =>
+        prev.map((room) =>
+          room.id === roomId ? { ...room, machines: [...room.machines, machine] } : room,
+        ),
+      );
+      setAddMachineOpen(false);
+      setSelectedMachine({ machine, roomId, roomName });
+    },
+    [rooms],
+  );
 
   const handleDeleteRoom = useCallback((roomId: string) => {
     if (isDefaultRoom(roomId)) {
@@ -212,7 +275,13 @@ export default function MachinesScreen() {
     setEditingRoom(null);
   }, []);
 
-  const handleSaveRoom = useCallback((roomId: string, name: string, position: number) => {
+  const handleSaveRoom = useCallback((
+    roomId: string,
+    name: string,
+    position: number,
+    colorId: RoomColorId,
+    machines: Machine[],
+  ) => {
     setRooms((prev) => {
       const currentIndex = prev.findIndex((room) => room.id === roomId);
       if (currentIndex === -1) {
@@ -221,7 +290,7 @@ export default function MachinesScreen() {
 
       const next = [...prev];
       const [room] = next.splice(currentIndex, 1);
-      const updatedRoom = { ...room, name };
+      const updatedRoom = { ...room, name, colorId, machines };
       const targetIndex = Math.max(0, Math.min(next.length, position - 1));
       next.splice(targetIndex, 0, updatedRoom);
       return next;
@@ -263,6 +332,15 @@ export default function MachinesScreen() {
     applyRoomMetricsRefresh();
   }, [applyRoomMetricsRefresh]);
 
+  const handleRefreshRoom = useCallback(async (roomId: string) => {
+    setRefreshingRoomId(roomId);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    setRooms((prev) =>
+      prev.map((room) => (room.id === roomId ? refreshSingleRoom(room) : room)),
+    );
+    setRefreshingRoomId(null);
+  }, []);
+
   if (selectedMachine) {
     return (
       <>
@@ -276,6 +354,9 @@ export default function MachinesScreen() {
           rooms={rooms}
           onRoomChange={(roomId) => handleMoveMachine(selectedMachine.machine.id, roomId)}
           onNameChange={(name) => handleRenameMachine(selectedMachine.machine.id, name)}
+          onPlantProfileChange={(plantProfileId, customPlantProfile) =>
+            handlePlantProfileChange(selectedMachine.machine.id, plantProfileId, customPlantProfile)
+          }
           onAddRoom={() => openAddRoomModal(selectedMachine.machine.id)}
           onBack={() => setSelectedMachine(null)}
           onRefresh={refreshMachineDetail}
@@ -287,7 +368,9 @@ export default function MachinesScreen() {
           position={rooms.length + 1}
           totalRooms={rooms.length + 1}
           onClose={closeAddRoomModal}
-          onSave={(name, position) => handleAddRoom(name, position, addRoomForMachineId)}
+          onSave={(name, position, colorId, _machines) =>
+            handleAddRoom(name, position, colorId, addRoomForMachineId)
+          }
         />
       </>
     );
@@ -301,9 +384,13 @@ export default function MachinesScreen() {
           roomName={editingRoom.room.name}
           position={editingRoom.index + 1}
           totalRooms={rooms.length}
+          roomColorId={editingRoom.room.colorId}
+          machines={editingRoom.room.machines}
           machineCount={editingRoom.room.machines.length}
           onClose={() => setEditingRoom(null)}
-          onSave={(name, position) => handleSaveRoom(editingRoom.room.id, name, position)}
+          onSave={(name, position, colorId, machines) =>
+            handleSaveRoom(editingRoom.room.id, name, position, colorId, machines)
+          }
           onDelete={
             isDefaultRoom(editingRoom.room.id)
               ? undefined
@@ -324,7 +411,9 @@ export default function MachinesScreen() {
         position={rooms.length + 1}
         totalRooms={rooms.length + 1}
         onClose={closeAddRoomModal}
-        onSave={(name, position) => handleAddRoom(name, position, addRoomForMachineId)}
+        onSave={(name, position, colorId, _machines) =>
+          handleAddRoom(name, position, colorId, addRoomForMachineId)
+        }
       />
       <View style={[styles.header, { paddingHorizontal: r.horizontalPadding }]}>
         <Text style={[styles.headerTitle, { fontSize: r.scale(22) }]}>Machines</Text>
@@ -372,13 +461,21 @@ export default function MachinesScreen() {
           />
         }
       >
+        {showAlertsBanner ? (
+          <RoomAlertsBanner
+            summaries={roomAlertSummaries}
+            onDismiss={() => setDismissedAlertsSignature(alertsSignature)}
+          />
+        ) : null}
+
         {rooms.map((room) => (
           <RoomSection
             key={room.id}
             room={room}
-            onMachinesChange={handleMachinesChange}
             onMachinePress={handleMachinePress}
             onEditPress={handleEditRoomPress}
+            onRefreshRoom={handleRefreshRoom}
+            refreshingRoom={refreshingRoomId === room.id}
           />
         ))}
 

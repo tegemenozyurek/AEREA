@@ -11,6 +11,7 @@ import { useEmailVerificationLink } from './hooks/useEmailVerificationLink';
 import { ChatProvider } from './contexts/ChatContext';
 import { CommunityProvider } from './contexts/CommunityContext';
 import { HomeNotificationsProvider } from './contexts/HomeNotificationsContext';
+import { MachinesAlertsProvider } from './contexts/MachinesAlertsContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { ProfileProvider } from './contexts/ProfileContext';
 import { SeedExchangeProvider } from './contexts/SeedExchangeContext';
@@ -133,6 +134,7 @@ export default function App() {
         <SeedExchangeProvider>
         <ChatProvider>
         <HomeNotificationsProvider>
+        <MachinesAlertsProvider>
         <GradientBackground>
           <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
             <Routes />
@@ -155,6 +157,7 @@ export default function App() {
 
           <StatusBar style="light" />
         </GradientBackground>
+        </MachinesAlertsProvider>
         </HomeNotificationsProvider>
         </ChatProvider>
         </SeedExchangeProvider>

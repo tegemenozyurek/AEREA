@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '../contexts/ChatContext';
 import { useHomeNotifications } from '../contexts/HomeNotificationsContext';
+import { useMachinesAlerts } from '../contexts/MachinesAlertsContext';
 import { AppRoute, useNavigation } from '../contexts/NavigationContext';
 import { useResponsive } from '../utils/responsive';
 
@@ -62,13 +63,15 @@ export default function NavBar() {
   const r = useResponsive();
   const { unreadCount: homeUnreadCount } = useHomeNotifications();
   const { totalUnread: communityUnreadCount } = useChat();
+  const { alertCount: machinesAlertCount } = useMachinesAlerts();
 
   const badgeByRoute = useMemo<Partial<Record<AppRoute, number>>>(
     () => ({
       home: homeUnreadCount,
+      machines: machinesAlertCount,
       community: communityUnreadCount,
     }),
-    [homeUnreadCount, communityUnreadCount],
+    [homeUnreadCount, machinesAlertCount, communityUnreadCount],
   );
 
   const iconSize = r.isTablet ? 24 : 22;

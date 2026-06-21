@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,6 +11,12 @@ import {
   View,
 } from 'react-native';
 import { DEFAULT_ROOM_NAME } from '../data/mockMachines';
+import {
+  DEFAULT_ROOM_COLOR_ID,
+  ROOM_COLORS,
+  type RoomColorId,
+} from '../constants/roomColors';
+import type { Machine } from '../types/machine';
 import { useResponsive } from '../utils/responsive';
 
 type Props = {
@@ -18,9 +25,11 @@ type Props = {
   roomName: string;
   position: number;
   totalRooms: number;
+  roomColorId?: RoomColorId;
+  machines?: Machine[];
   machineCount?: number;
   onClose: () => void;
-  onSave: (name: string, position: number) => void;
+  onSave: (name: string, position: number, colorId: RoomColorId, machines: Machine[]) => void;
   onDelete?: () => void;
 };
 
@@ -30,6 +39,8 @@ export default function RoomEditModal({
   roomName,
   position,
   totalRooms,
+  roomColorId = DEFAULT_ROOM_COLOR_ID,
+  machines = [],
   machineCount = 0,
   onClose,
   onSave,
@@ -38,15 +49,19 @@ export default function RoomEditModal({
   const r = useResponsive();
   const [draftName, setDraftName] = useState(roomName);
   const [draftPosition, setDraftPosition] = useState(position);
+  const [draftColorId, setDraftColorId] = useState<RoomColorId>(roomColorId);
+  const [draftMachines, setDraftMachines] = useState<Machine[]>(machines);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setDraftName(roomName);
       setDraftPosition(position);
+      setDraftColorId(roomColorId);
+      setDraftMachines(machines);
       setConfirmDeleteOpen(false);
     }
-  }, [visible, roomName, position]);
+  }, [visible, roomName, position, roomColorId, machines]);
 
   const moveUp = () => {
     setDraftPosition((current) => Math.max(1, current - 1));
@@ -56,12 +71,34 @@ export default function RoomEditModal({
     setDraftPosition((current) => Math.min(totalRooms, current + 1));
   };
 
+  const moveMachineUp = (index: number) => {
+    if (index <= 0) {
+      return;
+    }
+    setDraftMachines((current) => {
+      const next = [...current];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
+    });
+  };
+
+  const moveMachineDown = (index: number) => {
+    setDraftMachines((current) => {
+      if (index >= current.length - 1) {
+        return current;
+      }
+      const next = [...current];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
+    });
+  };
+
   const handleSave = () => {
     const trimmed = draftName.trim();
     if (!trimmed) {
       return;
     }
-    onSave(trimmed, draftPosition);
+    onSave(trimmed, draftPosition, draftColorId, draftMachines);
   };
 
   const handleDeletePress = () => {
@@ -259,6 +296,12 @@ export default function RoomEditModal({
             </Pressable>
           </View>
 
+          <ScrollView
+            style={{ maxHeight: r.scale(480) }}
+            contentContainerStyle={{ paddingBottom: r.scale(4) }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
           <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(16) }]}>
             Room name
           </Text>
@@ -332,6 +375,126 @@ export default function RoomEditModal({
               <Ionicons name="chevron-down" size={r.scale(22)} color="#fff" />
             </TouchableOpacity>
           </View>
+
+          <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
+            Color
+          </Text>
+          <View
+            style={[
+              styles.colorRow,
+              {
+                marginTop: r.scale(8),
+                gap: r.scale(10),
+              },
+            ]}
+          >
+            {ROOM_COLORS.map((color) => {
+              const selected = draftColorId === color.id;
+              return (
+                <TouchableOpacity
+                  key={color.id}
+                  style={[
+                    styles.colorSwatch,
+                    {
+                      width: r.scale(40),
+                      height: r.scale(40),
+                      borderRadius: r.scale(20),
+                      backgroundColor: color.swatch,
+                    },
+                    selected && styles.colorSwatchSelected,
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => setDraftColorId(color.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${color.label} color`}
+                  accessibilityState={{ selected }}
+                >
+                  {selected ? (
+                    <Ionicons name="checkmark" size={r.scale(18)} color="#fff" />
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {mode === 'edit' && draftMachines.length > 1 ? (
+            <>
+              <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
+                Machines
+              </Text>
+              <View
+                style={[
+                  styles.machineOrderGroup,
+                  {
+                    marginTop: r.scale(8),
+                    borderRadius: r.scale(12),
+                  },
+                ]}
+              >
+                {draftMachines.map((machine, index) => (
+                  <View key={machine.id}>
+                    {index > 0 ? <View style={styles.machineOrderDivider} /> : null}
+                    <View
+                      style={[
+                        styles.machineOrderRow,
+                        {
+                          paddingVertical: r.scale(7),
+                          paddingHorizontal: r.scale(12),
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.machineOrderIndex, { fontSize: r.scale(12) }]}>
+                        {index + 1}.
+                      </Text>
+                      <Text
+                        style={[styles.machineOrderName, { fontSize: r.scale(13) }]}
+                        numberOfLines={1}
+                      >
+                        {machine.name}
+                      </Text>
+                      <View style={styles.machineOrderControls}>
+                        <TouchableOpacity
+                          style={styles.orderIconButton}
+                          activeOpacity={0.6}
+                          onPress={() => moveMachineUp(index)}
+                          disabled={index === 0}
+                          hitSlop={6}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Move ${machine.name} up`}
+                        >
+                          <Ionicons
+                            name="chevron-up"
+                            size={r.scale(16)}
+                            color={index === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.55)'}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.orderIconButton}
+                          activeOpacity={0.6}
+                          onPress={() => moveMachineDown(index)}
+                          disabled={index === draftMachines.length - 1}
+                          hitSlop={6}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Move ${machine.name} down`}
+                        >
+                          <Ionicons
+                            name="chevron-down"
+                            size={r.scale(16)}
+                            color={
+                              index === draftMachines.length - 1
+                                ? 'rgba(255,255,255,0.2)'
+                                : 'rgba(255,255,255,0.55)'
+                            }
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
+          </ScrollView>
 
           <View style={[styles.actions, { marginTop: r.scale(18), gap: r.scale(10) }]}>
             <TouchableOpacity
@@ -523,6 +686,56 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  colorSwatch: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  colorSwatchSelected: {
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  machineOrderGroup: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  machineOrderDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 12,
+  },
+  machineOrderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  machineOrderIndex: {
+    width: 18,
+    color: 'rgba(255,255,255,0.35)',
+    fontWeight: '600',
+  },
+  machineOrderName: {
+    flex: 1,
+    color: 'rgba(255,255,255,0.82)',
+    fontWeight: '500',
+    minWidth: 0,
+  },
+  machineOrderControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orderIconButton: {
+    paddingHorizontal: 2,
+    paddingVertical: 2,
   },
   actions: {
     flexDirection: 'row',

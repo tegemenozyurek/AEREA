@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import * as fbAuth from 'firebase/auth';
 import type { Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 // Public Firebase web client config — safe to commit (apiKey is not a secret;
 // security is enforced by Firebase rules + auth, not by hiding the key).
@@ -47,3 +48,5 @@ function createAuth(): Auth {
 }
 
 export const firebaseAuth: Auth = createAuth();
+
+export const firestore: Firestore = getFirestore(firebaseApp);

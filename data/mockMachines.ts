@@ -1,5 +1,6 @@
 import type { Machine } from '../types/machine';
-import type { Room } from '../types/room';
+import type { Room, RoomEnvironment } from '../types/room';
+import { DEFAULT_ROOM_COLOR_ID, type RoomColorId } from '../constants/roomColors';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -15,36 +16,84 @@ function jitter(value: number, range: number): number {
 }
 
 /** Simulates fetching fresh sensor readings while keeping local room layout. */
+export function createDefaultRoomEnvironment(): RoomEnvironment {
+  return {
+    temperatureC: 24,
+    humidityPct: 60,
+    waterLevelL: 10,
+    phUpLevelL: 2,
+    phDownLevelL: 2,
+  };
+}
+
+function refreshRoomEnvironment(env: RoomEnvironment): RoomEnvironment {
+  return {
+    temperatureC: round(clamp(jitter(env.temperatureC, 0.4), 18, 32), 1),
+    humidityPct: Math.round(clamp(jitter(env.humidityPct, 2), 35, 85)),
+    waterLevelL: round(clamp(jitter(env.waterLevelL, 0.8), 0, 50), 1),
+    phUpLevelL: round(clamp(jitter(env.phUpLevelL, 0.3), 0, 10), 1),
+    phDownLevelL: round(clamp(jitter(env.phDownLevelL, 0.3), 0, 10), 1),
+  };
+}
+
+function refreshMachineMetrics(machine: Machine, base: Machine): Machine {
+  return {
+    ...machine,
+    ppm: Math.round(clamp(jitter(base.ppm, 40), 400, 1600)),
+    ph: round(clamp(jitter(base.ph, 0.15), 5.0, 7.0), 1),
+    phDown: base.phDown,
+    phUp: base.phUp,
+    waterLevel: Math.round(clamp(jitter(base.waterLevel, 4), 0, 100)),
+    tankLevel: Math.round(clamp(jitter(base.tankLevel ?? base.waterLevel, 4), 0, 100)),
+    online: Math.random() > 0.08 ? base.online : !base.online,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function refreshSingleRoom(room: Room): Room {
+  const mockRoom = MOCK_ROOMS.find((entry) => entry.id === room.id);
+  const mockById = new Map<string, Machine>();
+  MOCK_ROOMS.forEach((entry) => {
+    entry.machines.forEach((machine) => mockById.set(machine.id, machine));
+  });
+
+  return {
+    ...room,
+    environment: refreshRoomEnvironment(mockRoom?.environment ?? room.environment),
+    machines: room.machines.map((machine) =>
+      refreshMachineMetrics(machine, mockById.get(machine.id) ?? machine),
+    ),
+  };
+}
+
+/** Simulates fetching fresh sensor readings while keeping local room layout. */
 export function refreshRoomMetrics(rooms: Room[]): Room[] {
   const mockById = new Map<string, Machine>();
+  const mockEnvByRoomId = new Map<string, RoomEnvironment>();
   MOCK_ROOMS.forEach((room) => {
+    mockEnvByRoomId.set(room.id, room.environment);
     room.machines.forEach((machine) => mockById.set(machine.id, machine));
   });
 
   return rooms.map((room) => ({
     ...room,
+    environment: refreshRoomEnvironment(
+      mockEnvByRoomId.get(room.id) ?? room.environment ?? createDefaultRoomEnvironment(),
+    ),
     machines: room.machines.map((machine) => {
       const base = mockById.get(machine.id) ?? machine;
-      return {
-        ...machine,
-        ppm: Math.round(clamp(jitter(base.ppm, 40), 400, 1600)),
-        ph: round(clamp(jitter(base.ph, 0.15), 5.0, 7.0), 1),
-        phDown: base.phDown,
-        phUp: base.phUp,
-        waterLevel: Math.round(clamp(jitter(base.waterLevel, 4), 0, 100)),
-        tankLevel: Math.round(clamp(jitter(base.tankLevel ?? base.waterLevel, 4), 0, 100)),
-        online: Math.random() > 0.08 ? base.online : !base.online,
-        updatedAt: new Date().toISOString(),
-      };
+      return refreshMachineMetrics(machine, base);
     }),
   }));
 }
 
-export function createDefaultRoom(name: string): Room {
+export function createDefaultRoom(name: string, colorId: RoomColorId = DEFAULT_ROOM_COLOR_ID): Room {
   return {
     id: `room-${Date.now()}`,
     name,
     machines: [],
+    environment: createDefaultRoomEnvironment(),
+    colorId,
   };
 }
 
@@ -58,13 +107,14 @@ export function isDefaultRoom(roomId: string): boolean {
 export function createDefaultMachine(
   roomId: string,
   name: string,
-  pair?: { deviceId: string; model: string },
+  pair?: { deviceId: string; model: string; plantProfileId?: string },
 ): Machine {
   return {
     id: pair ? `aerea-${pair.deviceId}` : `${roomId}-machine-${Date.now()}`,
     name,
     model: pair?.model ?? 'AEREA1',
     deviceId: pair?.deviceId ?? String(Math.floor(10000 + Math.random() * 90000)),
+    plantProfileId: pair?.plantProfileId,
     online: !!pair,
     ppm: 800,
     ph: 6.0,
@@ -93,20 +143,38 @@ export async function fetchNearbyMachines(): Promise<NearbyMachine[]> {
   return MOCK_NEARBY_MACHINES;
 }
 
+/** Firestore `plantProfiles` document ids — keep in sync with seeded collection. */
+export const PLANT_PROFILE_IDS = {
+  lettuce: 'lettuce',
+  basil: 'basil',
+  strawberry: 'strawberry',
+  mint: 'mint',
+  cherryTomato: 'cherry-tomato',
+} as const;
+
 /** Placeholder data — replace with Firestore/API fetch in MachinesScreen. */
 export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-1',
     name: 'Room #1',
+    colorId: 'slate',
+    environment: {
+      temperatureC: 24.2,
+      humidityPct: 58,
+      waterLevelL: 18.5,
+      phUpLevelL: 2.4,
+      phDownLevelL: 1.6,
+    },
     machines: [
       {
         id: 'r1-machine-1',
-        name: 'Machine #1 - Tomato 🍅',
+        name: 'Machine #1 - Cherry Tomato 🍅',
         model: 'AEREA1',
         deviceId: '12487',
+        plantProfileId: PLANT_PROFILE_IDS.cherryTomato,
         online: true,
-        ppm: 1200,
-        ph: 6.2,
+        ppm: 1580,
+        ph: 6.3,
         phDown: 0,
         phUp: 0,
         waterLevel: 80,
@@ -118,6 +186,7 @@ export const MOCK_ROOMS: Room[] = [
         name: 'Machine #2 - Strawberry 🍓',
         model: 'AEREA2 mini',
         deviceId: '39281',
+        plantProfileId: PLANT_PROFILE_IDS.strawberry,
         online: false,
         ppm: 980,
         ph: 5.8,
@@ -129,12 +198,13 @@ export const MOCK_ROOMS: Room[] = [
       },
       {
         id: 'r1-machine-3',
-        name: 'Machine #3 - Pepper 🌶️',
+        name: 'Machine #3 - Basil 🌿',
         model: 'AEREA1',
         deviceId: '98732',
+        plantProfileId: PLANT_PROFILE_IDS.basil,
         online: true,
-        ppm: 1100,
-        ph: 6.5,
+        ppm: 900,
+        ph: 6.2,
         phDown: 0,
         phUp: 1,
         waterLevel: 92,
@@ -146,15 +216,24 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-2',
     name: 'Room #2',
+    colorId: 'sky',
+    environment: {
+      temperatureC: 23.6,
+      humidityPct: 42,
+      waterLevelL: 3.6,
+      phUpLevelL: 1.8,
+      phDownLevelL: 2.1,
+    },
     machines: [
       {
         id: 'r2-machine-1',
-        name: 'Machine #1 - Cucumber 🥒',
+        name: 'Machine #1 - Lettuce 🥬',
         model: 'AEREA1',
         deviceId: '45621',
+        plantProfileId: PLANT_PROFILE_IDS.lettuce,
         online: true,
-        ppm: 1050,
-        ph: 6.1,
+        ppm: 700,
+        ph: 6.0,
         phDown: 0,
         phUp: 0,
         waterLevel: 74,
@@ -166,6 +245,7 @@ export const MOCK_ROOMS: Room[] = [
         name: 'Machine #2 - Mint 🍃',
         model: 'AEREA2 mini',
         deviceId: '77309',
+        plantProfileId: PLANT_PROFILE_IDS.mint,
         online: false,
         ppm: 640,
         ph: 5.9,
@@ -180,15 +260,24 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-3',
     name: 'Room #3',
+    colorId: 'lavender',
+    environment: {
+      temperatureC: 30.8,
+      humidityPct: 55,
+      waterLevelL: 11.0,
+      phUpLevelL: 3.0,
+      phDownLevelL: 0.9,
+    },
     machines: [
       {
         id: 'r3-machine-1',
-        name: 'Machine #1 - Kale 🥗',
+        name: 'Machine #1 - Basil 🌿',
         model: 'AEREA1',
         deviceId: '58194',
+        plantProfileId: PLANT_PROFILE_IDS.basil,
         online: true,
-        ppm: 900,
-        ph: 6.4,
+        ppm: 880,
+        ph: 6.2,
         phDown: 0,
         phUp: 1,
         waterLevel: 81,
@@ -200,6 +289,8 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-default',
     name: 'Default Room',
+    colorId: 'slate',
+    environment: createDefaultRoomEnvironment(),
     machines: [],
   },
 ];
