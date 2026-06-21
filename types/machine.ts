@@ -1,9 +1,12 @@
+import type { PlantProfile } from './plantProfile';
+
 export type Machine = {
   id: string;
   name: string;
   model: string;
   deviceId: string;
   plantProfileId?: string;
+  customPlantProfile?: PlantProfile;
   online: boolean;
   ppm: number;
   ph: number;

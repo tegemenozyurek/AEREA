@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   RefreshControl,
@@ -16,10 +17,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { isDefaultRoom } from '../data/mockMachines';
 import MetricHistorySection, { type MetricHistoryItem } from '../components/MetricHistorySection';
 import MetricRing from '../components/MetricRing';
-import { fetchPlantProfileById } from '../services/plantProfiles';
+import { fetchPlantProfileById, fetchPlantProfiles } from '../services/plantProfiles';
 import type { Machine } from '../types/machine';
 import { formatDeviceId } from '../types/machine';
 import type { PlantProfile } from '../types/plantProfile';
+import {
+  createCustomPlantProfile,
+  CUSTOM_PLANT_PROFILE_ID,
+  isCustomPlantProfileId,
+} from '../types/plantProfile';
 import type { Room } from '../types/room';
 import { formatUpdatedAt } from '../utils/formatDate';
 import { useResponsive } from '../utils/responsive';
@@ -31,6 +37,7 @@ type Props = {
   rooms: Room[];
   onRoomChange: (roomId: string) => void;
   onNameChange: (name: string) => void;
+  onPlantProfileChange: (plantProfileId: string, customPlantProfile?: PlantProfile) => void;
   onAddRoom?: () => void;
   onBack: () => void;
   onRefresh?: () => Promise<void>;
@@ -121,11 +128,56 @@ function RoomMenuOption({ room, selected, scale, onPress }: RoomMenuOptionProps)
   );
 }
 
+type ProfileModalStep = 'details' | 'change' | 'edit';
+
+type ProfileEditDraft = {
+  optimum_pH: string;
+  pH_tolerance: string;
+  optimumPPM: string;
+  PPM_tolerance: string;
+};
+
+function profileToEditDraft(profile: PlantProfile): ProfileEditDraft {
+  return {
+    optimum_pH: String(profile.optimum_pH),
+    pH_tolerance: String(profile.pH_tolerance),
+    optimumPPM: String(profile.optimumPPM),
+    PPM_tolerance: String(profile.PPM_tolerance),
+  };
+}
+
+function ProfileCriticalWarning({ scale }: { scale: (value: number) => number }) {
+  return (
+    <View
+      style={[
+        styles.profileWarning,
+        {
+          padding: scale(12),
+          borderRadius: scale(10),
+          gap: scale(8),
+          marginTop: scale(14),
+        },
+      ]}
+    >
+      <Ionicons name="warning-outline" size={scale(18)} color="#FBBF24" />
+      <Text style={[styles.profileWarningText, { fontSize: scale(12), lineHeight: scale(17) }]}>
+        This setting controls nutrient targets and dosing behavior. Changing it incorrectly can
+        seriously affect plant health. Proceed only if you are sure.
+      </Text>
+    </View>
+  );
+}
+
 type PlantProfileSummaryProps = {
   profile: PlantProfile | null;
   loading: boolean;
+  plantProfileId?: string;
+  profiles: PlantProfile[];
+  loadingProfiles: boolean;
   scale: (value: number) => number;
   compact?: boolean;
+  onChangeProfile: (profileId: string) => void;
+  onSaveCustomProfile: (profile: PlantProfile) => void;
 };
 
 type ProfileDetailsColumnsProps = {
@@ -175,10 +227,104 @@ function ProfileDetailsColumns({ profile, scale }: ProfileDetailsColumnsProps) {
   );
 }
 
-function PlantProfileSummary({ profile, loading, scale, compact = false }: PlantProfileSummaryProps) {
+function PlantProfileSummary({
+  profile,
+  loading,
+  plantProfileId,
+  profiles,
+  loadingProfiles,
+  scale,
+  compact = false,
+  onChangeProfile,
+  onSaveCustomProfile,
+}: PlantProfileSummaryProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [step, setStep] = useState<ProfileModalStep>('details');
+  const [editDraft, setEditDraft] = useState<ProfileEditDraft>(() =>
+    profileToEditDraft(createCustomPlantProfile()),
+  );
 
-  const closeDetails = () => setDetailsOpen(false);
+  const isCustom = isCustomPlantProfileId(plantProfileId);
+  const displayProfile = profile ?? (isCustom ? createCustomPlantProfile() : null);
+
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setStep('details');
+  };
+
+  const openDetails = () => {
+    if (displayProfile) {
+      setEditDraft(profileToEditDraft(displayProfile));
+    }
+    setStep('details');
+    setDetailsOpen(true);
+  };
+
+  const openEdit = () => {
+    setEditDraft(profileToEditDraft(displayProfile ?? createCustomPlantProfile()));
+    setStep('edit');
+  };
+
+  const handleSaveCustom = () => {
+    const optimum_pH = Number(editDraft.optimum_pH);
+    const pH_tolerance = Number(editDraft.pH_tolerance);
+    const optimumPPM = Number(editDraft.optimumPPM);
+    const PPM_tolerance = Number(editDraft.PPM_tolerance);
+
+    if (
+      Number.isNaN(optimum_pH) ||
+      Number.isNaN(pH_tolerance) ||
+      Number.isNaN(optimumPPM) ||
+      Number.isNaN(PPM_tolerance)
+    ) {
+      return;
+    }
+
+    Alert.alert(
+      'Save custom profile?',
+      'This will switch this machine to a custom profile and update its nutrient targets. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          style: 'destructive',
+          onPress: () => {
+            onSaveCustomProfile(
+              createCustomPlantProfile({
+                optimum_pH,
+                pH_tolerance,
+                optimumPPM,
+                PPM_tolerance,
+              }),
+            );
+            closeDetails();
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSelectProfile = (nextProfile: PlantProfile) => {
+    if (nextProfile.id === plantProfileId) {
+      return;
+    }
+
+    Alert.alert(
+      'Change plant profile?',
+      `Switch this machine to "${nextProfile.name}"? This will update nutrient targets and dosing behavior.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change',
+          style: 'destructive',
+          onPress: () => {
+            onChangeProfile(nextProfile.id);
+            closeDetails();
+          },
+        },
+      ],
+    );
+  };
 
   const badgeSize = scale(compact ? 28 : 40);
   const badgeRadius = badgeSize / 2;
@@ -186,34 +332,36 @@ function PlantProfileSummary({ profile, loading, scale, compact = false }: Plant
   const nameSize = scale(compact ? 14 : 15);
   const iconSize = scale(compact ? 14 : 16);
 
-  const profileControl = loading ? (
-    <View style={[styles.contextControl, compact && { minHeight: scale(28) }]}>
-      <ActivityIndicator size="small" color="#93C5FD" />
-    </View>
-  ) : profile ? (
-    <TouchableOpacity
-      style={[styles.contextControl, compact && { minHeight: scale(28) }]}
-      activeOpacity={0.7}
-      onPress={() => setDetailsOpen(true)}
-      accessibilityRole="button"
-      accessibilityLabel={`Plant profile ${profile.name}, view details`}
-    >
-      <View
-        style={[
-          styles.profileEmojiBadge,
-          styles.profileEmojiBadgeActive,
-          { width: badgeSize, height: badgeSize, borderRadius: badgeRadius },
-        ]}
-      >
-        <Text style={[styles.profileEmoji, { fontSize: emojiSize }]}>{profile.icon}</Text>
-      </View>
-      <Text style={[styles.profileSummaryName, { fontSize: nameSize, flex: 1 }]} numberOfLines={1}>
-        {profile.name}
-      </Text>
-      <Ionicons name="chevron-forward" size={iconSize} color="rgba(255,255,255,0.35)" />
-    </TouchableOpacity>
-  ) : (
-    <View style={[styles.contextControl, compact && { minHeight: scale(28) }]}>
+  const renderProfileBadge = () => {
+    if (isCustom) {
+      return (
+        <View
+          style={[
+            styles.profileEmojiBadge,
+            styles.profileEmojiBadgeCustom,
+            { width: badgeSize, height: badgeSize, borderRadius: badgeRadius },
+          ]}
+        >
+          <Ionicons name="extension-puzzle-outline" size={emojiSize} color="#C4B5FD" />
+        </View>
+      );
+    }
+
+    if (displayProfile) {
+      return (
+        <View
+          style={[
+            styles.profileEmojiBadge,
+            styles.profileEmojiBadgeActive,
+            { width: badgeSize, height: badgeSize, borderRadius: badgeRadius },
+          ]}
+        >
+          <Text style={[styles.profileEmoji, { fontSize: emojiSize }]}>{displayProfile.icon}</Text>
+        </View>
+      );
+    }
+
+    return (
       <View
         style={[
           styles.profileEmojiBadge,
@@ -223,17 +371,243 @@ function PlantProfileSummary({ profile, loading, scale, compact = false }: Plant
       >
         <Ionicons name="remove-circle" size={emojiSize} color="#F87171" />
       </View>
-      <Text style={[styles.profileSummaryName, { fontSize: nameSize, flex: 1 }]}>None</Text>
+    );
+  };
+
+  const profileLabel = displayProfile?.name ?? 'None';
+
+  const profileControl = loading ? (
+    <View style={[styles.contextControl, compact && { minHeight: scale(28) }]}>
+      <ActivityIndicator size="small" color="#93C5FD" />
+    </View>
+  ) : (
+    <TouchableOpacity
+      style={[styles.contextControl, compact && { minHeight: scale(28) }]}
+      activeOpacity={0.7}
+      onPress={openDetails}
+      accessibilityRole="button"
+      accessibilityLabel={
+        displayProfile
+          ? `Plant profile ${profileLabel}, view details`
+          : 'No plant profile, change profile'
+      }
+    >
+      {renderProfileBadge()}
+      <Text style={[styles.profileSummaryName, { fontSize: nameSize, flex: 1 }]} numberOfLines={1}>
+        {profileLabel}
+      </Text>
+      <Ionicons name="chevron-forward" size={iconSize} color="rgba(255,255,255,0.35)" />
+    </TouchableOpacity>
+  );
+
+  const renderModalHeader = (title: string, onBack?: () => void) => (
+    <View style={styles.renameHeader}>
+      <View style={[styles.profileModalHeader, { gap: scale(10), flex: 1, minWidth: 0 }]}>
+        {onBack ? (
+          <Pressable
+            style={[
+              styles.headerIconButton,
+              { width: scale(32), height: scale(32), borderRadius: scale(16) },
+            ]}
+            onPress={onBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={scale(18)} color="#fff" />
+          </Pressable>
+        ) : displayProfile ? (
+          isCustom ? (
+            <View
+              style={[
+                styles.profileEmojiBadge,
+                styles.profileEmojiBadgeCustom,
+                { width: scale(40), height: scale(40), borderRadius: scale(20) },
+              ]}
+            >
+              <Ionicons name="extension-puzzle-outline" size={scale(20)} color="#C4B5FD" />
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.profileEmojiBadge,
+                styles.profileEmojiBadgeActive,
+                { width: scale(40), height: scale(40), borderRadius: scale(20) },
+              ]}
+            >
+              <Text style={[styles.profileEmoji, { fontSize: scale(20) }]}>{displayProfile.icon}</Text>
+            </View>
+          )
+        ) : null}
+        <Text style={[styles.renameTitle, { fontSize: scale(18), flex: 1 }]} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+      <Pressable
+        style={[
+          styles.headerIconButton,
+          { width: scale(32), height: scale(32), borderRadius: scale(16) },
+        ]}
+        onPress={closeDetails}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Close plant profile dialog"
+      >
+        <Ionicons name="close" size={scale(18)} color="#fff" />
+      </Pressable>
     </View>
   );
 
-  const detailsModal = profile ? (
-    <Modal
-      visible={detailsOpen}
-      transparent
-      animationType="fade"
-      onRequestClose={closeDetails}
-    >
+  const renderChangeStep = () => (
+    <>
+      {renderModalHeader('Change profile', () => setStep('details'))}
+      <ProfileCriticalWarning scale={scale} />
+      {loadingProfiles ? (
+        <ActivityIndicator size="small" color="#93C5FD" style={{ marginTop: scale(20) }} />
+      ) : (
+        <ScrollView
+          style={{ maxHeight: scale(280), marginTop: scale(14) }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {profiles.map((item) => {
+            const selected = item.id === plantProfileId;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.profilePickerOption,
+                  {
+                    paddingVertical: scale(11),
+                    paddingHorizontal: scale(12),
+                    borderRadius: scale(10),
+                    marginBottom: scale(6),
+                    gap: scale(10),
+                  },
+                  selected && styles.profilePickerOptionSelected,
+                ]}
+                activeOpacity={0.75}
+                onPress={() => handleSelectProfile(item)}
+                disabled={selected}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <View
+                  style={[
+                    styles.profileEmojiBadge,
+                    styles.profileEmojiBadgeActive,
+                    { width: scale(32), height: scale(32), borderRadius: scale(16) },
+                  ]}
+                >
+                  <Text style={[styles.profileEmoji, { fontSize: scale(16) }]}>{item.icon}</Text>
+                </View>
+                <Text
+                  style={[styles.profilePickerOptionText, { fontSize: scale(14), flex: 1 }]}
+                  numberOfLines={1}
+                >
+                  {item.name}
+                </Text>
+                {selected ? (
+                  <Ionicons name="checkmark-circle" size={scale(18)} color="#60A5FA" />
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+    </>
+  );
+
+  const renderEditStep = () => (
+    <>
+      {renderModalHeader('Edit profile', () => setStep('details'))}
+      <ProfileCriticalWarning scale={scale} />
+      <Text style={[styles.profileEditHint, { fontSize: scale(12), marginTop: scale(12) }]}>
+        Saving will switch this machine to a custom profile.
+      </Text>
+      <View style={{ marginTop: scale(14), gap: scale(10) }}>
+        {(
+          [
+            ['Optimum pH', 'optimum_pH'],
+            ['pH tolerance', 'pH_tolerance'],
+            ['Optimum ppm', 'optimumPPM'],
+            ['ppm tolerance', 'PPM_tolerance'],
+          ] as const
+        ).map(([label, key]) => (
+          <View key={key} style={{ gap: scale(6) }}>
+            <Text style={[styles.profileEditLabel, { fontSize: scale(11) }]}>{label}</Text>
+            <TextInput
+              style={[
+                styles.profileEditInput,
+                {
+                  paddingVertical: scale(10),
+                  paddingHorizontal: scale(12),
+                  borderRadius: scale(10),
+                  fontSize: scale(15),
+                },
+              ]}
+              value={editDraft[key]}
+              onChangeText={(value) => setEditDraft((current) => ({ ...current, [key]: value }))}
+              keyboardType="decimal-pad"
+              placeholderTextColor="rgba(255,255,255,0.35)"
+            />
+          </View>
+        ))}
+      </View>
+      <TouchableOpacity
+        style={[
+          styles.profileModalButton,
+          styles.profileModalButtonPrimary,
+          { marginTop: scale(16), borderRadius: scale(12), paddingVertical: scale(12) },
+        ]}
+        activeOpacity={0.7}
+        onPress={handleSaveCustom}
+      >
+        <Text style={[styles.profileModalButtonText, styles.profileModalButtonTextPrimary, { fontSize: scale(15) }]}>
+          Save custom profile
+        </Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  const renderDetailsStep = () => (
+    <>
+      {renderModalHeader(displayProfile?.name ?? 'Plant profile')}
+      {displayProfile ? <ProfileDetailsColumns profile={displayProfile} scale={scale} /> : null}
+      <ProfileCriticalWarning scale={scale} />
+      <View style={[styles.profileModalActions, { marginTop: scale(16), gap: scale(10) }]}>
+        {displayProfile ? (
+          <TouchableOpacity
+            style={[styles.profileModalButton, styles.profileModalButtonSecondary, { borderRadius: scale(12), paddingVertical: scale(12), flex: 1 }]}
+            activeOpacity={0.7}
+            onPress={openEdit}
+          >
+            <Text style={[styles.profileModalButtonText, { fontSize: scale(15) }]}>Edit</Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity
+          style={[
+            styles.profileModalButton,
+            styles.profileModalButtonPrimary,
+            {
+              borderRadius: scale(12),
+              paddingVertical: scale(12),
+              flex: displayProfile ? 1 : undefined,
+            },
+          ]}
+          activeOpacity={0.7}
+          onPress={() => setStep('change')}
+        >
+          <Text style={[styles.profileModalButtonText, styles.profileModalButtonTextPrimary, { fontSize: scale(15) }]}>
+            Change profile
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  const detailsModal = (
+    <Modal visible={detailsOpen} transparent animationType="fade" onRequestClose={closeDetails}>
       <Pressable style={styles.renameBackdrop} onPress={closeDetails}>
         <Pressable
           style={[
@@ -246,47 +620,15 @@ function PlantProfileSummary({ profile, loading, scale, compact = false }: Plant
           ]}
           onPress={(event) => event.stopPropagation()}
         >
-          <View style={styles.renameHeader}>
-            <View style={[styles.profileModalHeader, { gap: scale(10), flex: 1, minWidth: 0 }]}>
-              <View
-                style={[
-                  styles.profileEmojiBadge,
-                  styles.profileEmojiBadgeActive,
-                  {
-                    width: scale(40),
-                    height: scale(40),
-                    borderRadius: scale(20),
-                  },
-                ]}
-              >
-                <Text style={[styles.profileEmoji, { fontSize: scale(20) }]}>{profile.icon}</Text>
-              </View>
-              <Text
-                style={[styles.renameTitle, { fontSize: scale(18), flex: 1 }]}
-                numberOfLines={1}
-              >
-                {profile.name}
-              </Text>
-            </View>
-            <Pressable
-              style={[
-                styles.headerIconButton,
-                { width: scale(32), height: scale(32), borderRadius: scale(16) },
-              ]}
-              onPress={closeDetails}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Close plant profile details"
-            >
-              <Ionicons name="close" size={scale(18)} color="#fff" />
-            </Pressable>
-          </View>
-
-          <ProfileDetailsColumns profile={profile} scale={scale} />
+          {step === 'change'
+            ? renderChangeStep()
+            : step === 'edit'
+              ? renderEditStep()
+              : renderDetailsStep()}
         </Pressable>
       </Pressable>
     </Modal>
-  ) : null;
+  );
 
   if (compact) {
     return (
@@ -339,6 +681,7 @@ export default function MachineDetailScreen({
   rooms,
   onRoomChange,
   onNameChange,
+  onPlantProfileChange,
   onAddRoom,
   onBack,
   onRefresh,
@@ -351,6 +694,8 @@ export default function MachineDetailScreen({
   const [draftName, setDraftName] = useState(machine.name);
   const [plantProfile, setPlantProfile] = useState<PlantProfile | null>(null);
   const [loadingPlantProfile, setLoadingPlantProfile] = useState(false);
+  const [availableProfiles, setAvailableProfiles] = useState<PlantProfile[]>([]);
+  const [loadingAvailableProfiles, setLoadingAvailableProfiles] = useState(false);
 
   const metrics = useMemo<MetricHistoryItem[]>(
     () => [
@@ -369,8 +714,35 @@ export default function MachineDetailScreen({
   };
 
   useEffect(() => {
+    let cancelled = false;
+    setLoadingAvailableProfiles(true);
+
+    void fetchPlantProfiles()
+      .then((profiles) => {
+        if (!cancelled) {
+          setAvailableProfiles(profiles);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingAvailableProfiles(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!machine.plantProfileId) {
       setPlantProfile(null);
+      setLoadingPlantProfile(false);
+      return;
+    }
+
+    if (isCustomPlantProfileId(machine.plantProfileId)) {
+      setPlantProfile(machine.customPlantProfile ?? createCustomPlantProfile());
       setLoadingPlantProfile(false);
       return;
     }
@@ -393,7 +765,7 @@ export default function MachineDetailScreen({
     return () => {
       cancelled = true;
     };
-  }, [machine.plantProfileId]);
+  }, [machine.customPlantProfile, machine.plantProfileId]);
 
   const handleAddRoomPress = () => {
     setRoomOpen(false);
@@ -792,8 +1164,15 @@ export default function MachineDetailScreen({
             <PlantProfileSummary
               profile={plantProfile}
               loading={loadingPlantProfile}
+              plantProfileId={machine.plantProfileId}
+              profiles={availableProfiles}
+              loadingProfiles={loadingAvailableProfiles}
               scale={r.scale}
               compact
+              onChangeProfile={(profileId) => onPlantProfileChange(profileId)}
+              onSaveCustomProfile={(customProfile) =>
+                onPlantProfileChange(CUSTOM_PLANT_PROFILE_ID, customProfile)
+              }
             />
           </View>
 
@@ -1178,6 +1557,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(248,113,113,0.1)',
     borderColor: 'rgba(248,113,113,0.28)',
   },
+  profileEmojiBadgeCustom: {
+    backgroundColor: 'rgba(196,181,253,0.12)',
+    borderColor: 'rgba(196,181,253,0.28)',
+  },
   profileEmoji: {
     textAlign: 'center',
   },
@@ -1224,6 +1607,73 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  profileWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(251,191,36,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(251,191,36,0.28)',
+  },
+  profileWarningText: {
+    flex: 1,
+    color: 'rgba(255,255,255,0.78)',
+    fontWeight: '500',
+  },
+  profileModalActions: {
+    flexDirection: 'row',
+  },
+  profileModalButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  profileModalButtonSecondary: {
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  profileModalButtonPrimary: {
+    borderColor: 'rgba(96,165,250,0.45)',
+    backgroundColor: 'rgba(96,165,250,0.18)',
+  },
+  profileModalButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  profileModalButtonTextPrimary: {
+    color: '#BFDBFE',
+  },
+  profilePickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  profilePickerOptionSelected: {
+    backgroundColor: 'rgba(96,165,250,0.1)',
+    borderColor: 'rgba(96,165,250,0.28)',
+  },
+  profilePickerOptionText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  profileEditHint: {
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+  },
+  profileEditLabel: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  profileEditInput: {
+    color: '#fff',
+    fontWeight: '600',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.16)',
   },
   metricsCard: {
     backgroundColor: 'rgba(0,0,0,0.35)',
