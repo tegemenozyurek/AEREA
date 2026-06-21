@@ -14,6 +14,7 @@ import {
   isDefaultRoom,
   MOCK_ROOMS,
   refreshRoomMetrics,
+  refreshSingleRoom,
   type NearbyMachine,
 } from '../data/mockMachines';
 import type { Machine } from '../types/machine';
@@ -43,6 +44,7 @@ export default function MachinesScreen() {
   const [addMachineOpen, setAddMachineOpen] = useState(false);
   const [addRoomOpen, setAddRoomOpen] = useState(false);
   const [addRoomForMachineId, setAddRoomForMachineId] = useState<string | null>(null);
+  const [refreshingRoomId, setRefreshingRoomId] = useState<string | null>(null);
 
   const handleMachinesChange = useCallback((roomId: string, machines: Machine[]) => {
     setRooms((prev) =>
@@ -309,6 +311,15 @@ export default function MachinesScreen() {
     applyRoomMetricsRefresh();
   }, [applyRoomMetricsRefresh]);
 
+  const handleRefreshRoom = useCallback(async (roomId: string) => {
+    setRefreshingRoomId(roomId);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    setRooms((prev) =>
+      prev.map((room) => (room.id === roomId ? refreshSingleRoom(room) : room)),
+    );
+    setRefreshingRoomId(null);
+  }, []);
+
   if (selectedMachine) {
     return (
       <>
@@ -428,6 +439,8 @@ export default function MachinesScreen() {
             onMachinesChange={handleMachinesChange}
             onMachinePress={handleMachinePress}
             onEditPress={handleEditRoomPress}
+            onRefreshRoom={handleRefreshRoom}
+            refreshingRoom={refreshingRoomId === room.id}
           />
         ))}
 

@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -14,6 +14,7 @@ import {
   ShadowDecorator,
 } from 'react-native-draggable-flatlist';
 import MachineCard from './MachineCard';
+import RoomPanel from './RoomPanel';
 import type { Machine } from '../types/machine';
 import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
@@ -34,6 +35,8 @@ type Props = {
   onMachinesChange: (roomId: string, machines: Machine[]) => void;
   onMachinePress?: (machine: Machine, roomId: string, roomName: string) => void;
   onEditPress?: (room: Room) => void;
+  onRefreshRoom?: (roomId: string) => Promise<void>;
+  refreshingRoom?: boolean;
 };
 
 export default function RoomSection({
@@ -42,6 +45,8 @@ export default function RoomSection({
   onMachinesChange,
   onMachinePress,
   onEditPress,
+  onRefreshRoom,
+  refreshingRoom = false,
 }: Props) {
   const r = useResponsive();
   const [machines, setMachines] = useState<Machine[]>(room.machines);
@@ -105,7 +110,7 @@ export default function RoomSection({
           </ShadowDecorator>
         </View>
         <TouchableOpacity
-          style={[styles.machineChevronCol, { width: r.cardInsetRight, paddingRight: r.scale(2) }]}
+          style={[styles.machineChevronCol, { width: r.scale(28), paddingRight: r.scale(2) }]}
           activeOpacity={0.7}
           onPress={() => onMachinePress?.(item, room.id, room.name)}
           hitSlop={8}
@@ -153,123 +158,65 @@ export default function RoomSection({
   return (
     <View
       style={{
-        marginBottom: roomExpanded ? r.scale(28) : r.scale(10),
+        marginBottom: roomExpanded ? r.scale(20) : r.scale(14),
       }}
     >
-      <View style={styles.roomHeader}>
-        <View style={[styles.roomHeaderLeft, { gap: r.scale(8) }]}>
-          <Text style={[styles.roomTitle, { fontSize: r.scale(22) }]} numberOfLines={1}>
-            {room.name}
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.editButton,
-              {
-                width: r.scale(28),
-                height: r.scale(28),
-              },
-            ]}
-            activeOpacity={0.7}
-            onPress={() => onEditPress?.(room)}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={`Edit ${room.name}`}
-          >
-            <MaterialCommunityIcons
-              name="pencil-outline"
-              size={r.scale(18)}
-              color="rgba(255,255,255,0.85)"
-            />
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.toggleButton, { paddingVertical: r.scale(4), paddingHorizontal: r.scale(2) }]}
-          activeOpacity={0.7}
-          onPress={toggleRoom}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={roomExpanded ? `Show less in ${room.name}` : `Show more in ${room.name}`}
-        >
-          <Text style={[styles.toggleButtonText, { fontSize: r.scale(13) }]}>
-            {roomExpanded ? 'Show less' : `Show more (${machines.length})`}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <Animated.View
-        style={[
-          showMachines && {
-            marginTop: r.scale(16),
-            marginLeft: r.cardInsetLeft,
-          },
-          constrainHeight &&
-            cardsHeight > 0 && {
-              maxHeight: cardsMaxHeight,
-              overflow: 'hidden',
-            },
-          isAnimating && {
-            opacity: cardsOpacity,
-            transform: [{ scaleY: cardsScale }],
-          },
-          !showMachines && {
-            height: 0,
-            overflow: 'hidden',
-            opacity: 0,
-          },
-        ]}
+      <RoomPanel
+        roomName={room.name}
+        machineCount={machines.length}
+        environment={room.environment}
+        expanded={roomExpanded}
+        showContent={showMachines}
+        refreshing={refreshingRoom}
+        scale={r.scale}
+        onToggle={toggleRoom}
+        onEdit={() => onEditPress?.(room)}
+        onRefresh={onRefreshRoom ? () => void onRefreshRoom(room.id) : undefined}
       >
-        {showMachines && (
-          <NestableDraggableFlatList
-            data={machines}
-            keyExtractor={(item) => item.id}
-            renderItem={renderMachine}
-            onDragBegin={handleDragBegin}
-            onDragEnd={handleDragEnd}
-            onContentSizeChange={handleListContentSizeChange}
-            activationDistance={20}
-            dragItemOverflow
-            animationConfig={DRAG_SPRING}
-            ItemSeparatorComponent={() => <View style={{ height: r.cardGap }} />}
-          />
-        )}
-      </Animated.View>
+        <Animated.View
+          style={[
+            constrainHeight &&
+              cardsHeight > 0 && {
+                maxHeight: cardsMaxHeight,
+                overflow: 'hidden',
+              },
+            isAnimating && {
+              opacity: cardsOpacity,
+              transform: [{ scaleY: cardsScale }],
+            },
+            !showMachines && {
+              height: 0,
+              overflow: 'hidden',
+              opacity: 0,
+            },
+          ]}
+        >
+          {showMachines ? (
+            <NestableDraggableFlatList
+              data={machines}
+              keyExtractor={(item) => item.id}
+              renderItem={renderMachine}
+              onDragBegin={handleDragBegin}
+              onDragEnd={handleDragEnd}
+              onContentSizeChange={handleListContentSizeChange}
+              activationDistance={20}
+              dragItemOverflow
+              animationConfig={DRAG_SPRING}
+              ItemSeparatorComponent={() => <View style={{ height: r.cardGap }} />}
+              ListEmptyComponent={
+                <Text style={[styles.emptyMachines, { fontSize: r.scale(13), paddingVertical: r.scale(8) }]}>
+                  No machines in this room
+                </Text>
+              }
+            />
+          ) : null}
+        </Animated.View>
+      </RoomPanel>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  roomHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  roomHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 0,
-  },
-  roomTitle: {
-    color: '#fff',
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    flexShrink: 1,
-  },
-  editButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  toggleButton: {
-    flexShrink: 0,
-  },
-  toggleButtonText: {
-    color: 'rgba(147,197,253,0.85)',
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
   machineRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -280,5 +227,10 @@ const styles = StyleSheet.create({
   machineChevronCol: {
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  emptyMachines: {
+    color: 'rgba(255,255,255,0.42)',
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

@@ -1,5 +1,5 @@
 import type { Machine } from '../types/machine';
-import type { Room } from '../types/room';
+import type { Room, RoomEnvironment } from '../types/room';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -15,27 +15,73 @@ function jitter(value: number, range: number): number {
 }
 
 /** Simulates fetching fresh sensor readings while keeping local room layout. */
+export function createDefaultRoomEnvironment(): RoomEnvironment {
+  return {
+    temperatureC: 24,
+    humidityPct: 60,
+    waterLevelL: 10,
+    phUpLevelL: 2,
+    phDownLevelL: 2,
+  };
+}
+
+function refreshRoomEnvironment(env: RoomEnvironment): RoomEnvironment {
+  return {
+    temperatureC: round(clamp(jitter(env.temperatureC, 0.4), 18, 32), 1),
+    humidityPct: Math.round(clamp(jitter(env.humidityPct, 2), 35, 85)),
+    waterLevelL: round(clamp(jitter(env.waterLevelL, 0.8), 0, 50), 1),
+    phUpLevelL: round(clamp(jitter(env.phUpLevelL, 0.3), 0, 10), 1),
+    phDownLevelL: round(clamp(jitter(env.phDownLevelL, 0.3), 0, 10), 1),
+  };
+}
+
+function refreshMachineMetrics(machine: Machine, base: Machine): Machine {
+  return {
+    ...machine,
+    ppm: Math.round(clamp(jitter(base.ppm, 40), 400, 1600)),
+    ph: round(clamp(jitter(base.ph, 0.15), 5.0, 7.0), 1),
+    phDown: base.phDown,
+    phUp: base.phUp,
+    waterLevel: Math.round(clamp(jitter(base.waterLevel, 4), 0, 100)),
+    tankLevel: Math.round(clamp(jitter(base.tankLevel ?? base.waterLevel, 4), 0, 100)),
+    online: Math.random() > 0.08 ? base.online : !base.online,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function refreshSingleRoom(room: Room): Room {
+  const mockRoom = MOCK_ROOMS.find((entry) => entry.id === room.id);
+  const mockById = new Map<string, Machine>();
+  MOCK_ROOMS.forEach((entry) => {
+    entry.machines.forEach((machine) => mockById.set(machine.id, machine));
+  });
+
+  return {
+    ...room,
+    environment: refreshRoomEnvironment(mockRoom?.environment ?? room.environment),
+    machines: room.machines.map((machine) =>
+      refreshMachineMetrics(machine, mockById.get(machine.id) ?? machine),
+    ),
+  };
+}
+
+/** Simulates fetching fresh sensor readings while keeping local room layout. */
 export function refreshRoomMetrics(rooms: Room[]): Room[] {
   const mockById = new Map<string, Machine>();
+  const mockEnvByRoomId = new Map<string, RoomEnvironment>();
   MOCK_ROOMS.forEach((room) => {
+    mockEnvByRoomId.set(room.id, room.environment);
     room.machines.forEach((machine) => mockById.set(machine.id, machine));
   });
 
   return rooms.map((room) => ({
     ...room,
+    environment: refreshRoomEnvironment(
+      mockEnvByRoomId.get(room.id) ?? room.environment ?? createDefaultRoomEnvironment(),
+    ),
     machines: room.machines.map((machine) => {
       const base = mockById.get(machine.id) ?? machine;
-      return {
-        ...machine,
-        ppm: Math.round(clamp(jitter(base.ppm, 40), 400, 1600)),
-        ph: round(clamp(jitter(base.ph, 0.15), 5.0, 7.0), 1),
-        phDown: base.phDown,
-        phUp: base.phUp,
-        waterLevel: Math.round(clamp(jitter(base.waterLevel, 4), 0, 100)),
-        tankLevel: Math.round(clamp(jitter(base.tankLevel ?? base.waterLevel, 4), 0, 100)),
-        online: Math.random() > 0.08 ? base.online : !base.online,
-        updatedAt: new Date().toISOString(),
-      };
+      return refreshMachineMetrics(machine, base);
     }),
   }));
 }
@@ -45,6 +91,7 @@ export function createDefaultRoom(name: string): Room {
     id: `room-${Date.now()}`,
     name,
     machines: [],
+    environment: createDefaultRoomEnvironment(),
   };
 }
 
@@ -108,6 +155,13 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-1',
     name: 'Room #1',
+    environment: {
+      temperatureC: 24.2,
+      humidityPct: 58,
+      waterLevelL: 18.5,
+      phUpLevelL: 2.4,
+      phDownLevelL: 1.6,
+    },
     machines: [
       {
         id: 'r1-machine-1',
@@ -159,6 +213,13 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-2',
     name: 'Room #2',
+    environment: {
+      temperatureC: 23.6,
+      humidityPct: 64,
+      waterLevelL: 14.2,
+      phUpLevelL: 1.8,
+      phDownLevelL: 2.1,
+    },
     machines: [
       {
         id: 'r2-machine-1',
@@ -195,6 +256,13 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-3',
     name: 'Room #3',
+    environment: {
+      temperatureC: 25.1,
+      humidityPct: 55,
+      waterLevelL: 11.0,
+      phUpLevelL: 3.0,
+      phDownLevelL: 0.9,
+    },
     machines: [
       {
         id: 'r3-machine-1',
@@ -216,6 +284,7 @@ export const MOCK_ROOMS: Room[] = [
   {
     id: 'room-default',
     name: 'Default Room',
+    environment: createDefaultRoomEnvironment(),
     machines: [],
   },
 ];
