@@ -417,7 +417,7 @@ export default function RoomEditModal({
             })}
           </View>
 
-          {mode === 'edit' && draftMachines.length > 0 ? (
+          {mode === 'edit' && draftMachines.length > 1 ? (
             <>
               <Text style={[styles.fieldLabel, { fontSize: r.scale(12), marginTop: r.scale(18) }]}>
                 Machines
