@@ -1,12 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './components/GradientBackground';
 import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useEmailVerificationLink } from './hooks/useEmailVerificationLink';
 import { ChatProvider } from './contexts/ChatContext';
 import { CommunityProvider } from './contexts/CommunityContext';
 import { HomeNotificationsProvider } from './contexts/HomeNotificationsContext';
@@ -16,6 +17,7 @@ import { SeedExchangeProvider } from './contexts/SeedExchangeContext';
 import AccountScreen from './screens/AccountScreen';
 import MarketScreen from './screens/MarketScreen';
 import AuthScreen from './screens/AuthScreen';
+import EmailVerificationScreen from './screens/EmailVerificationScreen';
 import CommunityScreen from './screens/CommunityScreen';
 import HomeScreen from './screens/HomeScreen';
 import MachinesScreen from './screens/MachinesScreen';
@@ -59,8 +61,35 @@ function AuthenticatedRoutes() {
 }
 
 function Routes() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <AuthenticatedRoutes /> : <AuthScreen />;
+  const { authReady, isAuthenticated, pendingVerification } = useAuth();
+  const [linkMessage, setLinkMessage] = useState<string | null>(null);
+
+  const handleVerifiedFromLink = useCallback(() => {
+    setLinkMessage('Email verified successfully. You can sign in now.');
+  }, []);
+
+  const handleLinkError = useCallback((message: string) => {
+    setLinkMessage(message);
+  }, []);
+
+  useEmailVerificationLink({
+    onVerified: handleVerifiedFromLink,
+    onError: handleLinkError,
+  });
+
+  if (!authReady) {
+    return null;
+  }
+
+  if (pendingVerification) {
+    return <EmailVerificationScreen />;
+  }
+
+  return isAuthenticated ? (
+    <AuthenticatedRoutes />
+  ) : (
+    <AuthScreen linkMessage={linkMessage} onClearLinkMessage={() => setLinkMessage(null)} />
+  );
 }
 
 export default function App() {

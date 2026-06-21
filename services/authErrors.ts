@@ -1,11 +1,17 @@
-export function getFirebaseAuthErrorMessage(error: unknown): string {
-  const code =
+export function getFirebaseAuthErrorCode(error: unknown): string {
+  if (
     error &&
     typeof error === 'object' &&
     'code' in error &&
     typeof (error as { code?: unknown }).code === 'string'
-      ? (error as { code: string }).code
-      : '';
+  ) {
+    return (error as { code: string }).code;
+  }
+  return '';
+}
+
+export function getFirebaseAuthErrorMessage(error: unknown): string {
+  const code = getFirebaseAuthErrorCode(error);
 
   switch (code) {
     case 'auth/email-already-in-use':
@@ -22,6 +28,10 @@ export function getFirebaseAuthErrorMessage(error: unknown): string {
       return 'Invalid email or password.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Try again later.';
+    case 'auth/operation-not-allowed':
+      return 'Email verification is not enabled. Contact support.';
+    case 'auth/email-not-verified':
+      return 'Please verify your email before signing in. Check your inbox.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection.';
     default:
