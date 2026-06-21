@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   RefreshControl,
@@ -15,8 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { isDefaultRoom } from '../data/mockMachines';
 import MetricHistorySection, { type MetricHistoryItem } from '../components/MetricHistorySection';
 import MetricRing from '../components/MetricRing';
+import { fetchPlantProfileById } from '../services/plantProfiles';
 import type { Machine } from '../types/machine';
 import { formatDeviceId } from '../types/machine';
+import type { PlantProfile } from '../types/plantProfile';
 import type { Room } from '../types/room';
 import { formatUpdatedAt } from '../utils/formatDate';
 import { useResponsive } from '../utils/responsive';
@@ -118,6 +121,206 @@ function RoomMenuOption({ room, selected, scale, onPress }: RoomMenuOptionProps)
   );
 }
 
+type PlantProfileSummaryProps = {
+  profile: PlantProfile | null;
+  loading: boolean;
+  scale: (value: number) => number;
+  compact?: boolean;
+};
+
+type ProfileDetailRowProps = {
+  label: string;
+  value: string;
+  scale: (value: number) => number;
+};
+
+function ProfileDetailRow({ label, value, scale }: ProfileDetailRowProps) {
+  return (
+    <View style={{ gap: scale(4) }}>
+      <Text style={[styles.profileDetailLabel, { fontSize: scale(11) }]}>{label}</Text>
+      <Text style={[styles.profileDetailValue, { fontSize: scale(16) }]}>{value}</Text>
+    </View>
+  );
+}
+
+function PlantProfileSummary({ profile, loading, scale, compact = false }: PlantProfileSummaryProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const closeDetails = () => setDetailsOpen(false);
+
+  const badgeSize = scale(compact ? 28 : 40);
+  const badgeRadius = badgeSize / 2;
+  const emojiSize = scale(compact ? 15 : 20);
+  const nameSize = scale(compact ? 14 : 15);
+  const iconSize = scale(compact ? 14 : 16);
+
+  const profileControl = loading ? (
+    <View style={[styles.contextControl, compact && { minHeight: scale(28) }]}>
+      <ActivityIndicator size="small" color="#93C5FD" />
+    </View>
+  ) : profile ? (
+    <TouchableOpacity
+      style={[styles.contextControl, compact && { minHeight: scale(28) }]}
+      activeOpacity={0.7}
+      onPress={() => setDetailsOpen(true)}
+      accessibilityRole="button"
+      accessibilityLabel={`Plant profile ${profile.name}, view details`}
+    >
+      <View
+        style={[
+          styles.profileEmojiBadge,
+          styles.profileEmojiBadgeActive,
+          { width: badgeSize, height: badgeSize, borderRadius: badgeRadius },
+        ]}
+      >
+        <Text style={[styles.profileEmoji, { fontSize: emojiSize }]}>{profile.icon}</Text>
+      </View>
+      <Text style={[styles.profileSummaryName, { fontSize: nameSize, flex: 1 }]} numberOfLines={1}>
+        {profile.name}
+      </Text>
+      <Ionicons name="chevron-forward" size={iconSize} color="rgba(255,255,255,0.35)" />
+    </TouchableOpacity>
+  ) : (
+    <View style={[styles.contextControl, compact && { minHeight: scale(28) }]}>
+      <View
+        style={[
+          styles.profileEmojiBadge,
+          styles.profileEmojiBadgeNone,
+          { width: badgeSize, height: badgeSize, borderRadius: badgeRadius },
+        ]}
+      >
+        <Ionicons name="remove-circle" size={emojiSize} color="#F87171" />
+      </View>
+      <Text style={[styles.profileSummaryName, { fontSize: nameSize, flex: 1 }]}>None</Text>
+    </View>
+  );
+
+  const detailsModal = profile ? (
+    <Modal
+      visible={detailsOpen}
+      transparent
+      animationType="fade"
+      onRequestClose={closeDetails}
+    >
+      <Pressable style={styles.renameBackdrop} onPress={closeDetails}>
+        <Pressable
+          style={[
+            styles.renameSheet,
+            {
+              borderRadius: scale(18),
+              padding: scale(18),
+              maxWidth: scale(320),
+            },
+          ]}
+          onPress={(event) => event.stopPropagation()}
+        >
+          <View style={styles.renameHeader}>
+            <View style={[styles.profileModalHeader, { gap: scale(10), flex: 1, minWidth: 0 }]}>
+              <View
+                style={[
+                  styles.profileEmojiBadge,
+                  styles.profileEmojiBadgeActive,
+                  {
+                    width: scale(40),
+                    height: scale(40),
+                    borderRadius: scale(20),
+                  },
+                ]}
+              >
+                <Text style={[styles.profileEmoji, { fontSize: scale(20) }]}>{profile.icon}</Text>
+              </View>
+              <Text
+                style={[styles.renameTitle, { fontSize: scale(18), flex: 1 }]}
+                numberOfLines={1}
+              >
+                {profile.name}
+              </Text>
+            </View>
+            <Pressable
+              style={[
+                styles.headerIconButton,
+                { width: scale(32), height: scale(32), borderRadius: scale(16) },
+              ]}
+              onPress={closeDetails}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Close plant profile details"
+            >
+              <Ionicons name="close" size={scale(18)} color="#fff" />
+            </Pressable>
+          </View>
+
+          <View style={[styles.profileDetailsList, { marginTop: scale(18), gap: scale(14) }]}>
+            <ProfileDetailRow
+              label="Optimum pH"
+              value={String(profile.optimum_pH)}
+              scale={scale}
+            />
+            <ProfileDetailRow
+              label="pH tolerance"
+              value={`±${profile.pH_tolerance}`}
+              scale={scale}
+            />
+            <ProfileDetailRow
+              label="Optimum PPM"
+              value={String(profile.optimumPPM)}
+              scale={scale}
+            />
+            <ProfileDetailRow
+              label="PPM tolerance"
+              value={`±${profile.PPM_tolerance}`}
+              scale={scale}
+            />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  ) : null;
+
+  if (compact) {
+    return (
+      <>
+        <View
+          style={[
+            styles.contextRow,
+            {
+              paddingVertical: scale(8),
+              paddingHorizontal: scale(12),
+              gap: scale(10),
+            },
+          ]}
+        >
+          <Text style={[styles.contextLabel, { fontSize: scale(11), width: scale(56) }]}>Profile</Text>
+          {profileControl}
+        </View>
+        {detailsModal}
+      </>
+    );
+  }
+
+  return (
+    <View style={{ marginTop: scale(14) }}>
+      <Text style={[styles.sectionLabel, { fontSize: scale(11), marginBottom: scale(8) }]}>
+        Plant profile
+      </Text>
+      <View
+        style={[
+          styles.profileCard,
+          {
+            paddingVertical: scale(12),
+            paddingHorizontal: scale(14),
+            borderRadius: scale(12),
+            gap: scale(12),
+          },
+        ]}
+      >
+        {profileControl}
+      </View>
+      {detailsModal}
+    </View>
+  );
+}
+
 export default function MachineDetailScreen({
   machine,
   roomId,
@@ -135,11 +338,8 @@ export default function MachineDetailScreen({
   const [selectedMetricIndex, setSelectedMetricIndex] = useState(1);
   const [renameOpen, setRenameOpen] = useState(false);
   const [draftName, setDraftName] = useState(machine.name);
-
-  const currentRoom = useMemo(
-    () => rooms.find((room) => room.id === roomId),
-    [roomId, rooms],
-  );
+  const [plantProfile, setPlantProfile] = useState<PlantProfile | null>(null);
+  const [loadingPlantProfile, setLoadingPlantProfile] = useState(false);
 
   const metrics = useMemo<MetricHistoryItem[]>(
     () => [
@@ -156,6 +356,33 @@ export default function MachineDetailScreen({
   const selectMetric = (index: number) => {
     setSelectedMetricIndex(index);
   };
+
+  useEffect(() => {
+    if (!machine.plantProfileId) {
+      setPlantProfile(null);
+      setLoadingPlantProfile(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingPlantProfile(true);
+
+    void fetchPlantProfileById(machine.plantProfileId)
+      .then((profile) => {
+        if (!cancelled) {
+          setPlantProfile(profile);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingPlantProfile(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [machine.plantProfileId]);
 
   const handleAddRoomPress = () => {
     setRoomOpen(false);
@@ -347,31 +574,31 @@ export default function MachineDetailScreen({
           style={[
             styles.statusCard,
             {
-              borderRadius: r.scale(16),
-              padding: r.scale(16),
+              borderRadius: r.scale(14),
+              padding: r.scale(12),
               borderColor: statusBorder,
             },
           ]}
         >
-          <View style={[styles.identityRow, { gap: r.scale(12) }]}>
+          <View style={[styles.identityRow, { gap: r.scale(10) }]}>
             <View
               style={[
                 styles.deviceIconWrap,
                 {
-                  width: r.scale(48),
-                  height: r.scale(48),
-                  borderRadius: r.scale(24),
+                  width: r.scale(42),
+                  height: r.scale(42),
+                  borderRadius: r.scale(21),
                 },
               ]}
             >
-              <Ionicons name="hardware-chip-outline" size={r.scale(22)} color="#93C5FD" />
+              <Ionicons name="hardware-chip-outline" size={r.scale(20)} color="#93C5FD" />
             </View>
 
             <View style={styles.identityContent}>
-              <Text style={[styles.deviceModel, { fontSize: r.scale(17) }]} numberOfLines={1}>
+              <Text style={[styles.deviceModel, { fontSize: r.scale(16) }]} numberOfLines={1}>
                 {machine.model}
               </Text>
-              <Text style={[styles.deviceId, { fontSize: r.scale(13), marginTop: r.scale(3) }]}>
+              <Text style={[styles.deviceId, { fontSize: r.scale(12), marginTop: r.scale(2) }]}>
                 {formatDeviceId(machine.deviceId)}
               </Text>
             </View>
@@ -380,10 +607,10 @@ export default function MachineDetailScreen({
               style={[
                 styles.statusPill,
                 {
-                  paddingVertical: r.scale(6),
-                  paddingHorizontal: r.scale(10),
+                  paddingVertical: r.scale(5),
+                  paddingHorizontal: r.scale(9),
                   borderRadius: r.scale(20),
-                  gap: r.scale(6),
+                  gap: r.scale(5),
                   backgroundColor: statusBg,
                   borderColor: statusBorder,
                 },
@@ -393,72 +620,76 @@ export default function MachineDetailScreen({
                 style={[
                   styles.statusDot,
                   {
-                    width: r.scale(7),
-                    height: r.scale(7),
-                    borderRadius: r.scale(4),
+                    width: r.scale(6),
+                    height: r.scale(6),
+                    borderRadius: r.scale(3),
                     backgroundColor: statusColor,
                   },
                 ]}
               />
-              <Text style={[styles.statusPillText, { fontSize: r.scale(12), color: statusColor }]}>
+              <Text style={[styles.statusPillText, { fontSize: r.scale(11), color: statusColor }]}>
                 {machine.online ? 'Online' : 'Offline'}
               </Text>
             </View>
           </View>
 
-          <View style={[styles.cardDivider, { marginVertical: r.scale(14) }]} />
+          <View style={[styles.cardDivider, { marginVertical: r.scale(10) }]} />
 
-          <View style={{ zIndex: roomOpen ? 2 : 0 }}>
-            <Text style={[styles.sectionLabel, { fontSize: r.scale(11), marginBottom: r.scale(8) }]}>
-              Room
-            </Text>
+          <View
+            style={[
+              styles.contextSection,
+              {
+                borderRadius: r.scale(10),
+                zIndex: roomOpen ? 2 : 0,
+              },
+            ]}
+          >
             <View style={styles.roomPickerWrap}>
-              <TouchableOpacity
+              <View
                 style={[
-                  styles.roomPicker,
+                  styles.contextRow,
                   {
-                    paddingVertical: r.scale(12),
-                    paddingHorizontal: r.scale(14),
-                    borderRadius: r.scale(12),
-                    gap: r.scale(8),
+                    paddingVertical: r.scale(8),
+                    paddingHorizontal: r.scale(12),
+                    gap: r.scale(10),
                   },
-                  roomOpen && styles.roomPickerOpen,
+                  roomOpen && styles.contextRowActive,
                 ]}
-                activeOpacity={0.7}
-                onPress={() => setRoomOpen((open) => !open)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: roomOpen }}
-                accessibilityLabel={`Room ${roomName}, change room`}
               >
-                <View style={[styles.roomPickerLeading, { gap: r.scale(8) }]}>
-                  <Ionicons name="layers-outline" size={r.scale(16)} color="rgba(255,255,255,0.55)" />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[styles.roomPickerText, { fontSize: r.scale(15) }]} numberOfLines={1}>
-                      {roomName}
-                    </Text>
-                    {currentRoom ? (
-                      <Text style={[styles.roomPickerMeta, { fontSize: r.scale(11), marginTop: r.scale(2) }]}>
-                        {machineCountLabel(currentRoom.machines.length)}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-                <Ionicons
-                  name={roomOpen ? 'chevron-up' : 'chevron-down'}
-                  size={r.scale(16)}
-                  color="rgba(255,255,255,0.55)"
-                />
-              </TouchableOpacity>
+                <Text style={[styles.contextLabel, { fontSize: r.scale(11), width: r.scale(56) }]}>
+                  Room
+                </Text>
+                <TouchableOpacity
+                  style={styles.contextControl}
+                  activeOpacity={0.7}
+                  onPress={() => setRoomOpen((open) => !open)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: roomOpen }}
+                  accessibilityLabel={`Room ${roomName}, change room`}
+                >
+                  <Ionicons name="layers-outline" size={r.scale(14)} color="rgba(255,255,255,0.5)" />
+                  <Text style={[styles.roomPickerText, { fontSize: r.scale(14), flex: 1 }]} numberOfLines={1}>
+                    {roomName}
+                  </Text>
+                  <Ionicons
+                    name={roomOpen ? 'chevron-up' : 'chevron-down'}
+                    size={r.scale(14)}
+                    color="rgba(255,255,255,0.45)"
+                  />
+                </TouchableOpacity>
+              </View>
 
               {roomOpen && (
                 <View
                   style={[
                     styles.roomDropdown,
                     {
-                      borderRadius: r.scale(14),
-                      marginTop: r.scale(8),
-                      paddingTop: r.scale(8),
-                      paddingBottom: r.scale(8),
+                      borderRadius: r.scale(12),
+                      marginTop: r.scale(4),
+                      marginHorizontal: r.scale(6),
+                      marginBottom: r.scale(6),
+                      paddingTop: r.scale(6),
+                      paddingBottom: r.scale(6),
                     },
                   ]}
                 >
@@ -544,16 +775,25 @@ export default function MachineDetailScreen({
                 </View>
               )}
             </View>
+
+            <View style={styles.contextDivider} />
+
+            <PlantProfileSummary
+              profile={plantProfile}
+              loading={loadingPlantProfile}
+              scale={r.scale}
+              compact
+            />
           </View>
 
-          <View style={[styles.cardDivider, { marginVertical: r.scale(14) }]} />
+          <View style={[styles.cardDivider, { marginVertical: r.scale(10) }]} />
 
-          <View style={[styles.metaRow, { gap: r.scale(8) }]}>
-            <Ionicons name="time-outline" size={r.scale(15)} color="rgba(255,255,255,0.4)" />
-            <Text style={[styles.metaLabel, { fontSize: r.scale(12) }]}>
+          <View style={[styles.metaRow, { gap: r.scale(6) }]}>
+            <Ionicons name="time-outline" size={r.scale(14)} color="rgba(255,255,255,0.4)" />
+            <Text style={[styles.metaLabel, { fontSize: r.scale(11) }]}>
               {machine.online ? 'Updated' : 'Last seen'}
             </Text>
-            <Text style={[styles.metaValue, { fontSize: r.scale(12), flex: 1, textAlign: 'right' }]}>
+            <Text style={[styles.metaValue, { fontSize: r.scale(11), flex: 1, textAlign: 'right' }]}>
               {formatUpdatedAt(machine.updatedAt)}
             </Text>
           </View>
@@ -751,6 +991,36 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
+  contextSection: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    overflow: 'visible',
+  },
+  contextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contextRowActive: {
+    backgroundColor: 'rgba(96,165,250,0.06)',
+  },
+  contextLabel: {
+    color: 'rgba(255,255,255,0.42)',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  contextControl: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
+  contextDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 12,
+  },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -779,31 +1049,9 @@ const styles = StyleSheet.create({
   roomPickerWrap: {
     position: 'relative',
   },
-  roomPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  roomPickerLeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 0,
-  },
-  roomPickerOpen: {
-    borderColor: 'rgba(96,165,250,0.4)',
-    backgroundColor: 'rgba(96,165,250,0.08)',
-  },
   roomPickerText: {
     color: '#fff',
     fontWeight: '600',
-  },
-  roomPickerMeta: {
-    color: 'rgba(255,255,255,0.42)',
-    fontWeight: '500',
   },
   roomDropdown: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -898,6 +1146,48 @@ const styles = StyleSheet.create({
   roomOptionAddHint: {
     color: 'rgba(147,197,253,0.55)',
     fontWeight: '500',
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(52,211,153,0.18)',
+    backgroundColor: 'rgba(52,211,153,0.06)',
+  },
+  profileEmojiBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  profileEmojiBadgeActive: {
+    backgroundColor: 'rgba(52,211,153,0.14)',
+    borderColor: 'rgba(52,211,153,0.35)',
+  },
+  profileEmojiBadgeNone: {
+    backgroundColor: 'rgba(248,113,113,0.1)',
+    borderColor: 'rgba(248,113,113,0.28)',
+  },
+  profileEmoji: {
+    textAlign: 'center',
+  },
+  profileSummaryName: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  profileModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileDetailsList: {},
+  profileDetailLabel: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  profileDetailValue: {
+    color: '#fff',
+    fontWeight: '700',
   },
   metricsCard: {
     backgroundColor: 'rgba(0,0,0,0.35)',
