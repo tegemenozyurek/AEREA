@@ -8,11 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {
-  NestableDraggableFlatList,
-  RenderItemParams,
-  ShadowDecorator,
-} from 'react-native-draggable-flatlist';
 import MachineCard from './MachineCard';
 import RoomPanel from './RoomPanel';
 import type { Machine } from '../types/machine';
@@ -20,19 +15,10 @@ import type { Room } from '../types/room';
 import { useResponsive } from '../utils/responsive';
 
 const COLLAPSE_MS = 220;
-const DRAG_HOLD_MS = 2000;
-
-const DRAG_SPRING = {
-  damping: 22,
-  stiffness: 180,
-  mass: 0.18,
-  overshootClamping: true,
-};
 
 type Props = {
   room: Room;
   defaultExpanded?: boolean;
-  onMachinesChange: (roomId: string, machines: Machine[]) => void;
   onMachinePress?: (machine: Machine, roomId: string, roomName: string) => void;
   onEditPress?: (room: Room) => void;
   onRefreshRoom?: (roomId: string) => Promise<void>;
@@ -42,7 +28,6 @@ type Props = {
 export default function RoomSection({
   room,
   defaultExpanded = false,
-  onMachinesChange,
   onMachinePress,
   onEditPress,
   onRefreshRoom,
@@ -53,7 +38,6 @@ export default function RoomSection({
   const [roomExpanded, setRoomExpanded] = useState(defaultExpanded);
   const [isAnimating, setIsAnimating] = useState(false);
   const [cardsHeight, setCardsHeight] = useState(0);
-  const isDraggingRef = useRef(false);
   const expandAnim = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
 
   useEffect(() => {
@@ -96,60 +80,11 @@ export default function RoomSection({
 
   const constrainHeight = isAnimating || !roomExpanded;
 
-  const renderMachine = useCallback(
-    ({ item, drag, isActive }: RenderItemParams<Machine>) => (
-      <View style={styles.machineRow}>
-        <View style={styles.machineCardCol}>
-          <ShadowDecorator elevation={12} radius={10} opacity={0.3}>
-            <MachineCard
-              machine={item}
-              onLongPressDrag={drag}
-              isDragging={isActive}
-              dragHoldMs={DRAG_HOLD_MS}
-            />
-          </ShadowDecorator>
-        </View>
-        <TouchableOpacity
-          style={[styles.machineChevronCol, { width: r.scale(28), paddingRight: r.scale(2) }]}
-          activeOpacity={0.7}
-          onPress={() => onMachinePress?.(item, room.id, room.name)}
-          hitSlop={8}
-          disabled={isActive}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${item.name}`}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={r.scale(22)}
-            color="rgba(255,255,255,0.55)"
-          />
-        </TouchableOpacity>
-      </View>
-    ),
-    [onMachinePress, room.id, room.name, r],
-  );
-
-  const handleDragBegin = useCallback(() => {
-    isDraggingRef.current = true;
-  }, []);
-
-  const handleDragEnd = useCallback(
-    ({ data }: { data: Machine[] }) => {
-      isDraggingRef.current = false;
-      setMachines(data);
-      onMachinesChange(room.id, data);
-    },
-    [onMachinesChange, room.id],
-  );
-
-  const handleListContentSizeChange = useCallback(
-    (_w: number, h: number) => {
-      if (isDraggingRef.current) {
-        return;
-      }
-      const height = Math.ceil(h);
-      if (height > 0 && height !== cardsHeight) {
-        setCardsHeight(height);
+  const handleCardsLayout = useCallback(
+    (height: number) => {
+      const nextHeight = Math.ceil(height);
+      if (nextHeight > 0 && nextHeight !== cardsHeight) {
+        setCardsHeight(nextHeight);
       }
     },
     [cardsHeight],
@@ -193,23 +128,42 @@ export default function RoomSection({
           ]}
         >
           {showMachines ? (
-            <NestableDraggableFlatList
-              data={machines}
-              keyExtractor={(item) => item.id}
-              renderItem={renderMachine}
-              onDragBegin={handleDragBegin}
-              onDragEnd={handleDragEnd}
-              onContentSizeChange={handleListContentSizeChange}
-              activationDistance={20}
-              dragItemOverflow
-              animationConfig={DRAG_SPRING}
-              ItemSeparatorComponent={() => <View style={{ height: r.cardGap }} />}
-              ListEmptyComponent={
-                <Text style={[styles.emptyMachines, { fontSize: r.scale(13), paddingVertical: r.scale(8) }]}>
-                  No machines in this room
-                </Text>
-              }
-            />
+            machines.length === 0 ? (
+              <Text style={[styles.emptyMachines, { fontSize: r.scale(13), paddingVertical: r.scale(8) }]}>
+                No machines in this room
+              </Text>
+            ) : (
+              <View
+                onLayout={(event) => {
+                  handleCardsLayout(event.nativeEvent.layout.height);
+                }}
+              >
+                {machines.map((item, index) => (
+                  <View key={item.id}>
+                    {index > 0 ? <View style={{ height: r.cardGap }} /> : null}
+                    <View style={styles.machineRow}>
+                      <View style={styles.machineCardCol}>
+                        <MachineCard machine={item} />
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.machineChevronCol, { width: r.scale(28), paddingRight: r.scale(2) }]}
+                        activeOpacity={0.7}
+                        onPress={() => onMachinePress?.(item, room.id, room.name)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Open ${item.name}`}
+                      >
+                        <Ionicons
+                          name="chevron-forward"
+                          size={r.scale(22)}
+                          color="rgba(255,255,255,0.55)"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )
           ) : null}
         </Animated.View>
       </RoomPanel>

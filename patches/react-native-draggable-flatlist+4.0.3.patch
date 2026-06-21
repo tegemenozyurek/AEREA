@@ -27,6 +27,33 @@ index 7e32214..9121176 100644
      }
    });
    const onCellLayout = useStableCallback(e => {
+diff --git a/node_modules/react-native-draggable-flatlist/lib/module/components/DraggableFlatList.js b/node_modules/react-native-draggable-flatlist/lib/module/components/DraggableFlatList.js
+index 80185d0..71caf41 100644
+--- a/node_modules/react-native-draggable-flatlist/lib/module/components/DraggableFlatList.js
++++ b/node_modules/react-native-draggable-flatlist/lib/module/components/DraggableFlatList.js
+@@ -238,10 +238,21 @@ function DraggableFlatListInner(props) {
+     }
+   }, [spacerIndexAnim]);
+   const gestureDisabled = useSharedValue(false);
+-  const panGesture = Gesture.Pan().onBegin(evt => {
++  const panGesture = Gesture.Pan().manualActivation(true).onBegin(evt => {
+     gestureDisabled.value = disabled.value;
+     if (gestureDisabled.value) return;
+     panGestureState.value = evt.state;
++  }).onTouchesMove((_evt, state) => {
++    if (gestureDisabled.value) {
++      state.fail();
++      return;
++    }
++
++    if (activeIndexAnim.value >= 0) {
++      state.activate();
++    } else {
++      state.fail();
++    }
+   }).onUpdate(evt => {
+     if (gestureDisabled.value) return;
+     panGestureState.value = evt.state;
 diff --git a/node_modules/react-native-draggable-flatlist/lib/module/components/NestableDraggableFlatList.js b/node_modules/react-native-draggable-flatlist/lib/module/components/NestableDraggableFlatList.js
 index 3bf1f43..3eae28a 100644
 --- a/node_modules/react-native-draggable-flatlist/lib/module/components/NestableDraggableFlatList.js
@@ -95,6 +122,35 @@ index e4e861a..bfea6f3 100644
      }
    });
  
+diff --git a/node_modules/react-native-draggable-flatlist/src/components/DraggableFlatList.tsx b/node_modules/react-native-draggable-flatlist/src/components/DraggableFlatList.tsx
+index 7c88afc..d2f0e87 100644
+--- a/node_modules/react-native-draggable-flatlist/src/components/DraggableFlatList.tsx
++++ b/node_modules/react-native-draggable-flatlist/src/components/DraggableFlatList.tsx
+@@ -273,11 +273,24 @@ function DraggableFlatListInner<T>(props: DraggableFlatListProps<T>) {
+   const gestureDisabled = useSharedValue(false);
+ 
+   const panGesture = Gesture.Pan()
++    .manualActivation(true)
+     .onBegin((evt) => {
+       gestureDisabled.value = disabled.value;
+       if (gestureDisabled.value) return;
+       panGestureState.value = evt.state;
+     })
++    .onTouchesMove((_evt, state) => {
++      if (gestureDisabled.value) {
++        state.fail();
++        return;
++      }
++
++      if (activeIndexAnim.value >= 0) {
++        state.activate();
++      } else {
++        state.fail();
++      }
++    })
+     .onUpdate((evt) => {
+       if (gestureDisabled.value) return;
+       panGestureState.value = evt.state;
 diff --git a/node_modules/react-native-draggable-flatlist/src/components/NestableDraggableFlatList.tsx b/node_modules/react-native-draggable-flatlist/src/components/NestableDraggableFlatList.tsx
 index 1559352..2dd0b8b 100644
 --- a/node_modules/react-native-draggable-flatlist/src/components/NestableDraggableFlatList.tsx
