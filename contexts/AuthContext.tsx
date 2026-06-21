@@ -10,6 +10,7 @@ import React, {
 import type { User } from 'firebase/auth';
 import { reload } from 'firebase/auth';
 import {
+  isEmailVerifiedForAccess,
   reloadCurrentUser,
   resendVerificationEmailForCredentials,
   sendPasswordReset,
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Keep cached user if reload fails offline.
           }
 
-          if (!firebaseUser.emailVerified) {
+          if (!isEmailVerifiedForAccess(firebaseUser)) {
             await signOutUser();
             setUser(null);
           } else {
@@ -139,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!refreshed) {
         return { ok: false, error: 'Not signed in.' };
       }
-      if (!refreshed.emailVerified) {
+      if (!isEmailVerifiedForAccess(refreshed)) {
         await signOutUser();
         setUser(null);
         return { ok: false, error: 'Email not verified yet. Check your inbox.' };
@@ -157,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const isAuthenticated = Boolean(user?.emailVerified);
+  const isAuthenticated = Boolean(user && isEmailVerifiedForAccess(user));
   const pendingVerification = false;
 
   const value = useMemo<AuthContextValue>(

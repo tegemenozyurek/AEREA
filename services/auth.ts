@@ -12,6 +12,9 @@ import {
 } from 'firebase/auth';
 import { firebaseConfig, firebaseAuth } from '../lib/firebase';
 
+/** Accounts created before this moment skip email verification (legacy users). */
+export const EMAIL_VERIFICATION_REQUIRED_FROM = '2026-06-21T20:55:00+03:00';
+
 export class EmailNotVerifiedError extends Error {
   code = 'auth/email-not-verified';
 
@@ -19,6 +22,16 @@ export class EmailNotVerifiedError extends Error {
     super('Email not verified');
     this.name = 'EmailNotVerifiedError';
   }
+}
+
+export function isEmailVerificationRequired(user: User): boolean {
+  const createdAt = user.metadata.creationTime;
+  if (!createdAt) return true;
+  return new Date(createdAt).getTime() >= new Date(EMAIL_VERIFICATION_REQUIRED_FROM).getTime();
+}
+
+export function isEmailVerifiedForAccess(user: User): boolean {
+  return user.emailVerified || !isEmailVerificationRequired(user);
 }
 
 /** Ensures Firebase emails use a proper https action link (%LINK% in Console template). */
@@ -35,6 +48,9 @@ function defaultDisplayName(email: string): string {
 }
 
 async function sendVerificationEmail(user: User): Promise<void> {
+  if (!isEmailVerificationRequired(user)) {
+    return;
+  }
   await sendEmailVerification(user, getEmailVerificationActionCodeSettings());
 }
 
@@ -60,7 +76,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
   );
   await reload(credential.user);
 
-  if (!credential.user.emailVerified) {
+  if (!isEmailVerifiedForAccess(credential.user)) {
     await signOut(firebaseAuth);
     throw new EmailNotVerifiedError();
   }
@@ -77,6 +93,11 @@ export async function resendVerificationEmailForCredentials(
     email,
     password,
   );
+
+  if (!isEmailVerificationRequired(credential.user)) {
+    await signOut(firebaseAuth);
+    throw new Error('This account does not require email verification. You can sign in.');
+  }
 
   if (credential.user.emailVerified) {
     await signOut(firebaseAuth);

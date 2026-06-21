@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinkableText from '../components/LinkableText';
+import AuthSocialOptions from '../components/AuthSocialOptions';
 import { useAuth } from '../contexts/AuthContext';
 import { useResponsive } from '../utils/responsive';
 
@@ -364,6 +365,8 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
                     </Text>
                   )}
                 </TouchableOpacity>
+
+                <AuthSocialOptions />
               </View>
             </View>
           </ScrollView>
@@ -477,7 +480,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
     shadowColor: '#000',
