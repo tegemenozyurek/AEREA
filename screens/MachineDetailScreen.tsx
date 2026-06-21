@@ -128,17 +128,49 @@ type PlantProfileSummaryProps = {
   compact?: boolean;
 };
 
-type ProfileDetailRowProps = {
-  label: string;
-  value: string;
+type ProfileDetailsColumnsProps = {
+  profile: PlantProfile;
   scale: (value: number) => number;
 };
 
-function ProfileDetailRow({ label, value, scale }: ProfileDetailRowProps) {
+function ProfileDetailsColumns({ profile, scale }: ProfileDetailsColumnsProps) {
+  const renderMetric = (label: string, value: string) => (
+    <View style={{ gap: scale(3) }}>
+      <Text style={[styles.profileColumnMetricLabel, { fontSize: scale(11) }]}>{label}</Text>
+      <Text style={[styles.profileColumnMetricValue, { fontSize: scale(16) }]}>{value}</Text>
+    </View>
+  );
+
+  const renderToleranceMetric = (label: string, value: string | number) => (
+    <View style={{ gap: scale(3) }}>
+      <Text style={[styles.profileColumnMetricLabel, { fontSize: scale(11) }]}>{label}</Text>
+      <View style={[styles.profileToleranceValue, { gap: scale(6) }]}>
+        <Text style={[styles.profileToleranceSign, { fontSize: scale(16) }]}>±</Text>
+        <Text style={[styles.profileColumnMetricValue, { fontSize: scale(16) }]}>{value}</Text>
+      </View>
+    </View>
+  );
+
   return (
-    <View style={{ gap: scale(4) }}>
-      <Text style={[styles.profileDetailLabel, { fontSize: scale(11) }]}>{label}</Text>
-      <Text style={[styles.profileDetailValue, { fontSize: scale(16) }]}>{value}</Text>
+    <View style={{ marginTop: scale(18) }}>
+      <View style={[styles.profileColumnsHeader, { gap: scale(12), marginBottom: scale(12) }]}>
+        <Text style={[styles.profileColumnHeader, { fontSize: scale(11), flex: 1 }]}>Optimum</Text>
+        <Text style={[styles.profileColumnHeader, { fontSize: scale(11), flex: 1 }]}>Tolerances</Text>
+      </View>
+
+      <View style={[styles.profileColumnsBody, { gap: scale(12) }]}>
+        <View style={[styles.profileColumn, { flex: 1, gap: scale(12) }]}>
+          {renderMetric('pH', String(profile.optimum_pH))}
+          {renderMetric('ppm', String(profile.optimumPPM))}
+        </View>
+
+        <View style={styles.profileColumnDivider} />
+
+        <View style={[styles.profileColumn, { flex: 1, gap: scale(12) }]}>
+          {renderToleranceMetric('pH', profile.pH_tolerance)}
+          {renderToleranceMetric('ppm', profile.PPM_tolerance)}
+        </View>
+      </View>
     </View>
   );
 }
@@ -250,28 +282,7 @@ function PlantProfileSummary({ profile, loading, scale, compact = false }: Plant
             </Pressable>
           </View>
 
-          <View style={[styles.profileDetailsList, { marginTop: scale(18), gap: scale(14) }]}>
-            <ProfileDetailRow
-              label="Optimum pH"
-              value={String(profile.optimum_pH)}
-              scale={scale}
-            />
-            <ProfileDetailRow
-              label="pH tolerance"
-              value={`±${profile.pH_tolerance}`}
-              scale={scale}
-            />
-            <ProfileDetailRow
-              label="Optimum PPM"
-              value={String(profile.optimumPPM)}
-              scale={scale}
-            />
-            <ProfileDetailRow
-              label="PPM tolerance"
-              value={`±${profile.PPM_tolerance}`}
-              scale={scale}
-            />
-          </View>
+          <ProfileDetailsColumns profile={profile} scale={scale} />
         </Pressable>
       </Pressable>
     </Modal>
@@ -1178,16 +1189,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  profileDetailsList: {},
-  profileDetailLabel: {
+  profileColumnsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileColumnHeader: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  profileColumnsBody: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  profileColumn: {},
+  profileColumnDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  profileColumnMetricLabel: {
     color: 'rgba(255,255,255,0.45)',
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
   },
-  profileDetailValue: {
+  profileColumnMetricValue: {
     color: '#fff',
     fontWeight: '700',
+  },
+  profileToleranceValue: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  profileToleranceSign: {
+    color: '#fff',
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   metricsCard: {
     backgroundColor: 'rgba(0,0,0,0.35)',
