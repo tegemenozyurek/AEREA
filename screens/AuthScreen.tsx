@@ -19,6 +19,13 @@ type AuthMode = 'login' | 'register';
 
 const LOGO_ASPECT_RATIO = 1390 / 694;
 
+/** Auth screen palette — dark anthracite background, green logo accent. */
+const AUTH_BG = '#121212';
+const AUTH_DEEP = '#121212';
+const AUTH_TAB_ACTIVE_BG = 'rgba(255,255,255,0.94)';
+const AUTH_SUBMIT_BG = '#0369A1';
+const AUTH_RULE_ACTIVE = '#BAE6FD';
+
 const PASSWORD_RULES: { test: (s: string) => boolean; label: string }[] = [
   { test: (s) => s.length >= 8, label: 'At least 8 characters' },
   { test: (s) => /[A-Z]/.test(s), label: 'One uppercase letter' },
@@ -81,127 +88,133 @@ export default function AuthScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            {
-              paddingHorizontal: r.horizontalPadding,
-              paddingTop: r.topPadding,
-            },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <Image
-            source={require('../assets/aerea-logo.png')}
-            style={[styles.logo, { maxWidth: r.logoMaxWidth }]}
-            resizeMode="contain"
-          />
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingHorizontal: r.horizontalPadding,
+                paddingTop: r.topPadding,
+              },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Image
+              source={require('../assets/aerea-logo.png')}
+              style={[styles.logo, { maxWidth: r.logoMaxWidth }]}
+              resizeMode="contain"
+            />
 
-          <View style={[styles.contentContainer, { maxWidth: r.contentMaxWidth }]}>
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tab, isLogin && styles.tabActive]}
-                activeOpacity={0.8}
-                onPress={() => handleModeChange('login')}
-                disabled={loading}
-              >
-                <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>
-                  Sign In
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, !isLogin && styles.tabActive]}
-                activeOpacity={0.8}
-                onPress={() => handleModeChange('register')}
-                disabled={loading}
-              >
-                <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>
-                  Sign Up
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.form}>
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="rgba(255,255,255,0.6)"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={email}
-                onChangeText={setEmail}
-                editable={!loading}
-              />
-              <View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  placeholderTextColor="rgba(255,255,255,0.6)"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  editable={!loading}
-                />
-                {!isLogin && (
-                  <View style={styles.rules}>
-                    {PASSWORD_RULES.map(({ test, label }) => {
-                      const ok = test(password);
-                      return (
-                        <View key={label} style={styles.ruleRow}>
-                          <View style={[styles.ruleDot, ok && styles.ruleDotActive]} />
-                          <Text style={[styles.ruleText, ok && styles.ruleTextActive]}>
-                            {label}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-              {!isLogin && (
-                <TextInput
-                  style={styles.input}
-                  placeholder="Confirm Password"
-                  placeholderTextColor="rgba(255,255,255,0.6)"
-                  secureTextEntry
-                  value={passwordConfirm}
-                  onChangeText={setPasswordConfirm}
-                  editable={!loading}
-                />
-              )}
-
-              {error && <Text style={styles.errorText}>{error}</Text>}
-
-              <TouchableOpacity
-                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                activeOpacity={0.85}
-                onPress={() => void handleSubmit()}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.submitText}>
-                    {isLogin ? 'Sign In' : 'Create Account'}
+            <View style={[styles.contentContainer, { maxWidth: r.contentMaxWidth }]}>
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[styles.tab, isLogin && styles.tabActive]}
+                  activeOpacity={0.8}
+                  onPress={() => handleModeChange('login')}
+                  disabled={loading}
+                >
+                  <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>
+                    Sign In
                   </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tab, !isLogin && styles.tabActive]}
+                  activeOpacity={0.8}
+                  onPress={() => handleModeChange('register')}
+                  disabled={loading}
+                >
+                  <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>
+                    Sign Up
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.form}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="rgba(255,255,255,0.6)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={email}
+                  onChangeText={setEmail}
+                  editable={!loading}
+                />
+                <View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor="rgba(255,255,255,0.6)"
+                    secureTextEntry
+                    value={password}
+                    onChangeText={setPassword}
+                    editable={!loading}
+                  />
+                  {!isLogin && (
+                    <View style={styles.rules}>
+                      {PASSWORD_RULES.map(({ test, label }) => {
+                        const ok = test(password);
+                        return (
+                          <View key={label} style={styles.ruleRow}>
+                            <View style={[styles.ruleDot, ok && styles.ruleDotActive]} />
+                            <Text style={[styles.ruleText, ok && styles.ruleTextActive]}>
+                              {label}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+                {!isLogin && (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm Password"
+                    placeholderTextColor="rgba(255,255,255,0.6)"
+                    secureTextEntry
+                    value={passwordConfirm}
+                    onChangeText={setPasswordConfirm}
+                    editable={!loading}
+                  />
                 )}
-              </TouchableOpacity>
+
+                {error && <Text style={styles.errorText}>{error}</Text>}
+
+                <TouchableOpacity
+                  style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                  activeOpacity={0.85}
+                  onPress={() => void handleSubmit()}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitText}>
+                      {isLogin ? 'Sign In' : 'Create Account'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: AUTH_BG,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -226,10 +239,12 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 14,
     padding: 4,
     marginBottom: 24,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   tab: {
     flex: 1,
@@ -238,7 +253,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   tabActive: {
-    backgroundColor: '#008D41',
+    backgroundColor: AUTH_TAB_ACTIVE_BG,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   tabText: {
     color: 'rgba(255,255,255,0.85)',
@@ -246,7 +266,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabTextActive: {
-    color: '#fff',
+    color: AUTH_DEEP,
+    fontWeight: '700',
   },
   form: {
     gap: 14,
@@ -278,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.4)',
   },
   ruleDotActive: {
-    backgroundColor: '#3CCB7F',
+    backgroundColor: AUTH_RULE_ACTIVE,
   },
   ruleText: {
     color: 'rgba(255,255,255,0.65)',
@@ -289,13 +310,15 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   submitButton: {
-    backgroundColor: '#008D41',
+    backgroundColor: AUTH_SUBMIT_BG,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
     shadowColor: '#000',
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.4,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
