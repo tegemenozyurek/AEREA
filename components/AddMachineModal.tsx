@@ -468,8 +468,6 @@ function PlantProfileOption({
         <View style={[styles.soonBadge, { paddingHorizontal: scale(8), paddingVertical: scale(3), borderRadius: scale(8) }]}>
           <Text style={[styles.soonBadgeText, { fontSize: scale(10) }]}>{badge}</Text>
         </View>
-      ) : selected ? (
-        <Ionicons name="checkmark-circle" size={scale(20)} color="#60A5FA" />
       ) : null}
     </>
   );
