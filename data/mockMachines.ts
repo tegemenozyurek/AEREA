@@ -159,9 +159,9 @@ export const MOCK_ROOMS: Room[] = [
     name: 'Room #1',
     colorId: 'slate',
     environment: {
-      temperatureC: 31.2,
+      temperatureC: 24.2,
       humidityPct: 58,
-      waterLevelL: 2.8,
+      waterLevelL: 18.5,
       phUpLevelL: 2.4,
       phDownLevelL: 1.6,
     },
@@ -220,9 +220,9 @@ export const MOCK_ROOMS: Room[] = [
     environment: {
       temperatureC: 23.6,
       humidityPct: 42,
-      waterLevelL: 14.2,
-      phUpLevelL: 0.3,
-      phDownLevelL: 0.2,
+      waterLevelL: 3.6,
+      phUpLevelL: 1.8,
+      phDownLevelL: 2.1,
     },
     machines: [
       {
@@ -262,7 +262,7 @@ export const MOCK_ROOMS: Room[] = [
     name: 'Room #3',
     colorId: 'lavender',
     environment: {
-      temperatureC: 25.1,
+      temperatureC: 30.8,
       humidityPct: 55,
       waterLevelL: 11.0,
       phUpLevelL: 3.0,

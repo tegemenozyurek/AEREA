@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AddMachineModal from '../components/AddMachineModal';
+import RoomAlertsBanner from '../components/RoomAlertsBanner';
 import RoomEditModal from '../components/RoomEditModal';
 import RoomSection from '../components/RoomSection';
 import {
@@ -24,6 +25,10 @@ import { CUSTOM_PLANT_PROFILE_ID } from '../types/plantProfile';
 import type { Room } from '../types/room';
 import { useMachinesAlerts } from '../contexts/MachinesAlertsContext';
 import { useResponsive } from '../utils/responsive';
+import {
+  getRoomAlertSummaries,
+  getRoomAlertSummariesSignature,
+} from '../utils/roomEnvironmentAlerts';
 import MachineDetailScreen from './MachineDetailScreen';
 
 type SelectedMachine = {
@@ -48,6 +53,15 @@ export default function MachinesScreen() {
   const [addRoomOpen, setAddRoomOpen] = useState(false);
   const [addRoomForMachineId, setAddRoomForMachineId] = useState<string | null>(null);
   const [refreshingRoomId, setRefreshingRoomId] = useState<string | null>(null);
+  const [dismissedAlertsSignature, setDismissedAlertsSignature] = useState<string | null>(null);
+
+  const roomAlertSummaries = useMemo(() => getRoomAlertSummaries(rooms), [rooms]);
+  const alertsSignature = useMemo(
+    () => getRoomAlertSummariesSignature(roomAlertSummaries),
+    [roomAlertSummaries],
+  );
+  const showAlertsBanner =
+    roomAlertSummaries.length > 0 && dismissedAlertsSignature !== alertsSignature;
 
   useEffect(() => {
     syncRooms(rooms);
@@ -447,6 +461,13 @@ export default function MachinesScreen() {
           />
         }
       >
+        {showAlertsBanner ? (
+          <RoomAlertsBanner
+            summaries={roomAlertSummaries}
+            onDismiss={() => setDismissedAlertsSignature(alertsSignature)}
+          />
+        ) : null}
+
         {rooms.map((room) => (
           <RoomSection
             key={room.id}
