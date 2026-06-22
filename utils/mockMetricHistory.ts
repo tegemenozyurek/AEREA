@@ -8,11 +8,15 @@ export const HISTORY_HOUR_OPTIONS: HistoryHours[] = [12, 24, 48, 72];
 
 export const HISTORY_INTERVAL_HOURS = 6;
 
+export type PhCorrection = 'up' | 'down';
+
 export type MetricPoint = {
   at: Date;
   value: number;
   /** ppm nutrient dose event — value spikes on the next point */
   nutrientDose?: boolean;
+  /** pH correction at out-of-tolerance point — value moves toward optimum after */
+  phCorrection?: PhCorrection;
 };
 
 export type MetricYAxisRange = {
@@ -112,13 +116,29 @@ function historyPointCount(hours: HistoryHours): number {
 }
 
 /** Machines whose pH history mock crosses plant profile tolerance. */
-const MOCK_TOLERANCE_EXCURSION_MACHINES: Partial<Record<string, MetricKey[]>> = {
-  'r2-machine-2': ['ph'],
-  'r3-machine-1': ['ph'],
-};
+const MOCK_PH_LOW_MACHINES = new Set(['r2-machine-2', 'r1-machine-2']);
+const MOCK_PH_HIGH_MACHINES = new Set(['r3-machine-1']);
 
-function shouldMockToleranceExcursion(machineId: string, metric: MetricKey): boolean {
-  return MOCK_TOLERANCE_EXCURSION_MACHINES[machineId]?.includes(metric) ?? false;
+function pickTimelineEventIndices(pointCount: number, hours: HistoryHours, seed: number): number[] {
+  if (pointCount < 5) return [];
+
+  const eventCount = hours <= 12 ? 1 : hours <= 48 ? 2 : 3;
+  const minIndex = 2;
+  const maxIndex = pointCount - 3;
+  const span = maxIndex - minIndex;
+  const indices: number[] = [];
+
+  for (let event = 0; event < eventCount; event += 1) {
+    const slot = (event + 1) / (eventCount + 1);
+    const jitter = (pseudoRandom(seed, 30 + event) - 0.5) * Math.min(2, span * 0.12);
+    const index = Math.round(minIndex + span * slot + jitter);
+    const clamped = clamp(index, minIndex, maxIndex);
+    if (!indices.includes(clamped)) {
+      indices.push(clamped);
+    }
+  }
+
+  return indices.sort((a, b) => a - b);
 }
 
 export function getMetricToleranceBounds(
@@ -293,28 +313,6 @@ export function buildChartLineSegments(
   return merged;
 }
 
-function pickPpmDoseIndices(pointCount: number, hours: HistoryHours, seed: number): number[] {
-  if (pointCount < 5) return [];
-
-  const doseCount = hours <= 12 ? 1 : hours <= 48 ? 2 : 3;
-  const minIndex = 2;
-  const maxIndex = pointCount - 3;
-  const span = maxIndex - minIndex;
-  const indices: number[] = [];
-
-  for (let dose = 0; dose < doseCount; dose += 1) {
-    const slot = (dose + 1) / (doseCount + 1);
-    const jitter = (pseudoRandom(seed, 30 + dose) - 0.5) * Math.min(2, span * 0.12);
-    const index = Math.round(minIndex + span * slot + jitter);
-    const clamped = clamp(index, minIndex, maxIndex);
-    if (!indices.includes(clamped)) {
-      indices.push(clamped);
-    }
-  }
-
-  return indices.sort((a, b) => a - b);
-}
-
 function buildPpmMetricHistory(
   currentValue: number,
   machineId: string,
@@ -324,7 +322,7 @@ function buildPpmMetricHistory(
   const seed = hashSeed(`${machineId}:ppm:${hours}`);
   const now = Date.now();
   const pointCount = historyPointCount(hours);
-  const doseIndices = pickPpmDoseIndices(pointCount, hours, seed);
+  const doseIndices = pickTimelineEventIndices(pointCount, hours, seed);
   const decayPerStep = 22 + pseudoRandom(seed, 10) * 16;
   const doseBoost = 85 + pseudoRandom(seed, 11) * 70;
   const startValue = clamp(
@@ -369,40 +367,94 @@ function buildPpmMetricHistory(
   return points;
 }
 
-function applyToleranceExcursion(
-  points: MetricPoint[],
-  metric: MetricKey,
-  profile: PlantProfile,
+function resolvePhCorrectionType(
   machineId: string,
+  eventIndex: number,
+  seed: number,
+): PhCorrection {
+  if (MOCK_PH_LOW_MACHINES.has(machineId)) return 'up';
+  if (MOCK_PH_HIGH_MACHINES.has(machineId)) return 'down';
+  return pseudoRandom(seed, 40 + eventIndex) > 0.5 ? 'up' : 'down';
+}
+
+function buildPhMetricHistory(
+  currentValue: number,
+  machineId: string,
+  hours: HistoryHours,
+  profile: PlantProfile,
 ): MetricPoint[] {
-  const bounds = getMetricToleranceBounds(metric, profile);
-  if (!bounds || points.length < 3) return points;
+  const optimum = sanitizeProfileNumber(profile.optimum_pH, 6);
+  const tolerance = sanitizeProfileNumber(profile.pH_tolerance, 0.5);
+  const tolMin = optimum - tolerance;
+  const tolMax = optimum + tolerance;
+  const safeCurrent = sanitizeProfileNumber(currentValue, optimum);
+  const seed = hashSeed(`${machineId}:ph:${hours}`);
+  const now = Date.now();
+  const pointCount = historyPointCount(hours);
+  const correctionIndices = pickTimelineEventIndices(pointCount, hours, seed);
+  const correctionTypes = new Map(
+    correctionIndices.map((index) => [index, resolvePhCorrectionType(machineId, index, seed)]),
+  );
 
-  const seed = hashSeed(`${machineId}:${metric}:excursion`);
-  const direction = pseudoRandom(seed, 1) > 0.5 ? 1 : -1;
-  const overshoot =
-    metric === 'ph'
-      ? profile.pH_tolerance * (0.35 + pseudoRandom(seed, 2) * 0.35)
-      : profile.PPM_tolerance * (0.4 + pseudoRandom(seed, 2) * 0.45);
+  const driftStep = 0.055 + pseudoRandom(seed, 10) * 0.045;
+  const correctionBoost = tolerance * (0.5 + pseudoRandom(seed, 11) * 0.35);
+  const overshoot = tolerance * (0.22 + pseudoRandom(seed, 12) * 0.18);
 
-  const start = Math.max(1, Math.floor(points.length * 0.28));
-  const end = Math.min(points.length - 2, Math.floor(points.length * 0.72));
+  const values: number[] = [];
+  const points: MetricPoint[] = [];
 
-  return points.map((point, index) => {
-    if (index < start || index > end) {
-      return point;
+  for (let i = 0; i < pointCount; i += 1) {
+    const noise = (pseudoRandom(seed, i + 1) - 0.5) * 0.05;
+    let value: number;
+    let phCorrection: PhCorrection | undefined;
+
+    if (i === 0) {
+      value = optimum + (pseudoRandom(seed, 0) - 0.5) * tolerance * 0.35;
+    } else if (correctionIndices.includes(i)) {
+      const type = correctionTypes.get(i) ?? 'up';
+      phCorrection = type;
+      if (type === 'up') {
+        value = Math.min(values[i - 1] - driftStep * 1.4, tolMin - overshoot) + noise * 0.25;
+      } else {
+        value = Math.max(values[i - 1] + driftStep * 1.4, tolMax + overshoot) + noise * 0.25;
+      }
+    } else if (correctionIndices.includes(i - 1)) {
+      const type = correctionTypes.get(i - 1) ?? 'up';
+      const towardOptimum = (optimum - values[i - 1]) * 0.45;
+      if (type === 'up') {
+        value = values[i - 1] + correctionBoost + towardOptimum + noise;
+      } else {
+        value = values[i - 1] - correctionBoost + towardOptimum + noise;
+      }
+    } else {
+      const nextCorrection = correctionIndices.find((index) => index > i);
+      const towardOptimum = (optimum - values[i - 1]) * 0.18;
+      value = values[i - 1] + towardOptimum + noise;
+
+      if (nextCorrection !== undefined && nextCorrection - i <= 2) {
+        const type = correctionTypes.get(nextCorrection) ?? 'up';
+        value += type === 'up' ? -driftStep * 0.9 : driftStep * 0.9;
+      }
     }
 
-    const progress = (index - start) / (end - start);
-    const envelope = Math.sin(progress * Math.PI);
-    const target =
-      direction > 0 ? bounds.max + overshoot * envelope : bounds.min - overshoot * envelope;
+    if (i === pointCount - 1) {
+      value = safeCurrent;
+      phCorrection = undefined;
+    }
 
-    return {
-      ...point,
-      value: roundMetric(metric, target),
-    };
-  });
+    value = clamp(roundMetric('ph', value), METRIC_BOUNDS.ph.min, METRIC_BOUNDS.ph.max);
+    values.push(value);
+
+    const hoursAgo =
+      pointCount <= 1 ? 0 : Math.round(hours * (1 - i / (pointCount - 1)));
+    points.push({
+      at: new Date(now - hoursAgo * 60 * 60 * 1000),
+      value,
+      phCorrection,
+    });
+  }
+
+  return points;
 }
 
 /** Placeholder — replace with Firestore/API time series. */
@@ -415,6 +467,10 @@ export function buildMetricHistory(
 ): MetricPoint[] {
   if (metric === 'ppm') {
     return buildPpmMetricHistory(currentValue, machineId, hours);
+  }
+
+  if (metric === 'ph' && plantProfile) {
+    return buildPhMetricHistory(currentValue, machineId, hours, plantProfile);
   }
 
   const bounds = METRIC_BOUNDS[metric];
@@ -438,20 +494,13 @@ export function buildMetricHistory(
       value = currentValue;
     }
 
-    const hoursAgo = Math.round(hours * (1 - i / (pointCount - 1)));
+    const hoursAgo =
+      pointCount <= 1 ? 0 : Math.round(hours * (1 - i / (pointCount - 1)));
 
     points.push({
       at: new Date(now - hoursAgo * 60 * 60 * 1000),
       value: roundMetric(metric, value),
     });
-  }
-
-  if (
-    plantProfile &&
-    metric === 'ph' &&
-    shouldMockToleranceExcursion(machineId, metric)
-  ) {
-    return applyToleranceExcursion(points, metric, plantProfile, machineId);
   }
 
   return points;

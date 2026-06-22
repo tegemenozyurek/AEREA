@@ -11,7 +11,7 @@ import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { withAlpha } from '../utils/color';
 import { formatDateTime } from '../utils/formatDate';
 import type { PlantProfile } from '../types/plantProfile';
-import type { HistoryHours, MetricKey } from '../utils/mockMetricHistory';
+import type { HistoryHours, MetricKey, PhCorrection } from '../utils/mockMetricHistory';
 import {
   buildChartLineSegments,
   buildMetricHistory,
@@ -37,6 +37,7 @@ type ChartDot = {
   at: Date;
   index: number;
   nutrientDose?: boolean;
+  phCorrection?: PhCorrection;
 };
 
 type Props = {
@@ -137,6 +138,7 @@ export default function MetricHistoryChart({
         at: point.at,
         index,
         nutrientDose: point.nutrientDose,
+        phCorrection: point.phCorrection,
       };
     });
 
@@ -387,7 +389,11 @@ export default function MetricHistoryChart({
               accessibilityLabel={
                 dot.nutrientDose
                   ? `Nutrient added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
-                  : `${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                  : dot.phCorrection === 'up'
+                    ? `pH up added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                    : dot.phCorrection === 'down'
+                      ? `pH down added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                      : `${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
               }
             />
           ))}
@@ -412,6 +418,40 @@ export default function MetricHistoryChart({
                   >
                     <Text style={[styles.doseMarkerText, { fontSize: r.scale(11), color }]}>
                       +
+                    </Text>
+                  </View>
+                ))
+            : null}
+
+          {metricKey === 'ph'
+            ? chart.dots
+                .filter((dot) => dot.phCorrection)
+                .map((dot) => (
+                  <View
+                    key={`ph-correction-${dot.index}`}
+                    style={[
+                      styles.phCorrectionMarker,
+                      {
+                        left: dot.x - r.scale(14),
+                        top: dot.y - r.scale(22),
+                        minWidth: r.scale(28),
+                        height: r.scale(14),
+                        borderRadius: r.scale(7),
+                        paddingHorizontal: r.scale(4),
+                      },
+                    ]}
+                    pointerEvents="none"
+                  >
+                    <Text
+                      style={[
+                        styles.phCorrectionMarkerText,
+                        {
+                          fontSize: r.scale(8),
+                          color: dot.phCorrection === 'up' ? '#A78BFA' : '#FB7185',
+                        },
+                      ]}
+                    >
+                      {dot.phCorrection === 'up' ? 'pH+' : 'pH-'}
                     </Text>
                   </View>
                 ))
@@ -511,6 +551,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 12,
     marginTop: -1,
+  },
+  phCorrectionMarker: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15,23,42,0.92)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  phCorrectionMarkerText: {
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
   yAxisTick: {
     position: 'absolute',
