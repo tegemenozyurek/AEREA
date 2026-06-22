@@ -84,7 +84,7 @@ export default function MetricRing({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, show 48 hour history`}
+      accessibilityLabel={`${label}, show history`}
       style={shiftX !== 0 ? { transform: [{ translateX: shiftX }] } : undefined}
     >
       <Animated.View style={[styles.wrap, { width: size + 12 }, floatStyle]}>

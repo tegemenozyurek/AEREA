@@ -1,8 +1,22 @@
+import type { PlantProfile } from '../types/plantProfile';
+
 export type MetricKey = 'ppm' | 'ph' | 'waterLevel' | 'tankLevel' | 'phDown' | 'phUp';
+
+export type HistoryHours = 12 | 24 | 48 | 72;
+
+export const HISTORY_HOUR_OPTIONS: HistoryHours[] = [12, 24, 48, 72];
+
+export const HISTORY_INTERVAL_HOURS = 6;
 
 export type MetricPoint = {
   at: Date;
   value: number;
+};
+
+export type MetricYAxisRange = {
+  min: number;
+  max: number;
+  fixed: boolean;
 };
 
 const METRIC_BOUNDS: Record<MetricKey, { min: number; max: number; step: number }> = {
@@ -39,18 +53,21 @@ function roundMetric(metric: MetricKey, value: number): number {
   return Math.round(value);
 }
 
-const HISTORY_HOURS = 48;
-const HISTORY_POINTS = 8;
+function historyPointCount(hours: HistoryHours): number {
+  return Math.floor(hours / HISTORY_INTERVAL_HOURS) + 1;
+}
 
 /** Placeholder — replace with Firestore/API time series. */
-export function build48hHistory(
+export function buildMetricHistory(
   metric: MetricKey,
   currentValue: number,
   machineId: string,
+  hours: HistoryHours = 48,
 ): MetricPoint[] {
   const bounds = METRIC_BOUNDS[metric];
-  const seed = hashSeed(`${machineId}:${metric}`);
+  const seed = hashSeed(`${machineId}:${metric}:${hours}`);
   const now = Date.now();
+  const pointCount = historyPointCount(hours);
   const points: MetricPoint[] = [];
 
   let value = clamp(
@@ -59,16 +76,16 @@ export function build48hHistory(
     bounds.max,
   );
 
-  for (let i = 0; i < HISTORY_POINTS; i += 1) {
-    if (i > 0 && i < HISTORY_POINTS - 1) {
+  for (let i = 0; i < pointCount; i += 1) {
+    if (i > 0 && i < pointCount - 1) {
       const drift = (pseudoRandom(seed, i) - 0.5) * bounds.step * 3.5;
       value = clamp(value + drift, bounds.min, bounds.max);
     }
-    if (i === HISTORY_POINTS - 1) {
+    if (i === pointCount - 1) {
       value = currentValue;
     }
 
-    const hoursAgo = Math.round(HISTORY_HOURS * (1 - i / (HISTORY_POINTS - 1)));
+    const hoursAgo = Math.round(hours * (1 - i / (pointCount - 1)));
 
     points.push({
       at: new Date(now - hoursAgo * 60 * 60 * 1000),
@@ -79,6 +96,52 @@ export function build48hHistory(
   return points;
 }
 
+/** @deprecated Use buildMetricHistory */
+export function build48hHistory(
+  metric: MetricKey,
+  currentValue: number,
+  machineId: string,
+): MetricPoint[] {
+  return buildMetricHistory(metric, currentValue, machineId, 48);
+}
+
+export function getMetricYAxisRange(
+  metric: MetricKey,
+  values: number[],
+  profile: PlantProfile | null,
+): MetricYAxisRange {
+  if (profile && metric === 'ppm') {
+    return {
+      min: profile.optimumPPM - profile.PPM_tolerance,
+      max: profile.optimumPPM + profile.PPM_tolerance,
+      fixed: true,
+    };
+  }
+
+  if (profile && metric === 'ph') {
+    return {
+      min: profile.optimum_pH - profile.pH_tolerance,
+      max: profile.optimum_pH + profile.pH_tolerance,
+      fixed: true,
+    };
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const padding = range * 0.12;
+
+  return {
+    min: min - padding,
+    max: max + padding,
+    fixed: false,
+  };
+}
+
+export function formatHistoryRangeLabel(hours: HistoryHours): string {
+  return `Last ${hours}h`;
+}
+
 export function formatMetricValue(metric: MetricKey, value: number): string {
   if (metric === 'waterLevel' || metric === 'tankLevel') {
     return `${value}%`;
@@ -86,5 +149,5 @@ export function formatMetricValue(metric: MetricKey, value: number): string {
   if (metric === 'ph' || metric === 'phDown' || metric === 'phUp') {
     return value.toFixed(1);
   }
-  return String(value);
+  return String(Math.round(value));
 }

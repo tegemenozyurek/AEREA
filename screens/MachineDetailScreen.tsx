@@ -1284,6 +1284,7 @@ export default function MachineDetailScreen({
           selectedIndex={selectedMetricIndex}
           onSelectedIndexChange={setSelectedMetricIndex}
           machineId={machine.id}
+          plantProfile={plantProfile}
         />
       </ScrollView>
     </SafeAreaView>

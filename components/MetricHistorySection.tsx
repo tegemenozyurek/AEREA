@@ -1,14 +1,18 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
   useWindowDimensions,
 } from 'react-native';
-import type { MetricKey } from '../utils/mockMetricHistory';
+import type { PlantProfile } from '../types/plantProfile';
+import type { HistoryHours, MetricKey } from '../utils/mockMetricHistory';
+import { HISTORY_HOUR_OPTIONS } from '../utils/mockMetricHistory';
+import { withAlpha } from '../utils/color';
 import { useResponsive } from '../utils/responsive';
 import MetricHistoryChart from './MetricHistoryChart';
 
@@ -24,6 +28,7 @@ type Props = {
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
   machineId: string;
+  plantProfile?: PlantProfile | null;
 };
 
 export default function MetricHistorySection({
@@ -31,10 +36,12 @@ export default function MetricHistorySection({
   selectedIndex,
   onSelectedIndexChange,
   machineId,
+  plantProfile = null,
 }: Props) {
   const r = useResponsive();
   const { width: screenWidth } = useWindowDimensions();
   const listRef = useRef<FlatList<MetricHistoryItem>>(null);
+  const [historyHours, setHistoryHours] = useState<HistoryHours>(48);
   const pageWidth = Math.min(r.contentMaxWidth, screenWidth - r.horizontalPadding * 2);
   const chartWidth = pageWidth - r.scale(32);
 
@@ -71,10 +78,50 @@ export default function MetricHistorySection({
       ]}
     >
       <View style={[styles.header, { paddingHorizontal: r.scale(16) }]}>
-        <Text style={[styles.title, { fontSize: r.scale(16), color: activeMetric.color }]}>
+        <Text
+          style={[styles.title, { fontSize: r.scale(16), color: activeMetric.color }]}
+          numberOfLines={1}
+        >
           {activeMetric.label}
         </Text>
-        <Text style={[styles.subtitle, { fontSize: r.scale(12) }]}>Last 48 hours · 6h intervals</Text>
+
+        <View style={[styles.rangeRow, { gap: r.scale(4) }]}>
+          {HISTORY_HOUR_OPTIONS.map((hours) => {
+            const selected = historyHours === hours;
+            return (
+              <TouchableOpacity
+                key={hours}
+                style={[
+                  styles.rangeChip,
+                  {
+                    paddingHorizontal: r.scale(8),
+                    paddingVertical: r.scale(5),
+                    borderRadius: r.scale(10),
+                  },
+                  selected && [
+                    styles.rangeChipSelected,
+                    { borderColor: withAlpha(activeMetric.color, 0.45) },
+                  ],
+                ]}
+                activeOpacity={0.75}
+                onPress={() => setHistoryHours(hours)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`Last ${hours} hours`}
+              >
+                <Text
+                  style={[
+                    styles.rangeChipText,
+                    { fontSize: r.scale(11) },
+                    selected && { color: activeMetric.color },
+                  ]}
+                >
+                  {hours}h
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       <FlatList
@@ -109,6 +156,8 @@ export default function MetricHistorySection({
               currentValue={item.value}
               machineId={machineId}
               chartWidth={chartWidth}
+              historyHours={historyHours}
+              plantProfile={plantProfile}
             />
           </View>
         )}
@@ -141,17 +190,35 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
+    gap: 10,
   },
   title: {
     fontWeight: '700',
     letterSpacing: 0.2,
     textTransform: 'capitalize',
+    flexShrink: 1,
   },
-  subtitle: {
+  rangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  rangeChip: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  rangeChipSelected: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  rangeChipText: {
     color: 'rgba(255,255,255,0.45)',
-    fontWeight: '500',
-    marginTop: 4,
+    fontWeight: '600',
   },
   dotsRow: {
     flexDirection: 'row',
