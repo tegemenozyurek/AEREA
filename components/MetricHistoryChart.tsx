@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Svg, { Circle, Line, Polyline, Rect } from 'react-native-svg';
+import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { withAlpha } from '../utils/color';
 import { formatDateTime } from '../utils/formatDate';
 import type { PlantProfile } from '../types/plantProfile';
@@ -100,19 +100,13 @@ export default function MetricHistoryChart({
     });
 
     const linePoints = dots.map((dot) => `${dot.x},${dot.y}`).join(' ');
-    const gridLines = [0.25, 0.5, 0.75].map((ratio) => ({
-      y: CHART_PADDING.top + innerH * ratio,
-    }));
 
-    const toleranceBand =
+    const toleranceLines =
       axis.fixed && (metricKey === 'ppm' || metricKey === 'ph')
-        ? {
-            yTop: valueToY(axis.max, axis.min, axis.max, innerH, CHART_PADDING.top),
-            yBottom: valueToY(axis.min, axis.min, axis.max, innerH, CHART_PADDING.top),
-            height:
-              valueToY(axis.min, axis.min, axis.max, innerH, CHART_PADDING.top) -
-              valueToY(axis.max, axis.min, axis.max, innerH, CHART_PADDING.top),
-          }
+        ? [
+            valueToY(axis.max, axis.min, axis.max, innerH, CHART_PADDING.top),
+            valueToY(axis.min, axis.min, axis.max, innerH, CHART_PADDING.top),
+          ]
         : null;
 
     return {
@@ -120,8 +114,7 @@ export default function MetricHistoryChart({
       linePoints,
       min: axis.min,
       max: axis.max,
-      gridLines,
-      toleranceBand,
+      toleranceLines,
       dataMin: Math.min(...values),
       dataMax: Math.max(...values),
     };
@@ -165,25 +158,16 @@ export default function MetricHistoryChart({
           collapsable={false}
         >
           <Svg width={chartWidth} height={CHART_HEIGHT} pointerEvents="none">
-            {chart.toleranceBand ? (
-              <Rect
-                x={CHART_PADDING.left}
-                y={chart.toleranceBand.yTop}
-                width={chartWidth - CHART_PADDING.left - CHART_PADDING.right}
-                height={chart.toleranceBand.height}
-                fill="rgba(52,211,153,0.08)"
-              />
-            ) : null}
-
-            {chart.gridLines.map((line, index) => (
+            {chart.toleranceLines?.map((y, index) => (
               <Line
-                key={`grid-${index}`}
+                key={`tolerance-${index}`}
                 x1={CHART_PADDING.left}
-                y1={line.y}
+                y1={y}
                 x2={chartWidth - CHART_PADDING.right}
-                y2={line.y}
-                stroke="rgba(255,255,255,0.06)"
+                y2={y}
+                stroke="rgba(248,113,113,0.7)"
                 strokeWidth={1}
+                strokeDasharray="4,4"
               />
             ))}
 
