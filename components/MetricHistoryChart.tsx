@@ -163,15 +163,16 @@ export default function MetricHistoryChart({
         ? valueToY(optimumValue, axis.min, axis.max, innerH, CHART_PADDING.top)
         : null;
 
-    const yAxisTickValues =
+    const hasProfileAxis =
+      (metricKey === 'ppm' || metricKey === 'ph') &&
       axis.toleranceMin !== undefined &&
       axis.toleranceMax !== undefined &&
       optimumValue !== null &&
-      Number.isFinite(optimumValue)
-        ? metricKey === 'ppm'
-          ? [axis.max, optimumValue, axis.min]
-          : [axis.toleranceMax, optimumValue, axis.toleranceMin]
-        : [axis.max, (axis.max + axis.min) / 2, axis.min];
+      Number.isFinite(optimumValue);
+
+    const yAxisTickValues: number[] = hasProfileAxis
+      ? [axis.toleranceMax as number, optimumValue, axis.toleranceMin as number]
+      : [axis.max, (axis.max + axis.min) / 2, axis.min];
 
     const yAxisTicks = yAxisTickValues.map((value, index, ticks) => ({
       value,
