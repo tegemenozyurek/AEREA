@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   onAuthStateChanged,
   reload,
   sendEmailVerification,
@@ -65,7 +66,6 @@ export async function signUpWithEmail(email: string, password: string): Promise<
     displayName: defaultDisplayName(email),
   });
   await sendVerificationEmail(credential.user);
-  await signOut(firebaseAuth);
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<User> {
@@ -77,7 +77,6 @@ export async function signInWithEmail(email: string, password: string): Promise<
   await reload(credential.user);
 
   if (!isEmailVerifiedForAccess(credential.user)) {
-    await signOut(firebaseAuth);
     throw new EmailNotVerifiedError();
   }
 
@@ -105,6 +104,19 @@ export async function resendVerificationEmailForCredentials(
   }
 
   await sendVerificationEmail(credential.user);
+}
+
+export async function cancelPendingVerification(user: User): Promise<void> {
+  if (isEmailVerificationRequired(user) && !user.emailVerified) {
+    try {
+      await deleteUser(user);
+    } catch {
+      await signOut(firebaseAuth);
+      throw new Error('Could not cancel registration. Try again in a moment.');
+    }
+    return;
+  }
+
   await signOut(firebaseAuth);
 }
 

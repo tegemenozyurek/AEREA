@@ -24,7 +24,7 @@ type AuthScreenProps = {
 };
 
 type AuthMode = 'login' | 'register';
-type LoginHelp = 'none' | 'credentials' | 'unverified';
+type LoginHelp = 'none' | 'credentials';
 
 const LOGO_ASPECT_RATIO = 1390 / 694;
 
@@ -52,7 +52,7 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
   const [loginHelp, setLoginHelp] = useState<LoginHelp>('none');
   const [loading, setLoading] = useState(false);
 
-  const { login, register, resendVerificationEmail, resetPassword } = useAuth();
+  const { login, register, resetPassword } = useAuth();
   const r = useResponsive();
   const isLogin = mode === 'login';
 
@@ -95,9 +95,7 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
       setLoading(false);
       if (!result.ok) {
         setError(result.error);
-        if (result.code === 'auth/email-not-verified') {
-          setLoginHelp('unverified');
-        } else {
+        if (result.code !== 'auth/email-not-verified') {
           setLoginHelp('credentials');
         }
       }
@@ -119,31 +117,7 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
     setLoading(false);
     if (!result.ok) {
       setError(result.error);
-      return;
     }
-    setInfo(
-      `Verification email sent to ${trimmedEmail}. Open your inbox and tap the verification link, then sign in.`,
-    );
-    setLoginHelp('none');
-    setMode('login');
-  };
-
-  const handleResendVerification = async () => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
-      setError('Enter your email and password to resend the verification email.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    const result = await resendVerificationEmail(trimmedEmail, password);
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    setInfo(`Verification email sent to ${trimmedEmail}.`);
-    setLoginHelp('none');
   };
 
   const handleResetPassword = async () => {
@@ -295,52 +269,19 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
                   </View>
                 )}
 
-                {isLogin && loginHelp !== 'none' && (
+                {isLogin && loginHelp === 'credentials' && (
                   <View style={styles.helpBox}>
                     <Text style={styles.helpTitle}>Need help?</Text>
-                    {loginHelp === 'unverified' ? (
-                      <>
-                        <Text style={styles.helpHint}>
-                          Your account exists but the email is not verified yet.
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.helpAction}
-                          onPress={() => void handleResendVerification()}
-                          disabled={loading}
-                        >
-                          <Text style={styles.helpActionText}>Resend verification email</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.helpActionSecondary}
-                          onPress={openEmailApp}
-                          disabled={loading}
-                        >
-                          <Text style={styles.helpActionSecondaryText}>Open email app</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={styles.helpHint}>
-                          Check your email and password, or use one of the options below.
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.helpAction}
-                          onPress={() => void handleResetPassword()}
-                          disabled={loading}
-                        >
-                          <Text style={styles.helpActionText}>Reset password</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.helpActionSecondary}
-                          onPress={() => void handleResendVerification()}
-                          disabled={loading}
-                        >
-                          <Text style={styles.helpActionSecondaryText}>
-                            Resend verification email
-                          </Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
+                    <Text style={styles.helpHint}>
+                      Check your email and password, or reset your password below.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.helpAction}
+                      onPress={() => void handleResetPassword()}
+                      disabled={loading}
+                    >
+                      <Text style={styles.helpActionText}>Reset password</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.helpDismiss}
                       onPress={() => setLoginHelp('none')}

@@ -10,10 +10,12 @@ import React, {
 import type { User } from 'firebase/auth';
 import { reload } from 'firebase/auth';
 import {
+  cancelPendingVerification,
   isEmailVerifiedForAccess,
+  isEmailVerificationRequired,
   reloadCurrentUser,
-  resendVerificationEmailForCredentials,
   sendPasswordReset,
+  sendUserVerificationEmail,
   signInWithEmail,
   signOutUser,
   signUpWithEmail,
@@ -27,14 +29,16 @@ export type AuthResult =
 
 type AuthContextValue = {
   user: User | null;
+  verificationUser: User | null;
   authReady: boolean;
   isAuthenticated: boolean;
   pendingVerification: boolean;
   login: (email: string, password: string) => Promise<AuthResult>;
   register: (email: string, password: string) => Promise<AuthResult>;
-  resendVerificationEmail: (email: string, password: string) => Promise<AuthResult>;
+  resendVerificationEmail: () => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   refreshEmailVerification: () => Promise<AuthResult>;
+  cancelVerification: () => Promise<AuthResult>;
   logout: () => Promise<void>;
 };
 
@@ -48,12 +52,28 @@ function toAuthError(e: unknown): { ok: false; error: string; code?: string } {
   };
 }
 
-async function syncUserFromFirebase(): Promise<User | null> {
-  return reloadCurrentUser();
+function splitAuthUser(firebaseUser: User | null): {
+  user: User | null;
+  verificationUser: User | null;
+} {
+  if (!firebaseUser) {
+    return { user: null, verificationUser: null };
+  }
+
+  if (isEmailVerifiedForAccess(firebaseUser)) {
+    return { user: firebaseUser, verificationUser: null };
+  }
+
+  if (isEmailVerificationRequired(firebaseUser)) {
+    return { user: null, verificationUser: firebaseUser };
+  }
+
+  return { user: firebaseUser, verificationUser: null };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [verificationUser, setVerificationUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [authTick, setAuthTick] = useState(0);
 
@@ -70,17 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch {
             // Keep cached user if reload fails offline.
           }
-
-          if (!isEmailVerifiedForAccess(firebaseUser)) {
-            await signOutUser();
-            setUser(null);
-          } else {
-            setUser(firebaseUser);
-          }
-        } else {
-          setUser(null);
         }
 
+        const next = splitAuthUser(firebaseUser);
+        setUser(next.user);
+        setVerificationUser(next.verificationUser);
         setAuthReady(true);
       })();
     });
@@ -95,10 +109,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const signedIn = await signInWithEmail(email.trim(), password);
       setUser(signedIn);
+      setVerificationUser(null);
       setAuthTick((tick) => tick + 1);
       return { ok: true };
     } catch (e) {
+      const code = getFirebaseAuthErrorCode(e);
+      if (code === 'auth/email-not-verified') {
+        const pending = await reloadCurrentUser();
+        if (pending && isEmailVerificationRequired(pending) && !pending.emailVerified) {
+          setVerificationUser(pending);
+          setUser(null);
+          setAuthTick((tick) => tick + 1);
+        }
+        return toAuthError(e);
+      }
       setUser(null);
+      setVerificationUser(null);
       return toAuthError(e);
     }
   }, []);
@@ -106,24 +132,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     try {
       await signUpWithEmail(email.trim(), password);
-      setUser(null);
+      const pending = await reloadCurrentUser();
+      if (pending && isEmailVerificationRequired(pending) && !pending.emailVerified) {
+        setVerificationUser(pending);
+        setUser(null);
+      }
+      setAuthTick((tick) => tick + 1);
       return { ok: true };
     } catch (e) {
       return toAuthError(e);
     }
   }, []);
 
-  const resendVerificationEmail = useCallback(
-    async (email: string, password: string): Promise<AuthResult> => {
-      try {
-        await resendVerificationEmailForCredentials(email.trim(), password);
+  const resendVerificationEmail = useCallback(async (): Promise<AuthResult> => {
+    try {
+      if (verificationUser) {
+        await sendUserVerificationEmail(verificationUser);
         return { ok: true };
-      } catch (e) {
-        return toAuthError(e);
       }
-    },
-    [],
-  );
+      return { ok: false, error: 'No pending verification session.' };
+    } catch (e) {
+      return toAuthError(e);
+    }
+  }, [verificationUser]);
 
   const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
     try {
@@ -136,16 +167,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshEmailVerification = useCallback(async (): Promise<AuthResult> => {
     try {
-      const refreshed = await syncUserFromFirebase();
+      const refreshed = await reloadCurrentUser();
       if (!refreshed) {
-        return { ok: false, error: 'Not signed in.' };
+        return { ok: false, error: 'No pending verification session.' };
       }
       if (!isEmailVerifiedForAccess(refreshed)) {
-        await signOutUser();
-        setUser(null);
-        return { ok: false, error: 'Email not verified yet. Check your inbox.' };
+        return { ok: false, error: 'Email not verified yet. Check your inbox and spam.' };
       }
       setUser(refreshed);
+      setVerificationUser(null);
       setAuthTick((tick) => tick + 1);
       return { ok: true };
     } catch (e) {
@@ -153,17 +183,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const cancelVerification = useCallback(async (): Promise<AuthResult> => {
+    try {
+      if (verificationUser) {
+        await cancelPendingVerification(verificationUser);
+      } else {
+        await signOutUser();
+      }
+      setUser(null);
+      setVerificationUser(null);
+      setAuthTick((tick) => tick + 1);
+      return { ok: true };
+    } catch (e) {
+      return toAuthError(e);
+    }
+  }, [verificationUser]);
+
   const logout = useCallback(async () => {
     await signOutUser();
     setUser(null);
+    setVerificationUser(null);
   }, []);
 
-  const isAuthenticated = Boolean(user && isEmailVerifiedForAccess(user));
-  const pendingVerification = false;
+  const isAuthenticated = Boolean(user);
+  const pendingVerification = Boolean(verificationUser);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      verificationUser,
       authReady,
       isAuthenticated,
       pendingVerification,
@@ -172,18 +220,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resendVerificationEmail,
       resetPassword,
       refreshEmailVerification,
+      cancelVerification,
       logout,
     }),
     [
       user,
+      verificationUser,
       authReady,
       authTick,
       isAuthenticated,
+      pendingVerification,
       login,
       register,
       resendVerificationEmail,
       resetPassword,
       refreshEmailVerification,
+      cancelVerification,
       logout,
     ],
   );
