@@ -388,7 +388,9 @@ export default function MetricHistoryChart({
               accessibilityRole="button"
               accessibilityLabel={
                 dot.nutrientDose
-                  ? `Nutrient added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                  ? metricKey === 'waterLevel'
+                    ? `Water added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                    : `Nutrient added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
                   : dot.phCorrection === 'up'
                     ? `pH up added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
                     : dot.phCorrection === 'down'
@@ -398,7 +400,7 @@ export default function MetricHistoryChart({
             />
           ))}
 
-          {metricKey === 'ppm'
+          {(metricKey === 'ppm' || metricKey === 'waterLevel')
             ? chart.dots
                 .filter((dot) => dot.nutrientDose)
                 .map((dot) => (

@@ -13,7 +13,7 @@ export type PhCorrection = 'up' | 'down';
 export type MetricPoint = {
   at: Date;
   value: number;
-  /** ppm nutrient dose event — value spikes on the next point */
+  /** ppm nutrient / water refill — value rises on the next point */
   nutrientDose?: boolean;
   /** pH correction at out-of-tolerance point — value moves toward optimum after */
   phCorrection?: PhCorrection;
@@ -133,7 +133,8 @@ function pickTimelineEventIndices(pointCount: number, hours: HistoryHours, seed:
     const jitter = (pseudoRandom(seed, 30 + event) - 0.5) * Math.min(2, span * 0.12);
     const index = Math.round(minIndex + span * slot + jitter);
     const clamped = clamp(index, minIndex, maxIndex);
-    if (!indices.includes(clamped)) {
+    const last = indices[indices.length - 1];
+    if (!indices.includes(clamped) && (last === undefined || clamped - last >= 4)) {
       indices.push(clamped);
     }
   }
@@ -317,39 +318,57 @@ function buildPpmMetricHistory(
   currentValue: number,
   machineId: string,
   hours: HistoryHours,
+  plantProfile: PlantProfile | null = null,
 ): MetricPoint[] {
-  const safeCurrentValue = sanitizeProfileNumber(currentValue, 800);
+  const safeCurrent = sanitizeProfileNumber(currentValue, 800);
+  const optimum = plantProfile
+    ? sanitizeProfileNumber(plantProfile.optimumPPM, 800)
+    : safeCurrent;
+  const tolerance = plantProfile
+    ? sanitizeProfileNumber(plantProfile.PPM_tolerance, 150)
+    : Math.max(80, optimum * 0.15);
+  const tolMin = optimum - tolerance;
+  const tolMax = optimum + tolerance;
+
   const seed = hashSeed(`${machineId}:ppm:${hours}`);
   const now = Date.now();
   const pointCount = historyPointCount(hours);
   const doseIndices = pickTimelineEventIndices(pointCount, hours, seed);
-  const decayPerStep = 22 + pseudoRandom(seed, 10) * 16;
-  const doseBoost = 85 + pseudoRandom(seed, 11) * 70;
+  const decayPerStep = 18 + pseudoRandom(seed, 10) * 14;
+  const doseBoost = tolerance * (0.75 + pseudoRandom(seed, 11) * 0.5);
+  const undershoot = tolerance * (0.18 + pseudoRandom(seed, 12) * 0.15);
+
   const startValue = clamp(
-    safeCurrentValue + decayPerStep * (pointCount - 1) * 0.55 + doseBoost * doseIndices.length * 0.45,
-    safeCurrentValue + 30,
-    METRIC_BOUNDS.ppm.max,
+    optimum + tolerance * (0.1 + pseudoRandom(seed, 0) * 0.2),
+    tolMin,
+    tolMax,
   );
 
   const values: number[] = [];
   const points: MetricPoint[] = [];
 
   for (let i = 0; i < pointCount; i += 1) {
-    const noise = (pseudoRandom(seed, i + 1) - 0.5) * 14;
+    const noise = (pseudoRandom(seed, i + 1) - 0.5) * 12;
     let value: number;
 
     if (i === 0) {
       value = startValue;
     } else if (doseIndices.includes(i)) {
-      value = values[i - 1] - decayPerStep * 1.35 + noise;
+      value = Math.min(values[i - 1] - decayPerStep * 1.35, tolMin - undershoot) + noise * 0.4;
     } else if (doseIndices.includes(i - 1)) {
-      value = values[i - 1] + doseBoost + noise;
+      const towardOptimum = (optimum - values[i - 1]) * 0.4;
+      value = values[i - 1] + doseBoost + towardOptimum + noise;
+      value = Math.min(value, tolMax - tolerance * 0.08);
     } else {
+      const nextDose = doseIndices.find((index) => index > i);
       value = values[i - 1] - decayPerStep + noise;
+      if (nextDose !== undefined && nextDose - i <= 2) {
+        value -= decayPerStep * 0.65;
+      }
     }
 
     if (i === pointCount - 1) {
-      value = safeCurrentValue;
+      value = safeCurrent;
     }
 
     value = clamp(roundMetric('ppm', value), 0, METRIC_BOUNDS.ppm.max);
@@ -357,10 +376,12 @@ function buildPpmMetricHistory(
 
     const hoursAgo =
       pointCount <= 1 ? 0 : Math.round(hours * (1 - i / (pointCount - 1)));
+    const isBelowTolerance = value < tolMin;
+
     points.push({
       at: new Date(now - hoursAgo * 60 * 60 * 1000),
       value,
-      nutrientDose: doseIndices.includes(i),
+      nutrientDose: doseIndices.includes(i) && isBelowTolerance,
     });
   }
 
@@ -397,43 +418,69 @@ function buildPhMetricHistory(
   );
 
   const driftStep = 0.055 + pseudoRandom(seed, 10) * 0.045;
-  const correctionBoost = tolerance * (0.5 + pseudoRandom(seed, 11) * 0.35);
-  const overshoot = tolerance * (0.22 + pseudoRandom(seed, 12) * 0.18);
+  const correctionBoost = tolerance * (0.45 + pseudoRandom(seed, 11) * 0.3);
+  const overshoot = tolerance * (0.32 + pseudoRandom(seed, 12) * 0.22);
+  const interventionMargin = tolerance * (0.1 + pseudoRandom(seed, 13) * 0.06);
+  const minResponseDelta = tolerance * 0.14;
 
   const values: number[] = [];
   const points: MetricPoint[] = [];
 
+  const markPhCorrection = (value: number, type: PhCorrection): PhCorrection | undefined => {
+    if (type === 'up' && value < tolMin - interventionMargin) return 'up';
+    if (type === 'down' && value > tolMax + interventionMargin) return 'down';
+    return undefined;
+  };
+
+  const lastCorrectionBefore = (index: number): number | undefined =>
+    correctionIndices.filter((correctionIndex) => correctionIndex < index).pop();
+
   for (let i = 0; i < pointCount; i += 1) {
-    const noise = (pseudoRandom(seed, i + 1) - 0.5) * 0.05;
+    const noise = (pseudoRandom(seed, i + 1) - 0.5) * 0.04;
     let value: number;
     let phCorrection: PhCorrection | undefined;
+    const prevCorrection = lastCorrectionBefore(i);
+    const stepsSinceCorrection =
+      prevCorrection !== undefined ? i - prevCorrection : Number.POSITIVE_INFINITY;
 
     if (i === 0) {
-      value = optimum + (pseudoRandom(seed, 0) - 0.5) * tolerance * 0.35;
-    } else if (correctionIndices.includes(i)) {
-      const type = correctionTypes.get(i) ?? 'up';
-      phCorrection = type;
-      if (type === 'up') {
-        value = Math.min(values[i - 1] - driftStep * 1.4, tolMin - overshoot) + noise * 0.25;
-      } else {
-        value = Math.max(values[i - 1] + driftStep * 1.4, tolMax + overshoot) + noise * 0.25;
-      }
+      value = optimum + (pseudoRandom(seed, 0) - 0.5) * tolerance * 0.2;
     } else if (correctionIndices.includes(i - 1)) {
       const type = correctionTypes.get(i - 1) ?? 'up';
-      const towardOptimum = (optimum - values[i - 1]) * 0.45;
+      const prev = values[i - 1];
       if (type === 'up') {
-        value = values[i - 1] + correctionBoost + towardOptimum + noise;
+        value = prev + correctionBoost + minResponseDelta + noise;
       } else {
-        value = values[i - 1] - correctionBoost + towardOptimum + noise;
+        value = prev - correctionBoost - minResponseDelta + noise;
+      }
+    } else if (
+      correctionIndices.includes(i) &&
+      stepsSinceCorrection > 2 &&
+      !correctionIndices.includes(i - 1)
+    ) {
+      const type = correctionTypes.get(i) ?? 'up';
+      if (type === 'up') {
+        value = Math.min(values[i - 1] - driftStep * 1.5, tolMin - overshoot) + noise * 0.2;
+      } else {
+        value = Math.max(values[i - 1] + driftStep * 1.5, tolMax + overshoot) + noise * 0.2;
+      }
+      phCorrection = markPhCorrection(value, type);
+    } else if (prevCorrection !== undefined && stepsSinceCorrection <= 3) {
+      const type = correctionTypes.get(prevCorrection) ?? 'up';
+      const towardOptimum = (optimum - values[i - 1]) * 0.28;
+      value = values[i - 1] + towardOptimum + noise;
+      if (type === 'down') {
+        value = Math.min(value, values[i - 1] - minResponseDelta * 0.15);
+      } else {
+        value = Math.max(value, values[i - 1] + minResponseDelta * 0.15);
       }
     } else {
       const nextCorrection = correctionIndices.find((index) => index > i);
-      const towardOptimum = (optimum - values[i - 1]) * 0.18;
-      value = values[i - 1] + towardOptimum + noise;
+      value = values[i - 1] + (optimum - values[i - 1]) * 0.12 + noise;
 
       if (nextCorrection !== undefined && nextCorrection - i <= 2) {
         const type = correctionTypes.get(nextCorrection) ?? 'up';
-        value += type === 'up' ? -driftStep * 0.9 : driftStep * 0.9;
+        value += type === 'up' ? -driftStep * 0.85 : driftStep * 0.85;
       }
     }
 
@@ -443,6 +490,17 @@ function buildPhMetricHistory(
     }
 
     value = clamp(roundMetric('ph', value), METRIC_BOUNDS.ph.min, METRIC_BOUNDS.ph.max);
+
+    if (correctionIndices.includes(i - 1)) {
+      const type = correctionTypes.get(i - 1) ?? 'up';
+      const prev = values[i - 1];
+      if (type === 'up') {
+        value = Math.max(value, roundMetric('ph', prev + minResponseDelta * 0.5));
+      } else {
+        value = Math.min(value, roundMetric('ph', prev - minResponseDelta * 0.5));
+      }
+    }
+
     values.push(value);
 
     const hoursAgo =
@@ -451,6 +509,131 @@ function buildPhMetricHistory(
       at: new Date(now - hoursAgo * 60 * 60 * 1000),
       value,
       phCorrection,
+    });
+  }
+
+  return points;
+}
+
+function buildWaterMetricHistory(
+  currentValue: number,
+  machineId: string,
+  hours: HistoryHours,
+): MetricPoint[] {
+  const safeCurrent = sanitizeProfileNumber(currentValue, 50);
+  const seed = hashSeed(`${machineId}:water:${hours}`);
+  const now = Date.now();
+  const pointCount = historyPointCount(hours);
+  const refillIndices = pickTimelineEventIndices(pointCount, hours, seed);
+  const decayPerStep = 2.6 + pseudoRandom(seed, 10) * 2.4;
+  const refillBoost = 13 + pseudoRandom(seed, 11) * 11;
+  const lowMargin = 4 + pseudoRandom(seed, 12) * 4;
+  const lowThreshold = Math.max(8, safeCurrent * 0.34);
+
+  const startValue = clamp(
+    safeCurrent + decayPerStep * (pointCount - 1) * 0.58 + refillIndices.length * refillBoost * 0.3,
+    safeCurrent + 4,
+    100,
+  );
+
+  const values: number[] = [];
+  const points: MetricPoint[] = [];
+
+  for (let i = 0; i < pointCount; i += 1) {
+    const noise = (pseudoRandom(seed, i + 1) - 0.5) * 1.8;
+    let value: number;
+
+    if (i === 0) {
+      value = startValue;
+    } else if (refillIndices.includes(i)) {
+      value = Math.min(values[i - 1] - decayPerStep * 1.35, lowThreshold - lowMargin) + noise * 0.35;
+    } else if (refillIndices.includes(i - 1)) {
+      value = Math.min(values[i - 1] + refillBoost + noise, 100);
+    } else {
+      const nextRefill = refillIndices.find((index) => index > i);
+      value = values[i - 1] - decayPerStep + noise;
+      if (nextRefill !== undefined && nextRefill - i <= 2) {
+        value -= decayPerStep * 0.55;
+      }
+    }
+
+    if (i === pointCount - 1) {
+      value = safeCurrent;
+    }
+
+    value = clamp(roundMetric('waterLevel', value), 0, 100);
+    if (i > 0 && !refillIndices.includes(i - 1)) {
+      value = Math.min(value, values[i - 1]);
+    }
+    values.push(value);
+
+    const hoursAgo =
+      pointCount <= 1 ? 0 : Math.round(hours * (1 - i / (pointCount - 1)));
+
+    points.push({
+      at: new Date(now - hoursAgo * 60 * 60 * 1000),
+      value,
+      nutrientDose: refillIndices.includes(i) && value <= lowThreshold,
+    });
+  }
+
+  return points;
+}
+
+function buildMonotonicDecayHistory(
+  metric: 'phDown' | 'phUp' | 'tankLevel',
+  currentValue: number,
+  machineId: string,
+  hours: HistoryHours,
+): MetricPoint[] {
+  const safeCurrent = sanitizeProfileNumber(currentValue, 0);
+  const bounds = METRIC_BOUNDS[metric];
+  const seed = hashSeed(`${machineId}:${metric}:${hours}`);
+  const now = Date.now();
+  const pointCount = historyPointCount(hours);
+  const decayPerStep =
+    metric === 'tankLevel'
+      ? 2.2 + pseudoRandom(seed, 10) * 1.8
+      : 0.2 + pseudoRandom(seed, 10) * 0.16;
+
+  const startValue = clamp(
+    safeCurrent + decayPerStep * (pointCount - 1) * (0.68 + pseudoRandom(seed, 11) * 0.22),
+    safeCurrent + (metric === 'tankLevel' ? 3 : safeCurrent < bounds.max ? 0.35 : 0),
+    bounds.max,
+  );
+
+  const values: number[] = [];
+  const points: MetricPoint[] = [];
+
+  for (let i = 0; i < pointCount; i += 1) {
+    const noise =
+      metric === 'tankLevel'
+        ? (pseudoRandom(seed, i + 1) - 0.65) * 0.8
+        : (pseudoRandom(seed, i + 1) - 0.65) * 0.07;
+    let value: number;
+
+    if (i === 0) {
+      value = startValue;
+    } else if (i === pointCount - 1) {
+      value = safeCurrent;
+    } else {
+      value = values[i - 1] - decayPerStep + noise;
+    }
+
+    value = clamp(roundMetric(metric, value), 0, bounds.max);
+    if (i > 0 && i < pointCount - 1) {
+      value = Math.min(value, values[i - 1]);
+      value = Math.max(value, safeCurrent);
+    }
+
+    values.push(value);
+
+    const hoursAgo =
+      pointCount <= 1 ? 0 : Math.round(hours * (1 - i / (pointCount - 1)));
+
+    points.push({
+      at: new Date(now - hoursAgo * 60 * 60 * 1000),
+      value,
     });
   }
 
@@ -466,11 +649,19 @@ export function buildMetricHistory(
   plantProfile: PlantProfile | null = null,
 ): MetricPoint[] {
   if (metric === 'ppm') {
-    return buildPpmMetricHistory(currentValue, machineId, hours);
+    return buildPpmMetricHistory(currentValue, machineId, hours, plantProfile);
   }
 
   if (metric === 'ph' && plantProfile) {
     return buildPhMetricHistory(currentValue, machineId, hours, plantProfile);
+  }
+
+  if (metric === 'waterLevel') {
+    return buildWaterMetricHistory(currentValue, machineId, hours);
+  }
+
+  if (metric === 'phDown' || metric === 'phUp' || metric === 'tankLevel') {
+    return buildMonotonicDecayHistory(metric, currentValue, machineId, hours);
   }
 
   const bounds = METRIC_BOUNDS[metric];
@@ -573,6 +764,24 @@ export function getMetricYAxisRange(
     const axis = ensureAxisRange(dataMin - padding, dataMax + padding, 0);
     return {
       min: axis.min,
+      max: axis.max,
+      fixed: false,
+    };
+  }
+
+  if (metric === 'waterLevel' || metric === 'tankLevel') {
+    const axis = ensureAxisRange(dataMin - padding, dataMax + padding, 0);
+    return {
+      min: 0,
+      max: Math.min(100, axis.max),
+      fixed: false,
+    };
+  }
+
+  if (metric === 'phDown' || metric === 'phUp') {
+    const axis = ensureAxisRange(dataMin - padding, dataMax + padding, 0);
+    return {
+      min: 0,
       max: axis.max,
       fixed: false,
     };
