@@ -11,6 +11,7 @@ import type { User } from 'firebase/auth';
 import { reload } from 'firebase/auth';
 import {
   cancelPendingVerification,
+  changePassword,
   isEmailVerifiedForAccess,
   isEmailVerificationRequired,
   reloadCurrentUser,
@@ -37,6 +38,7 @@ type AuthContextValue = {
   register: (email: string, password: string) => Promise<AuthResult>;
   resendVerificationEmail: () => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
   refreshEmailVerification: () => Promise<AuthResult>;
   cancelVerification: () => Promise<AuthResult>;
   logout: () => Promise<void>;
@@ -165,6 +167,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const changePasswordHandler = useCallback(
+    async (currentPassword: string, newPassword: string): Promise<AuthResult> => {
+      try {
+        await changePassword(currentPassword, newPassword);
+        return { ok: true };
+      } catch (e) {
+        return toAuthError(e);
+      }
+    },
+    [],
+  );
+
   const refreshEmailVerification = useCallback(async (): Promise<AuthResult> => {
     try {
       const refreshed = await reloadCurrentUser();
@@ -219,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       resendVerificationEmail,
       resetPassword,
+      changePassword: changePasswordHandler,
       refreshEmailVerification,
       cancelVerification,
       logout,
@@ -234,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       resendVerificationEmail,
       resetPassword,
+      changePasswordHandler,
       refreshEmailVerification,
       cancelVerification,
       logout,
