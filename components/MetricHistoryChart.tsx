@@ -13,6 +13,7 @@ import { formatDateTime } from '../utils/formatDate';
 import type { PlantProfile } from '../types/plantProfile';
 import type { HistoryHours, MetricKey } from '../utils/mockMetricHistory';
 import {
+  buildChartLineSegments,
   buildMetricHistory,
   formatMetricValue,
   getMetricOptimumValue,
@@ -20,8 +21,10 @@ import {
 } from '../utils/mockMetricHistory';
 import { useResponsive } from '../utils/responsive';
 
-export const CHART_HEIGHT = 156;
-export const CHART_PADDING = { top: 14, right: 14, bottom: 28, left: 46 };
+const OUT_OF_TOLERANCE_COLOR = 'rgba(248,113,113,0.88)';
+
+export const CHART_HEIGHT = 188;
+export const CHART_PADDING = { top: 22, right: 16, bottom: 30, left: 48 };
 const Y_AXIS_LABEL_HEIGHT = 12;
 const DOT_HIT_SIZE = 28;
 const TOOLTIP_WIDTH = 108;
@@ -33,6 +36,7 @@ type ChartDot = {
   value: number;
   at: Date;
   index: number;
+  nutrientDose?: boolean;
 };
 
 type Props = {
@@ -53,13 +57,28 @@ function valueToY(
   innerH: number,
   top: number,
 ): number {
-  const range = max - min || 1;
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(innerH)) {
+    return top + innerH / 2;
+  }
+
+  const safeMax = max > min ? max : min + 1;
+  const range = safeMax - min;
   const normalized = (value - min) / range;
-  return top + innerH - normalized * innerH;
+  const y = top + innerH - normalized * innerH;
+  return Number.isFinite(y) ? y : top + innerH / 2;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function isValueOutOfTolerance(
+  value: number,
+  toleranceMin?: number,
+  toleranceMax?: number,
+): boolean {
+  if (toleranceMin === undefined || toleranceMax === undefined) return false;
+  return value < toleranceMin || value > toleranceMax;
 }
 
 function yAxisLabelTop(y: number, index: number, tickCount: number, labelHeight: number): number {
@@ -90,8 +109,8 @@ export default function MetricHistoryChart({
   const [chartOrigin, setChartOrigin] = useState({ x: 0, y: 0 });
 
   const history = useMemo(
-    () => buildMetricHistory(metricKey, currentValue, machineId, historyHours),
-    [metricKey, currentValue, machineId, historyHours],
+    () => buildMetricHistory(metricKey, currentValue, machineId, historyHours, plantProfile),
+    [metricKey, currentValue, machineId, historyHours, plantProfile],
   );
 
   useEffect(() => {
@@ -101,24 +120,40 @@ export default function MetricHistoryChart({
   const chart = useMemo(() => {
     const values = history.map((point) => point.value);
     const axis = getMetricYAxisRange(metricKey, values, plantProfile);
-    const innerW = chartWidth - CHART_PADDING.left - CHART_PADDING.right;
-    const innerH = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+    const innerW = Math.max(1, chartWidth - CHART_PADDING.left - CHART_PADDING.right);
+    const innerH = Math.max(1, CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom);
+    const pointCount = Math.max(history.length, 1);
 
     const dots: ChartDot[] = history.map((point, index) => {
       const x =
         CHART_PADDING.left +
-        (history.length <= 1 ? innerW / 2 : (index / (history.length - 1)) * innerW);
-      const y = valueToY(point.value, axis.min, axis.max, innerH, CHART_PADDING.top);
-      return { x, y, value: point.value, at: point.at, index };
+        (pointCount <= 1 ? innerW / 2 : (index / (pointCount - 1)) * innerW);
+      const safeValue = Number.isFinite(point.value) ? point.value : axis.min;
+      const y = valueToY(safeValue, axis.min, axis.max, innerH, CHART_PADDING.top);
+      return {
+        x: Number.isFinite(x) ? x : CHART_PADDING.left,
+        y,
+        value: safeValue,
+        at: point.at,
+        index,
+        nutrientDose: point.nutrientDose,
+      };
     });
 
-    const linePoints = dots.map((dot) => `${dot.x},${dot.y}`).join(' ');
+    const valueToAxisY = (value: number) =>
+      valueToY(value, axis.min, axis.max, innerH, CHART_PADDING.top);
+    const lineSegments = buildChartLineSegments(
+      dots,
+      axis.toleranceMin,
+      axis.toleranceMax,
+      valueToAxisY,
+    );
 
     const toleranceLines =
-      axis.fixed && (metricKey === 'ppm' || metricKey === 'ph')
+      axis.toleranceMin !== undefined && axis.toleranceMax !== undefined
         ? [
-            valueToY(axis.max, axis.min, axis.max, innerH, CHART_PADDING.top),
-            valueToY(axis.min, axis.min, axis.max, innerH, CHART_PADDING.top),
+            valueToY(axis.toleranceMax, axis.min, axis.max, innerH, CHART_PADDING.top),
+            valueToY(axis.toleranceMin, axis.min, axis.max, innerH, CHART_PADDING.top),
           ]
         : null;
 
@@ -128,8 +163,17 @@ export default function MetricHistoryChart({
         ? valueToY(optimumValue, axis.min, axis.max, innerH, CHART_PADDING.top)
         : null;
 
-    const mid = (axis.max + axis.min) / 2;
-    const yAxisTicks = [axis.max, mid, axis.min].map((value, index, ticks) => ({
+    const yAxisTickValues =
+      axis.toleranceMin !== undefined &&
+      axis.toleranceMax !== undefined &&
+      optimumValue !== null &&
+      Number.isFinite(optimumValue)
+        ? metricKey === 'ppm'
+          ? [axis.max, optimumValue, axis.min]
+          : [axis.toleranceMax, optimumValue, axis.toleranceMin]
+        : [axis.max, (axis.max + axis.min) / 2, axis.min];
+
+    const yAxisTicks = yAxisTickValues.map((value, index, ticks) => ({
       value,
       y: valueToY(value, axis.min, axis.max, innerH, CHART_PADDING.top),
       position: index === 0 || index === ticks.length - 1 ? ('edge' as const) : ('mid' as const),
@@ -137,9 +181,11 @@ export default function MetricHistoryChart({
 
     return {
       dots,
-      linePoints,
+      lineSegments,
       min: axis.min,
       max: axis.max,
+      toleranceMin: axis.toleranceMin,
+      toleranceMax: axis.toleranceMax,
       toleranceLines,
       optimumLineY,
       yAxisTicks,
@@ -280,19 +326,30 @@ export default function MetricHistoryChart({
               />
             ) : null}
 
-            <Polyline
-              points={chart.linePoints}
-              fill="none"
-              stroke={withAlpha(color, 0.5)}
-              strokeWidth={2.5}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
+            {chart.lineSegments.map((segment, index) => (
+              <Polyline
+                key={`segment-${index}`}
+                points={segment.points}
+                fill="none"
+                stroke={
+                  segment.outOfTolerance ? OUT_OF_TOLERANCE_COLOR : withAlpha(color, 0.5)
+                }
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ))}
 
             {chart.dots.map((dot) => {
               const isSelected = selectedIndex === dot.index;
               const isLast = dot.index === chart.dots.length - 1;
               const radius = isSelected ? 5.5 : isLast ? 4.5 : 3.5;
+              const outOfTolerance = isValueOutOfTolerance(
+                dot.value,
+                chart.toleranceMin,
+                chart.toleranceMax,
+              );
+              const dotColor = outOfTolerance ? OUT_OF_TOLERANCE_COLOR : color;
 
               return (
                 <Circle
@@ -300,7 +357,11 @@ export default function MetricHistoryChart({
                   cx={dot.x}
                   cy={dot.y}
                   r={radius}
-                  fill={isSelected || isLast ? color : withAlpha(color, 0.35)}
+                  fill={
+                    isSelected || isLast
+                      ? dotColor
+                      : withAlpha(dotColor, outOfTolerance ? 0.75 : 0.35)
+                  }
                   stroke={isSelected ? '#fff' : 'rgba(255,255,255,0.35)'}
                   strokeWidth={isSelected ? 2 : 1.5}
                 />
@@ -322,9 +383,38 @@ export default function MetricHistoryChart({
               ]}
               onPress={() => handleSelectDot(dot.index)}
               accessibilityRole="button"
-              accessibilityLabel={`${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`}
+              accessibilityLabel={
+                dot.nutrientDose
+                  ? `Nutrient added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                  : `${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+              }
             />
           ))}
+
+          {metricKey === 'ppm'
+            ? chart.dots
+                .filter((dot) => dot.nutrientDose)
+                .map((dot) => (
+                  <View
+                    key={`dose-${dot.index}`}
+                    style={[
+                      styles.doseMarker,
+                      {
+                        left: dot.x - r.scale(8),
+                        top: dot.y - r.scale(22),
+                        width: r.scale(15),
+                        height: r.scale(15),
+                        borderRadius: r.scale(7.5),
+                      },
+                    ]}
+                    pointerEvents="none"
+                  >
+                    <Text style={[styles.doseMarkerText, { fontSize: r.scale(11), color }]}>
+                      +
+                    </Text>
+                  </View>
+                ))
+            : null}
         </View>
 
         <View style={[styles.axisRow, { paddingHorizontal: CHART_PADDING.left }]}>
@@ -407,6 +497,19 @@ const styles = StyleSheet.create({
   dotHit: {
     position: 'absolute',
     borderRadius: 14,
+  },
+  doseMarker: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15,23,42,0.92)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  doseMarkerText: {
+    fontWeight: '700',
+    lineHeight: 12,
+    marginTop: -1,
   },
   yAxisTick: {
     position: 'absolute',
