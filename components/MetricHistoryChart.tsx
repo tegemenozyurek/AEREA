@@ -11,10 +11,11 @@ import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { withAlpha } from '../utils/color';
 import { formatDateTime } from '../utils/formatDate';
 import type { PlantProfile } from '../types/plantProfile';
-import type { HistoryHours, MetricKey, PhCorrection } from '../utils/mockMetricHistory';
+import type { HistoryHours, MetricKey, PhCorrection, PumpHistoryEntry } from '../utils/mockMetricHistory';
 import {
   buildChartLineSegments,
   buildMetricHistory,
+  extractPumpHistory,
   formatMetricValue,
   getMetricOptimumValue,
   getMetricYAxisRange,
@@ -93,6 +94,12 @@ function yAxisLabelTop(y: number, index: number, tickCount: number, labelHeight:
   return centered;
 }
 
+function pumpEntryColor(entry: PumpHistoryEntry, metricColor: string): string {
+  if (entry.kind === 'ph-up') return '#A78BFA';
+  if (entry.kind === 'ph-down') return '#FB7185';
+  return metricColor;
+}
+
 export default function MetricHistoryChart({
   metricKey,
   color,
@@ -117,6 +124,11 @@ export default function MetricHistoryChart({
   useEffect(() => {
     setSelectedIndex(null);
   }, [historyHours, metricKey, machineId]);
+
+  const pumpHistory = useMemo(
+    () => extractPumpHistory(metricKey, history),
+    [history, metricKey],
+  );
 
   const chart = useMemo(() => {
     const values = history.map((point) => point.value);
@@ -390,7 +402,11 @@ export default function MetricHistoryChart({
                 dot.nutrientDose
                   ? metricKey === 'waterLevel'
                     ? `Water added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
-                    : `Nutrient added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                    : metricKey === 'phUp'
+                      ? `pH up added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                      : metricKey === 'phDown'
+                        ? `pH down added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
+                        : `Nutrient added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
                   : dot.phCorrection === 'up'
                     ? `pH up added, ${formatDateTime(dot.at)}, ${formatMetricValue(metricKey, dot.value)}`
                     : dot.phCorrection === 'down'
@@ -400,7 +416,10 @@ export default function MetricHistoryChart({
             />
           ))}
 
-          {(metricKey === 'ppm' || metricKey === 'waterLevel')
+          {(metricKey === 'ppm' ||
+            metricKey === 'waterLevel' ||
+            metricKey === 'phUp' ||
+            metricKey === 'phDown')
             ? chart.dots
                 .filter((dot) => dot.nutrientDose)
                 .map((dot) => (
@@ -486,6 +505,68 @@ export default function MetricHistoryChart({
               {formatMetricValue(metricKey, currentValue)}
             </Text>
           </View>
+        </View>
+      ) : null}
+
+      {pumpHistory.length > 0 ? (
+        <View
+          style={[
+            styles.pumpHistorySection,
+            {
+              marginTop: r.scale(12),
+              borderRadius: r.scale(12),
+              padding: r.scale(12),
+              gap: r.scale(8),
+            },
+          ]}
+        >
+          <Text style={[styles.pumpHistoryTitle, { fontSize: r.scale(12) }]}>
+            Pompalama geçmişi
+          </Text>
+          {pumpHistory.map((entry) => {
+            const entryColor = pumpEntryColor(entry, color);
+            return (
+              <View
+                key={entry.id}
+                style={[
+                  styles.pumpHistoryRow,
+                  {
+                    borderRadius: r.scale(10),
+                    paddingVertical: r.scale(8),
+                    paddingHorizontal: r.scale(10),
+                    gap: r.scale(10),
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.pumpBadge,
+                    {
+                      borderColor: withAlpha(entryColor, 0.45),
+                      backgroundColor: withAlpha(entryColor, 0.14),
+                      minWidth: r.scale(entry.kind === 'add' ? 28 : 36),
+                      height: r.scale(22),
+                      borderRadius: r.scale(11),
+                      paddingHorizontal: r.scale(6),
+                    },
+                  ]}
+                >
+                  <Text style={[styles.pumpBadgeText, { fontSize: r.scale(10), color: entryColor }]}>
+                    {entry.label}
+                  </Text>
+                </View>
+                <Text
+                  style={[styles.pumpHistoryTime, { fontSize: r.scale(11) }]}
+                  numberOfLines={1}
+                >
+                  {formatDateTime(entry.at)}
+                </Text>
+                <Text style={[styles.pumpHistoryValue, { fontSize: r.scale(11), color: entryColor }]}>
+                  {formatMetricValue(metricKey, entry.value)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       ) : null}
 
@@ -636,5 +717,40 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontWeight: '700',
+  },
+  pumpHistorySection: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  pumpHistoryTitle: {
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  pumpHistoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  pumpBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  pumpBadgeText: {
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  pumpHistoryTime: {
+    flex: 1,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+  },
+  pumpHistoryValue: {
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
 });
