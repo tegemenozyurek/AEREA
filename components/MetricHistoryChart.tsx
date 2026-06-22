@@ -15,12 +15,14 @@ import type { HistoryHours, MetricKey } from '../utils/mockMetricHistory';
 import {
   buildMetricHistory,
   formatMetricValue,
+  getMetricOptimumValue,
   getMetricYAxisRange,
 } from '../utils/mockMetricHistory';
 import { useResponsive } from '../utils/responsive';
 
 export const CHART_HEIGHT = 156;
-export const CHART_PADDING = { top: 14, right: 14, bottom: 28, left: 14 };
+export const CHART_PADDING = { top: 14, right: 14, bottom: 28, left: 46 };
+const Y_AXIS_LABEL_HEIGHT = 12;
 const DOT_HIT_SIZE = 28;
 const TOOLTIP_WIDTH = 108;
 const TOOLTIP_HEIGHT = 40;
@@ -58,6 +60,17 @@ function valueToY(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function yAxisLabelTop(y: number, index: number, tickCount: number, labelHeight: number): number {
+  const centered = y - labelHeight / 2;
+  if (index === 0) {
+    return Math.max(centered, CHART_PADDING.top - 2);
+  }
+  if (index === tickCount - 1) {
+    return Math.min(centered, CHART_HEIGHT - CHART_PADDING.bottom - labelHeight + 2);
+  }
+  return centered;
 }
 
 export default function MetricHistoryChart({
@@ -109,12 +122,27 @@ export default function MetricHistoryChart({
           ]
         : null;
 
+    const optimumValue = getMetricOptimumValue(metricKey, plantProfile);
+    const optimumLineY =
+      optimumValue !== null
+        ? valueToY(optimumValue, axis.min, axis.max, innerH, CHART_PADDING.top)
+        : null;
+
+    const mid = (axis.max + axis.min) / 2;
+    const yAxisTicks = [axis.max, mid, axis.min].map((value, index, ticks) => ({
+      value,
+      y: valueToY(value, axis.min, axis.max, innerH, CHART_PADDING.top),
+      position: index === 0 || index === ticks.length - 1 ? ('edge' as const) : ('mid' as const),
+    }));
+
     return {
       dots,
       linePoints,
       min: axis.min,
       max: axis.max,
       toleranceLines,
+      optimumLineY,
+      yAxisTicks,
       dataMin: Math.min(...values),
       dataMax: Math.max(...values),
     };
@@ -141,6 +169,8 @@ export default function MetricHistoryChart({
     ? clamp(chartOrigin.y + selectedDot.y - TOOLTIP_HEIGHT - 10, 8, screenHeight - TOOLTIP_HEIGHT - 8)
     : 0;
 
+  const labelHeight = r.scale(Y_AXIS_LABEL_HEIGHT);
+
   return (
     <View>
       <View
@@ -157,7 +187,75 @@ export default function MetricHistoryChart({
           style={{ width: chartWidth, height: CHART_HEIGHT, position: 'relative' }}
           collapsable={false}
         >
+          {chart.yAxisTicks.map((tick, index) => (
+            <View
+              key={`y-axis-${index}`}
+              style={[
+                styles.yAxisTick,
+                {
+                  top: yAxisLabelTop(tick.y, index, chart.yAxisTicks.length, labelHeight),
+                  width: CHART_PADDING.left - r.scale(8),
+                  height: labelHeight,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.yAxisLabel,
+                  tick.position === 'edge' ? styles.yAxisLabelEdge : styles.yAxisLabelMid,
+                  {
+                    fontSize: r.scale(tick.position === 'edge' ? 10 : 9),
+                    lineHeight: labelHeight,
+                  },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                {formatMetricValue(metricKey, tick.value)}
+              </Text>
+            </View>
+          ))}
+
           <Svg width={chartWidth} height={CHART_HEIGHT} pointerEvents="none">
+            <Line
+              x1={CHART_PADDING.left}
+              y1={CHART_PADDING.top}
+              x2={CHART_PADDING.left}
+              y2={CHART_HEIGHT - CHART_PADDING.bottom}
+              stroke="rgba(255,255,255,0.12)"
+              strokeWidth={1}
+            />
+
+            {chart.yAxisTicks.map((tick, index) => (
+              <React.Fragment key={`y-grid-${index}`}>
+                <Line
+                  x1={CHART_PADDING.left - 4}
+                  y1={tick.y}
+                  x2={CHART_PADDING.left}
+                  y2={tick.y}
+                  stroke={
+                    tick.position === 'edge'
+                      ? 'rgba(255,255,255,0.28)'
+                      : 'rgba(255,255,255,0.16)'
+                  }
+                  strokeWidth={1}
+                />
+                <Line
+                  x1={CHART_PADDING.left}
+                  y1={tick.y}
+                  x2={chartWidth - CHART_PADDING.right}
+                  y2={tick.y}
+                  stroke={
+                    tick.position === 'edge'
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'rgba(255,255,255,0.04)'
+                  }
+                  strokeWidth={1}
+                />
+              </React.Fragment>
+            ))}
+
             {chart.toleranceLines?.map((y, index) => (
               <Line
                 key={`tolerance-${index}`}
@@ -170,6 +268,17 @@ export default function MetricHistoryChart({
                 strokeDasharray="4,4"
               />
             ))}
+
+            {chart.optimumLineY !== null ? (
+              <Line
+                x1={CHART_PADDING.left}
+                y1={chart.optimumLineY}
+                x2={chartWidth - CHART_PADDING.right}
+                y2={chart.optimumLineY}
+                stroke="rgba(255,255,255,0.28)"
+                strokeWidth={1}
+              />
+            ) : null}
 
             <Polyline
               points={chart.linePoints}
@@ -298,6 +407,27 @@ const styles = StyleSheet.create({
   dotHit: {
     position: 'absolute',
     borderRadius: 14,
+  },
+  yAxisTick: {
+    position: 'absolute',
+    left: 0,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 2,
+  },
+  yAxisLabel: {
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+  },
+  yAxisLabelEdge: {
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '600',
+    letterSpacing: 0.15,
+  },
+  yAxisLabelMid: {
+    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '500',
+    letterSpacing: 0.05,
   },
   modalBackdrop: {
     flex: 1,

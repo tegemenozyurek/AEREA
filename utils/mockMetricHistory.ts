@@ -138,6 +138,16 @@ export function getMetricYAxisRange(
   };
 }
 
+export function getMetricOptimumValue(
+  metric: MetricKey,
+  profile: PlantProfile | null,
+): number | null {
+  if (!profile) return null;
+  if (metric === 'ppm') return profile.optimumPPM;
+  if (metric === 'ph') return profile.optimum_pH;
+  return null;
+}
+
 export function formatHistoryRangeLabel(hours: HistoryHours): string {
   return `Last ${hours}h`;
 }
