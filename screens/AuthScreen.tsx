@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinkableText from '../components/LinkableText';
 import AuthSocialOptions from '../components/AuthSocialOptions';
 import { useAuth } from '../contexts/AuthContext';
+import ForgotPasswordScreen from './ForgotPasswordScreen';
 import { useResponsive } from '../utils/responsive';
 
 type AuthScreenProps = {
@@ -24,7 +25,6 @@ type AuthScreenProps = {
 };
 
 type AuthMode = 'login' | 'register';
-type LoginHelp = 'none' | 'credentials';
 
 const LOGO_ASPECT_RATIO = 1390 / 694;
 
@@ -49,10 +49,10 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [loginHelp, setLoginHelp] = useState<LoginHelp>('none');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { login, register, resetPassword } = useAuth();
+  const { login, register } = useAuth();
   const r = useResponsive();
   const isLogin = mode === 'login';
 
@@ -70,7 +70,6 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
   const clearFeedback = () => {
     setError(null);
     setInfo(null);
-    setLoginHelp('none');
   };
 
   const handleModeChange = (next: AuthMode) => {
@@ -81,7 +80,6 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
   const handleSubmit = async () => {
     setError(null);
     setInfo(null);
-    setLoginHelp('none');
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
@@ -95,9 +93,6 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
       setLoading(false);
       if (!result.ok) {
         setError(result.error);
-        if (result.code !== 'auth/email-not-verified') {
-          setLoginHelp('credentials');
-        }
       }
       return;
     }
@@ -120,23 +115,17 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
     }
   };
 
-  const handleResetPassword = async () => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setError('Enter your email to reset your password.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    const result = await resetPassword(trimmedEmail);
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    setInfo(`Password reset email sent to ${trimmedEmail}.`);
-    setLoginHelp('none');
-  };
+  if (showForgotPassword) {
+    return (
+      <ForgotPasswordScreen
+        initialEmail={email}
+        onBack={() => {
+          setShowForgotPassword(false);
+          clearFeedback();
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -197,7 +186,6 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
                   value={email}
                   onChangeText={(text) => {
                     setEmail(text);
-                    if (loginHelp !== 'none') setLoginHelp('none');
                     setError(null);
                   }}
                   editable={!loading}
@@ -211,11 +199,23 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
                     value={password}
                     onChangeText={(text) => {
                       setPassword(text);
-                      if (loginHelp !== 'none') setLoginHelp('none');
                       setError(null);
                     }}
                     editable={!loading}
                   />
+                  {isLogin && (
+                    <TouchableOpacity
+                      style={styles.forgotPasswordButton}
+                      onPress={() => {
+                        clearFeedback();
+                        setShowForgotPassword(true);
+                      }}
+                      disabled={loading}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                    </TouchableOpacity>
+                  )}
                   {!isLogin && (
                     <View style={styles.rules}>
                       {PASSWORD_RULES.map(({ test, label }) => {
@@ -266,29 +266,6 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
                         <Text style={styles.dismissText}>Dismiss</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
-                )}
-
-                {isLogin && loginHelp === 'credentials' && (
-                  <View style={styles.helpBox}>
-                    <Text style={styles.helpTitle}>Need help?</Text>
-                    <Text style={styles.helpHint}>
-                      Check your email and password, or reset your password below.
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.helpAction}
-                      onPress={() => void handleResetPassword()}
-                      disabled={loading}
-                    >
-                      <Text style={styles.helpActionText}>Reset password</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.helpDismiss}
-                      onPress={() => setLoginHelp('none')}
-                      hitSlop={8}
-                    >
-                      <Text style={styles.dismissText}>Dismiss</Text>
-                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -416,6 +393,16 @@ const styles = StyleSheet.create({
   ruleTextActive: {
     color: '#fff',
   },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    paddingVertical: 2,
+  },
+  forgotPasswordText: {
+    color: '#BAE6FD',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   submitButton: {
     backgroundColor: AUTH_SUBMIT_BG,
     paddingVertical: 16,
@@ -467,52 +454,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
-  },
-  helpBox: {
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  helpTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  helpHint: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: 'center',
-  },
-  helpAction: {
-    alignSelf: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  helpActionText: {
-    color: '#BAE6FD',
-    fontSize: 13,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
-  helpActionSecondary: {
-    alignSelf: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-  },
-  helpActionSecondaryText: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  helpDismiss: {
-    alignSelf: 'center',
-    paddingTop: 4,
   },
   dismissText: {
     color: 'rgba(255,255,255,0.45)',

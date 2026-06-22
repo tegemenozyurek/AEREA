@@ -36,11 +36,16 @@ export function isEmailVerifiedForAccess(user: User): boolean {
 }
 
 /** Ensures Firebase emails use a proper https action link (%LINK% in Console template). */
-export function getEmailVerificationActionCodeSettings(): ActionCodeSettings {
+export function getAuthActionCodeSettings(): ActionCodeSettings {
   return {
     url: `https://${firebaseConfig.authDomain}`,
     handleCodeInApp: false,
   };
+}
+
+/** @deprecated Use getAuthActionCodeSettings */
+export function getEmailVerificationActionCodeSettings(): ActionCodeSettings {
+  return getAuthActionCodeSettings();
 }
 
 function defaultDisplayName(email: string): string {
@@ -52,7 +57,7 @@ async function sendVerificationEmail(user: User): Promise<void> {
   if (!isEmailVerificationRequired(user)) {
     return;
   }
-  await sendEmailVerification(user, getEmailVerificationActionCodeSettings());
+  await sendEmailVerification(user, getAuthActionCodeSettings());
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<void> {
@@ -129,7 +134,7 @@ export async function sendUserVerificationEmail(user?: User): Promise<void> {
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {
-  await sendPasswordResetEmail(firebaseAuth, email.trim());
+  await sendPasswordResetEmail(firebaseAuth, email.trim(), getAuthActionCodeSettings());
 }
 
 export async function reloadCurrentUser(): Promise<User | null> {
