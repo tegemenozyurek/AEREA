@@ -26,6 +26,8 @@ export function getFirebaseAuthErrorMessage(error: unknown): string {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Invalid email or password.';
+    case 'auth/requires-recent-login':
+      return 'For security, sign out and sign in again, then try changing your password.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Try again later.';
     case 'auth/operation-not-allowed':

@@ -1,12 +1,15 @@
 import {
   createUserWithEmailAndPassword,
   deleteUser,
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   reload,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
   updateProfile,
   type ActionCodeSettings,
   type User,
@@ -135,6 +138,28 @@ export async function sendUserVerificationEmail(user?: User): Promise<void> {
 
 export async function sendPasswordReset(email: string): Promise<void> {
   await sendPasswordResetEmail(firebaseAuth, email.trim(), getAuthActionCodeSettings());
+}
+
+export function hasEmailPasswordProvider(user: User): boolean {
+  return user.providerData.some((provider) => provider.providerId === 'password');
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const user = firebaseAuth.currentUser;
+  if (!user?.email) {
+    throw new Error('Not signed in.');
+  }
+
+  if (!hasEmailPasswordProvider(user)) {
+    throw new Error('Password change is only available for email sign-in accounts.');
+  }
+
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
 }
 
 export async function reloadCurrentUser(): Promise<User | null> {

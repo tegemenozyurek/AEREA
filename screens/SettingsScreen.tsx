@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 import EditProfileModal from '../components/EditProfileModal';
 import SettingsChoiceRow from '../components/SettingsChoiceRow';
 import SettingsProfileCard from '../components/SettingsProfileCard';
@@ -18,6 +19,7 @@ import SettingsSection from '../components/SettingsSection';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useProfile } from '../contexts/ProfileContext';
+import { hasEmailPasswordProvider } from '../services/auth';
 import { useResponsive } from '../utils/responsive';
 
 const APP_VERSION = '1.0.0';
@@ -58,9 +60,27 @@ export default function SettingsScreen() {
   const [language, setLanguage] = useState<LanguageOption>('English');
   const [expandedPicker, setExpandedPicker] = useState<ExpandedPicker>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const togglePicker = (picker: Exclude<ExpandedPicker, null>) => {
     setExpandedPicker((current) => (current === picker ? null : picker));
+  };
+
+  const handleChangePasswordPress = () => {
+    if (!user) {
+      Alert.alert('Change password', 'Sign in to change your password.');
+      return;
+    }
+
+    if (!hasEmailPasswordProvider(user)) {
+      Alert.alert(
+        'Change password',
+        'This account uses social sign-in. Use Forgot password on the sign-in screen if you need to set an email password.',
+      );
+      return;
+    }
+
+    setChangePasswordOpen(true);
   };
 
   const handleSignOut = () => {
@@ -150,7 +170,7 @@ export default function SettingsScreen() {
           <SettingsRow
             label="Change password"
             showChevron
-            onPress={() => comingSoon('Change password')}
+            onPress={handleChangePasswordPress}
             isLast
           />
         </SettingsSection>
@@ -238,6 +258,11 @@ export default function SettingsScreen() {
         photoUrl={photoUrl}
         onClose={() => setEditProfileOpen(false)}
         onSave={updateProfile}
+      />
+
+      <ChangePasswordModal
+        visible={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
       />
     </View>
   );
