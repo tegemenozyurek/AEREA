@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -62,20 +62,16 @@ function AuthenticatedRoutes() {
 }
 
 function Routes() {
-  const { authReady, isAuthenticated, pendingVerification } = useAuth();
+  const { authReady, isAuthenticated, pendingVerification, refreshEmailVerification } = useAuth();
   const [linkMessage, setLinkMessage] = useState<string | null>(null);
 
-  const handleVerifiedFromLink = useCallback(() => {
-    setLinkMessage('Email verified successfully. You can sign in now.');
-  }, []);
-
-  const handleLinkError = useCallback((message: string) => {
-    setLinkMessage(message);
-  }, []);
-
   useEmailVerificationLink({
-    onVerified: handleVerifiedFromLink,
-    onError: handleLinkError,
+    onVerified: () => {
+      void refreshEmailVerification();
+    },
+    onError: (message) => {
+      setLinkMessage(message);
+    },
   });
 
   if (!authReady) {
