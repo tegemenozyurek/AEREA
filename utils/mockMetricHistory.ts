@@ -17,6 +17,8 @@ export type MetricPoint = {
   nutrientDose?: boolean;
   /** pH correction at out-of-tolerance point — value moves toward optimum after */
   phCorrection?: PhCorrection;
+  /** Volume pumped at this event, in liters */
+  pumpVolumeLiters?: number;
 };
 
 export type MetricYAxisRange = {
@@ -52,6 +54,36 @@ function hashSeed(input: string): number {
 function pseudoRandom(seed: number, index: number): number {
   const x = Math.sin(seed * 12.9898 + index * 78.233) * 43758.5453;
   return x - Math.floor(x);
+}
+
+function roundPumpVolumeLiters(liters: number): number {
+  if (liters < 1) return Math.round(liters * 100) / 100;
+  return Math.round(liters * 10) / 10;
+}
+
+function mockNutrientPumpVolumeLiters(seed: number, index: number): number {
+  return roundPumpVolumeLiters(0.05 + pseudoRandom(seed, 60 + index) * 0.24);
+}
+
+function mockPhCorrectionPumpVolumeLiters(seed: number, index: number): number {
+  return roundPumpVolumeLiters(0.04 + pseudoRandom(seed, 61 + index) * 0.18);
+}
+
+function mockWaterRefillPumpVolumeLiters(
+  seed: number,
+  index: number,
+  refillBoostPercent: number,
+): number {
+  const tankCapacityL = 14 + pseudoRandom(seed, 62 + index) * 12;
+  return roundPumpVolumeLiters((refillBoostPercent / 100) * tankCapacityL);
+}
+
+function mockSupplementRefillPumpVolumeLiters(
+  seed: number,
+  index: number,
+  refillBoostLiters: number,
+): number {
+  return roundPumpVolumeLiters(refillBoostLiters * (0.88 + pseudoRandom(seed, 63 + index) * 0.18));
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -377,11 +409,13 @@ function buildPpmMetricHistory(
     const hoursAgo =
       pointCount <= 1 ? 0 : Math.round(hours * (1 - i / (pointCount - 1)));
     const isBelowTolerance = value < tolMin;
+    const isDoseEvent = doseIndices.includes(i) && isBelowTolerance;
 
     points.push({
       at: new Date(now - hoursAgo * 60 * 60 * 1000),
       value,
-      nutrientDose: doseIndices.includes(i) && isBelowTolerance,
+      nutrientDose: isDoseEvent,
+      pumpVolumeLiters: isDoseEvent ? mockNutrientPumpVolumeLiters(seed, i) : undefined,
     });
   }
 
@@ -509,6 +543,9 @@ function buildPhMetricHistory(
       at: new Date(now - hoursAgo * 60 * 60 * 1000),
       value,
       phCorrection,
+      pumpVolumeLiters: phCorrection
+        ? mockPhCorrectionPumpVolumeLiters(seed, i)
+        : undefined,
     });
   }
 
@@ -604,11 +641,17 @@ function buildRefillableDecayHistory(
     const hoursAgo =
       pointCount <= 1 ? 0 : Math.round(hours * (1 - i / (pointCount - 1)));
     const isNearZero = value <= config.nearZeroMax;
+    const isRefillEvent = refillIndices.includes(i) && isNearZero;
 
     points.push({
       at: new Date(now - hoursAgo * 60 * 60 * 1000),
       value,
-      nutrientDose: refillIndices.includes(i) && isNearZero,
+      nutrientDose: isRefillEvent,
+      pumpVolumeLiters: isRefillEvent
+        ? metric === 'waterLevel'
+          ? mockWaterRefillPumpVolumeLiters(seed, i, config.refillBoost)
+          : mockSupplementRefillPumpVolumeLiters(seed, i, config.refillBoost)
+        : undefined,
     });
   }
 
@@ -873,7 +916,7 @@ export type PumpHistoryEntry = {
   at: Date;
   kind: PumpHistoryKind;
   label: string;
-  value: number;
+  volumeLiters: number;
 };
 
 function pumpAddLabel(metricKey: MetricKey): string {
@@ -882,6 +925,11 @@ function pumpAddLabel(metricKey: MetricKey): string {
   if (metricKey === 'phDown') return 'pH down +';
   if (metricKey === 'ppm') return 'Nutrient +';
   return '+';
+}
+
+export function formatPumpVolumeLiters(liters: number): string {
+  if (liters < 1) return `${liters.toFixed(2)} L`;
+  return `${liters.toFixed(1)} L`;
 }
 
 export function extractPumpHistory(
@@ -897,7 +945,7 @@ export function extractPumpHistory(
         at: point.at,
         kind: 'add',
         label: pumpAddLabel(metricKey),
-        value: point.value,
+        volumeLiters: point.pumpVolumeLiters ?? 0,
       });
       return;
     }
@@ -908,7 +956,7 @@ export function extractPumpHistory(
         at: point.at,
         kind: 'ph-up',
         label: 'pH+',
-        value: point.value,
+        volumeLiters: point.pumpVolumeLiters ?? 0,
       });
       return;
     }
@@ -919,7 +967,7 @@ export function extractPumpHistory(
         at: point.at,
         kind: 'ph-down',
         label: 'pH-',
-        value: point.value,
+        volumeLiters: point.pumpVolumeLiters ?? 0,
       });
     }
   });

@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { withAlpha } from '../utils/color';
 import { formatDateTime } from '../utils/formatDate';
@@ -17,6 +18,7 @@ import {
   buildMetricHistory,
   extractPumpHistory,
   formatMetricValue,
+  formatPumpVolumeLiters,
   getMetricOptimumValue,
   getMetricYAxisRange,
 } from '../utils/mockMetricHistory';
@@ -520,9 +522,14 @@ export default function MetricHistoryChart({
             },
           ]}
         >
-          <Text style={[styles.pumpHistoryTitle, { fontSize: r.scale(12) }]}>
-            Pompalama geçmişi
-          </Text>
+          <View style={[styles.pumpHistoryHeader, { gap: r.scale(6), marginBottom: r.scale(2) }]}>
+            <Ionicons
+              name="time-outline"
+              size={r.scale(14)}
+              color="rgba(255,255,255,0.55)"
+            />
+            <Text style={[styles.pumpHistoryTitle, { fontSize: r.scale(12) }]}>History</Text>
+          </View>
           {pumpHistory.map((entry) => {
             const entryColor = pumpEntryColor(entry, color);
             return (
@@ -562,7 +569,7 @@ export default function MetricHistoryChart({
                   {formatDateTime(entry.at)}
                 </Text>
                 <Text style={[styles.pumpHistoryValue, { fontSize: r.scale(11), color: entryColor }]}>
-                  {formatMetricValue(metricKey, entry.value)}
+                  {formatPumpVolumeLiters(entry.volumeLiters)}
                 </Text>
               </View>
             );
@@ -723,6 +730,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.08)',
   },
+  pumpHistoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   pumpHistoryTitle: {
     color: 'rgba(255,255,255,0.55)',
     fontWeight: '600',
@@ -752,5 +763,7 @@ const styles = StyleSheet.create({
   pumpHistoryValue: {
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+    minWidth: 52,
   },
 });
