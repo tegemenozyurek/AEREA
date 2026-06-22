@@ -275,7 +275,7 @@ export default function MetricHistoryChart({
                 y1={chart.optimumLineY}
                 x2={chartWidth - CHART_PADDING.right}
                 y2={chart.optimumLineY}
-                stroke="rgba(255,255,255,0.28)"
+                stroke="rgba(255,255,255,0.14)"
                 strokeWidth={1}
               />
             ) : null}
