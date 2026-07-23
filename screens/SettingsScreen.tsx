@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ChangeEmailModal from '../components/ChangeEmailModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import ChangeUsernameModal from '../components/ChangeUsernameModal';
+import ConfirmActionModal from '../components/ConfirmActionModal';
 import EditProfileModal from '../components/EditProfileModal';
 import SettingsChoiceRow from '../components/SettingsChoiceRow';
 import SettingsProfileCard from '../components/SettingsProfileCard';
@@ -67,6 +68,8 @@ export default function SettingsScreen() {
   const [changeUsernameOpen, setChangeUsernameOpen] = useState(false);
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'signOut' | 'deleteAccount' | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const togglePicker = (picker: Exclude<ExpandedPicker, null>) => {
     setExpandedPicker((current) => (current === picker ? null : picker));
@@ -105,37 +108,27 @@ export default function SettingsScreen() {
     setChangePasswordOpen(true);
   };
 
-  const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: () => {
-          void logout();
-        },
-      },
-    ]);
-  };
+  const handleConfirmAction = () => {
+    if (confirmAction === 'signOut') {
+      setConfirmLoading(true);
+      void logout().finally(() => {
+        setConfirmLoading(false);
+        setConfirmAction(null);
+      });
+      return;
+    }
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete account',
-      'This permanently deletes your account and all data. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete account',
-          style: 'destructive',
-          onPress: () => comingSoon('Delete account'),
-        },
-      ],
-    );
+    if (confirmAction === 'deleteAccount') {
+      setConfirmAction(null);
+      comingSoon('Delete account');
+    }
   };
 
   const displayEmail = user?.email ?? '—';
   const displayId = user?.uid ?? '—';
   const headerHeight = insets.top + r.scale(52);
+  const canChangePassword = Boolean(user && hasEmailPasswordProvider(user));
+  const canChangeEmail = canChangePassword;
 
   return (
     <View style={styles.root}>
@@ -228,20 +221,26 @@ export default function SettingsScreen() {
             icon="person-outline"
             showChevron
             onPress={handleChangeUsernamePress}
+            isLast={!canChangeEmail && !canChangePassword}
           />
-          <SettingsRow
-            label="Change email"
-            icon="mail-outline"
-            showChevron
-            onPress={handleChangeEmailPress}
-          />
-          <SettingsRow
-            label="Change password"
-            icon="key-outline"
-            showChevron
-            onPress={handleChangePasswordPress}
-            isLast
-          />
+          {canChangeEmail ? (
+            <SettingsRow
+              label="Change email"
+              icon="mail-outline"
+              showChevron
+              onPress={handleChangeEmailPress}
+              isLast={!canChangePassword}
+            />
+          ) : null}
+          {canChangePassword ? (
+            <SettingsRow
+              label="Change password"
+              icon="key-outline"
+              showChevron
+              onPress={handleChangePasswordPress}
+              isLast
+            />
+          ) : null}
         </SettingsSection>
 
         <SettingsSection title="Preferences">
@@ -322,14 +321,14 @@ export default function SettingsScreen() {
             icon="log-out-outline"
             destructive
             centered
-            onPress={handleSignOut}
+            onPress={() => setConfirmAction('signOut')}
           />
           <SettingsRow
             label="Delete account"
             icon="trash-outline"
             destructive
             centered
-            onPress={handleDeleteAccount}
+            onPress={() => setConfirmAction('deleteAccount')}
           />
         </SettingsSection>
 
@@ -363,6 +362,31 @@ export default function SettingsScreen() {
       <ChangePasswordModal
         visible={changePasswordOpen}
         onClose={() => setChangePasswordOpen(false)}
+      />
+
+      <ConfirmActionModal
+        visible={confirmAction === 'signOut'}
+        title="Sign out?"
+        message="You'll need to sign in again to access your account."
+        confirmLabel="Sign out"
+        icon="log-out-outline"
+        destructive
+        loading={confirmLoading}
+        onCancel={() => {
+          if (!confirmLoading) setConfirmAction(null);
+        }}
+        onConfirm={handleConfirmAction}
+      />
+
+      <ConfirmActionModal
+        visible={confirmAction === 'deleteAccount'}
+        title="Delete account?"
+        message="This permanently deletes your account and all data. This cannot be undone."
+        confirmLabel="Delete account"
+        icon="trash-outline"
+        destructive
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
       />
     </View>
   );
