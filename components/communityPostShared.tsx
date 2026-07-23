@@ -58,18 +58,23 @@ type PostMetaProps = {
 export function PostMeta({ topic, authorName, createdAt, onAuthorPress }: PostMetaProps) {
   return (
     <View style={metaStyles.row}>
-      <TopicBadge topic={topic} />
-      <Text style={metaStyles.text}>
+      <View style={metaStyles.left}>
+        <TopicBadge topic={topic} />
         {onAuthorPress ? (
-          <Text style={metaStyles.authorLink} onPress={() => onAuthorPress(authorName)}>
+          <Text
+            style={metaStyles.authorLink}
+            onPress={() => onAuthorPress(authorName)}
+            numberOfLines={1}
+          >
             {authorName}
           </Text>
         ) : (
-          <Text style={metaStyles.author}>{authorName}</Text>
+          <Text style={metaStyles.author} numberOfLines={1}>
+            {authorName}
+          </Text>
         )}
-        <Text style={metaStyles.dot}> · </Text>
-        <Text style={metaStyles.time}>{formatRelativeTime(createdAt)}</Text>
-      </Text>
+      </View>
+      <Text style={metaStyles.time}>{formatRelativeTime(createdAt)}</Text>
     </View>
   );
 }
@@ -80,20 +85,21 @@ export const cardStyles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 14,
-    paddingBottom: 8,
+    paddingTop: 2,
+    paddingBottom: 12,
   },
   title: {
     color: FORUM.title,
     fontSize: 16,
     fontWeight: '700',
     lineHeight: 22,
-    marginBottom: 6,
+    marginBottom: 12,
   },
   body: {
     color: FORUM.body,
     fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
+    lineHeight: 21,
+    marginBottom: 4,
   },
   actions: {
     flexDirection: 'row',
@@ -106,10 +112,11 @@ export const cardStyles = StyleSheet.create({
 
 export const photoPostStyles = StyleSheet.create({
   block: {
-    gap: 20,
+    gap: 14,
   },
   titleSection: {
     paddingHorizontal: 14,
+    paddingTop: 2,
   },
   title: {
     marginBottom: 0,
@@ -121,7 +128,8 @@ export const photoPostStyles = StyleSheet.create({
   },
   bodySection: {
     paddingHorizontal: 14,
-    paddingBottom: 10,
+    paddingTop: 2,
+    paddingBottom: 12,
   },
   bodyText: {
     marginBottom: 0,
@@ -146,29 +154,36 @@ const metaStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
     paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingTop: 14,
+    paddingBottom: 10,
   },
-  text: {
+  left: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
   },
   author: {
+    flexShrink: 1,
     color: 'rgba(255,255,255,0.75)',
     fontWeight: '600',
+    fontSize: 12,
   },
   authorLink: {
+    flexShrink: 1,
     color: 'rgba(255,255,255,0.9)',
     fontWeight: '600',
+    fontSize: 12,
     textDecorationLine: 'underline',
-  },
-  dot: {
-    color: FORUM.muted,
   },
   time: {
     color: FORUM.muted,
+    fontSize: 12,
+    fontWeight: '500',
+    flexShrink: 0,
   },
 });

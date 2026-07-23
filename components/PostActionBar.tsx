@@ -53,7 +53,7 @@ export default function PostActionBar({
           accessibilityRole="button"
           accessibilityLabel="Share"
         >
-          <Ionicons name="paper-plane-outline" size={ICON_SIZE} color="#FFFFFF" />
+          <Ionicons name="share-outline" size={ICON_SIZE} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </View>
@@ -63,8 +63,8 @@ export default function PostActionBar({
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: 14,
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
   iconRow: {
     flexDirection: 'row',
