@@ -2,11 +2,13 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   EmailAuthProvider,
+  GoogleAuthProvider,
   onAuthStateChanged,
   reauthenticateWithCredential,
   reload,
   sendEmailVerification,
   sendPasswordResetEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signOut,
   updatePassword,
@@ -89,6 +91,13 @@ export async function signInWithEmail(email: string, password: string): Promise<
   }
 
   return credential.user;
+}
+
+export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
+  const credential = GoogleAuthProvider.credential(idToken);
+  const result = await signInWithCredential(firebaseAuth, credential);
+  await reload(result.user);
+  return result.user;
 }
 
 export async function resendVerificationEmailForCredentials(

@@ -1,5 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 function GoogleIcon({ size = 18 }: { size?: number }) {
@@ -25,19 +31,43 @@ function GoogleIcon({ size = 18 }: { size?: number }) {
   );
 }
 
-/** Visual-only social sign-in placeholder (not wired up yet). */
-export default function AuthSocialOptions() {
+type AuthSocialOptionsProps = {
+  onGooglePress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+};
+
+export default function AuthSocialOptions({
+  onGooglePress,
+  loading = false,
+  disabled = false,
+}: AuthSocialOptionsProps) {
+  const isDisabled = disabled || loading;
+
   return (
-    <View style={styles.wrap} pointerEvents="none">
+    <View style={styles.wrap}>
       <View style={styles.orRow}>
         <View style={styles.orLine} />
         <Text style={styles.orText}>or</Text>
         <View style={styles.orLine} />
       </View>
-      <View style={styles.googleButton} accessibilityLabel="Continue with Google">
-        <GoogleIcon size={18} />
-        <Text style={styles.googleText}>Continue with Google</Text>
-      </View>
+      <TouchableOpacity
+        style={[styles.googleButton, isDisabled && styles.googleButtonDisabled]}
+        onPress={onGooglePress}
+        disabled={isDisabled}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <GoogleIcon size={18} />
+            <Text style={styles.googleText}>Continue with Google</Text>
+          </>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -78,6 +108,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
+  },
+  googleButtonDisabled: {
+    opacity: 0.75,
   },
   googleText: {
     color: '#fff',

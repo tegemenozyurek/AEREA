@@ -31,11 +31,16 @@ export function getFirebaseAuthErrorMessage(error: unknown): string {
     case 'auth/too-many-requests':
       return 'Too many attempts. Try again later.';
     case 'auth/operation-not-allowed':
-      return 'Email verification is not enabled. Contact support.';
+      return 'This sign-in method is not enabled. Contact support.';
     case 'auth/email-not-verified':
       return 'Please verify your email before signing in. Check your inbox.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection.';
+    case 'auth/account-exists-with-different-credential':
+      return 'An account already exists with this email using a different sign-in method.';
+    case 'auth/popup-closed-by-user':
+    case 'ERR_REQUEST_CANCELED':
+      return 'Google sign-in was cancelled.';
     default:
       if (error instanceof Error && error.message) {
         return error.message;

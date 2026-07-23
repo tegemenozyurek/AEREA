@@ -1,0 +1,11 @@
+{
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "AEREA",
+        "supportEmail": "egemenozyurek99@gmail.com"
+      }
+    }
+  }
+}

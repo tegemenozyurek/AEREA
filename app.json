@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "scheme": "aerea",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -13,9 +14,23 @@
       "backgroundColor": "#3861C9"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aerea.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "aerea",
+              "com.googleusercontent.apps.1070126863207-ror80dbor9lvdhhgkhumc8jcor0ufdae"
+            ]
+          }
+        ]
+      }
     },
     "android": {
+      "package": "com.aerea.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -32,7 +47,8 @@
         {
           "photosPermission": "Allow AEREA to access your photos for community posts."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

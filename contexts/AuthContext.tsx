@@ -18,6 +18,7 @@ import {
   sendPasswordReset,
   sendUserVerificationEmail,
   signInWithEmail,
+  signInWithGoogleIdToken,
   signOutUser,
   signUpWithEmail,
   subscribeToAuthState,
@@ -35,6 +36,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   pendingVerification: boolean;
   login: (email: string, password: string) => Promise<AuthResult>;
+  loginWithGoogle: (idToken: string) => Promise<AuthResult>;
   register: (email: string, password: string) => Promise<AuthResult>;
   resendVerificationEmail: () => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
@@ -125,6 +127,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return toAuthError(e);
       }
+      setUser(null);
+      setVerificationUser(null);
+      return toAuthError(e);
+    }
+  }, []);
+
+  const loginWithGoogle = useCallback(async (idToken: string): Promise<AuthResult> => {
+    try {
+      const signedIn = await signInWithGoogleIdToken(idToken);
+      setUser(signedIn);
+      setVerificationUser(null);
+      setAuthTick((tick) => tick + 1);
+      return { ok: true };
+    } catch (e) {
       setUser(null);
       setVerificationUser(null);
       return toAuthError(e);
@@ -230,6 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       pendingVerification,
       login,
+      loginWithGoogle,
       register,
       resendVerificationEmail,
       resetPassword,
@@ -246,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       pendingVerification,
       login,
+      loginWithGoogle,
       register,
       resendVerificationEmail,
       resetPassword,
