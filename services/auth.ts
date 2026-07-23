@@ -53,11 +53,6 @@ export function getEmailVerificationActionCodeSettings(): ActionCodeSettings {
   return getAuthActionCodeSettings();
 }
 
-function defaultDisplayName(email: string): string {
-  const local = email.split('@')[0]?.trim();
-  return local || 'AEREA user';
-}
-
 async function sendVerificationEmail(user: User): Promise<void> {
   if (!isEmailVerificationRequired(user)) {
     return;
@@ -72,9 +67,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
     password,
   );
 
-  await updateProfile(credential.user, {
-    displayName: defaultDisplayName(email),
-  });
+  // Username is chosen after verification via UsernameSetupScreen → users/{uid}.
   await sendVerificationEmail(credential.user);
 }
 

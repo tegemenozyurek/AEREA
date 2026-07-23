@@ -19,6 +19,7 @@ import AccountScreen from './screens/AccountScreen';
 import MarketScreen from './screens/MarketScreen';
 import AuthScreen from './screens/AuthScreen';
 import EmailVerificationScreen from './screens/EmailVerificationScreen';
+import UsernameSetupScreen from './screens/UsernameSetupScreen';
 import CommunityScreen from './screens/CommunityScreen';
 import HomeScreen from './screens/HomeScreen';
 import MachinesScreen from './screens/MachinesScreen';
@@ -62,7 +63,14 @@ function AuthenticatedRoutes() {
 }
 
 function Routes() {
-  const { authReady, isAuthenticated, pendingVerification, refreshEmailVerification } = useAuth();
+  const {
+    authReady,
+    isAuthenticated,
+    pendingVerification,
+    userDocReady,
+    needsUsernameSetup,
+    refreshEmailVerification,
+  } = useAuth();
   const [linkMessage, setLinkMessage] = useState<string | null>(null);
 
   useEmailVerificationLink({
@@ -80,6 +88,14 @@ function Routes() {
 
   if (pendingVerification) {
     return <EmailVerificationScreen />;
+  }
+
+  if (isAuthenticated && !userDocReady) {
+    return null;
+  }
+
+  if (isAuthenticated && needsUsernameSetup) {
+    return <UsernameSetupScreen />;
   }
 
   return isAuthenticated ? (

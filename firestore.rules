@@ -1,0 +1,85 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users/{uid}
+//   uid: string (must match document id / auth uid)
+//   email: string | null
+//   username: string | null (lowercase a-z / underscore only, 3–20)
+//   photoURL: string | null
+//   createdAt: timestamp
+//   updatedAt: timestamp
+//
+// Collection: plantProfiles/{id}  (existing catalog — read by authenticated clients)
+//   name, icon, optimum_pH, pH_tolerance, optimumPPM, PPM_tolerance
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidUsername(username) {
+      return username is string
+        && username.size() >= 3
+        && username.size() <= 20
+        && username.matches('^[a-z_]+$');
+    }
+
+    function isValidUserCreate(userId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'uid', 'email', 'username', 'photoURL', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == request.auth.uid
+        && data.uid == userId
+        && (data.email == null || data.email is string)
+        && (data.photoURL == null || data.photoURL is string)
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && (data.username == null || isValidUsername(data.username));
+    }
+
+    function isValidUserUpdate() {
+      let data = request.resource.data;
+      let prev = resource.data;
+      return data.keys().hasOnly([
+          'uid', 'email', 'username', 'photoURL', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == prev.uid
+        && data.uid == request.auth.uid
+        && data.createdAt == prev.createdAt
+        && data.updatedAt == request.time
+        && (data.email == null || data.email is string)
+        && (data.photoURL == null || data.photoURL is string)
+        && (data.username == null || isValidUsername(data.username));
+    }
+
+    match /users/{userId} {
+      // Authenticated users can look up usernames for uniqueness checks.
+      allow read: if isSignedIn();
+
+      allow create: if isSelf(userId) && isValidUserCreate(userId);
+
+      allow update: if isSelf(userId) && isValidUserUpdate();
+
+      allow delete: if false;
+    }
+
+    match /plantProfiles/{profileId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

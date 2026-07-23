@@ -73,19 +73,23 @@ export default function ChatListScreen({ onBack }: ChatListScreenProps) {
   return (
     <SafeAreaView style={[styles.safeArea, { width: screenWidth }]} edges={['top']}>
       <View style={[styles.header, { width: screenWidth }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.backWrap}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity
-          style={styles.newBtn}
-          onPress={() => setNewChatVisible(true)}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="New message"
-        >
-          <Ionicons name="create-outline" size={22} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.newWrap}>
+          <TouchableOpacity
+            style={styles.newBtn}
+            onPress={() => setNewChatVisible(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="New message"
+          >
+            <Ionicons name="create-outline" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -128,29 +132,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.4,
   },
-  backBtn: {
+  backWrap: {
     position: 'absolute',
+    left: 12,
     top: 0,
     bottom: 0,
-    left: 12,
     justifyContent: 'center',
+  },
+  newWrap: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  backBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   newBtn: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    right: 12,
-    justifyContent: 'center',
     width: 36,
     height: 36,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',

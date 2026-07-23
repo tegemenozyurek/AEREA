@@ -17,11 +17,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { UpdateProfileInput } from '../contexts/ProfileContext';
+import { USERNAME_MAX } from '../services/users';
 import { getProfileInitials } from '../utils/profile';
 import { useResponsive } from '../utils/responsive';
 
-const USERNAME_MAX = 30;
 const BIO_MAX = 300;
+
+function sanitizeUsernameInput(value: string): string {
+  return value.toLowerCase().replace(/[^a-z_]/g, '').slice(0, USERNAME_MAX);
+}
 
 type Props = {
   visible: boolean;
@@ -203,11 +207,12 @@ export default function EditProfileModal({
                   },
                 ]}
                 value={draftUsername}
-                onChangeText={setDraftUsername}
+                onChangeText={(value) => setDraftUsername(sanitizeUsernameInput(value))}
                 placeholder="Username"
                 placeholderTextColor="rgba(255,255,255,0.45)"
                 autoCapitalize="none"
                 autoCorrect={false}
+                keyboardType="ascii-capable"
                 maxLength={USERNAME_MAX}
                 returnKeyType="next"
               />
