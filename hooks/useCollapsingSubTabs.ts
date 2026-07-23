@@ -7,8 +7,8 @@ import {
   NativeSyntheticEvent,
 } from 'react-native';
 
-/** Approximate height of CommunitySubTabs (padding + chips + border). */
-export const COMMUNITY_SUB_TABS_HEIGHT = 53;
+/** Approximate height of CommunitySubTabs (chip row + padding + border). */
+export const COMMUNITY_SUB_TABS_HEIGHT = 52;
 
 const SCROLL_THRESHOLD = 12;
 const ANIM_MS = 220;
