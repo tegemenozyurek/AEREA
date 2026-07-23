@@ -57,6 +57,7 @@ type AuthContextValue = {
   cancelVerification: () => Promise<AuthResult>;
   completeUsernameSetup: (username: string) => Promise<AuthResult>;
   setFirestoreUsername: (username: string) => void;
+  refreshUser: () => Promise<AuthResult>;
   logout: () => Promise<void>;
 };
 
@@ -283,6 +284,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNeedsUsernameSetup(!username);
   }, []);
 
+  const refreshUser = useCallback(async (): Promise<AuthResult> => {
+    try {
+      const refreshed = await reloadCurrentUser();
+      if (!refreshed) {
+        return { ok: false, error: 'Not signed in.' };
+      }
+      const next = splitAuthUser(refreshed);
+      setUser(next.user);
+      setVerificationUser(next.verificationUser);
+      setAuthTick((tick) => tick + 1);
+      if (next.user) {
+        await syncUserDocument(next.user);
+      }
+      return { ok: true };
+    } catch (e) {
+      return toAuthError(e);
+    }
+  }, [syncUserDocument]);
+
   const refreshEmailVerification = useCallback(async (): Promise<AuthResult> => {
     try {
       const refreshed = await reloadCurrentUser();
@@ -370,6 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelVerification,
       completeUsernameSetup,
       setFirestoreUsername,
+      refreshUser,
       logout,
     }),
     [
@@ -393,6 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelVerification,
       completeUsernameSetup,
       setFirestoreUsername,
+      refreshUser,
       logout,
     ],
   );

@@ -17,6 +17,7 @@ import ChangePasswordModal from '../components/ChangePasswordModal';
 import ChangeUsernameModal from '../components/ChangeUsernameModal';
 import ConfirmActionModal from '../components/ConfirmActionModal';
 import EditProfileModal from '../components/EditProfileModal';
+import SettingsToast from '../components/SettingsToast';
 import SettingsChoiceRow from '../components/SettingsChoiceRow';
 import SettingsProfileCard from '../components/SettingsProfileCard';
 import SettingsRow from '../components/SettingsRow';
@@ -70,6 +71,11 @@ export default function SettingsScreen() {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'signOut' | 'deleteAccount' | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+  };
 
   const togglePicker = (picker: Exclude<ExpandedPicker, null>) => {
     setExpandedPicker((current) => (current === picker ? null : picker));
@@ -344,24 +350,41 @@ export default function SettingsScreen() {
         bio={bio}
         photoUrl={photoUrl}
         onClose={() => setEditProfileOpen(false)}
-        onSave={updateProfile}
+        onSave={async (input) => {
+          const result = await updateProfile(input);
+          if (result.ok) {
+            showToast('Profile updated');
+          }
+          return result;
+        }}
       />
 
       <ChangeUsernameModal
         visible={changeUsernameOpen}
         currentUsername={username}
         onClose={() => setChangeUsernameOpen(false)}
+        onSuccess={() => {
+          setChangeUsernameOpen(false);
+          showToast('Username updated');
+        }}
       />
 
       <ChangeEmailModal
         visible={changeEmailOpen}
         currentEmail={displayEmail === '—' ? '' : displayEmail}
         onClose={() => setChangeEmailOpen(false)}
+        onSuccess={() => {
+          showToast('Email updated');
+        }}
       />
 
       <ChangePasswordModal
         visible={changePasswordOpen}
         onClose={() => setChangePasswordOpen(false)}
+        onSuccess={() => {
+          setChangePasswordOpen(false);
+          showToast('Password updated');
+        }}
       />
 
       <ConfirmActionModal
@@ -388,6 +411,8 @@ export default function SettingsScreen() {
         onCancel={() => setConfirmAction(null)}
         onConfirm={handleConfirmAction}
       />
+
+      <SettingsToast message={toastMessage} onHide={() => setToastMessage(null)} />
     </View>
   );
 }

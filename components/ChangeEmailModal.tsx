@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,14 +15,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
+import { reloadCurrentUser } from '../services/auth';
 import { useResponsive } from '../utils/responsive';
 
 const SUBMIT_BG = '#0369A1';
+const POLL_MS = 3000;
+
+type Phase = 'form' | 'waiting' | 'done';
 
 type Props = {
   visible: boolean;
   currentEmail: string;
   onClose: () => void;
+  onSuccess?: () => void;
 };
 
 function mapEmailChangeError(error: string, code?: string): string {
@@ -32,33 +37,95 @@ function mapEmailChangeError(error: string, code?: string): string {
   return error;
 }
 
-export default function ChangeEmailModal({ visible, currentEmail, onClose }: Props) {
-  const { requestEmailChange } = useAuth();
+export default function ChangeEmailModal({ visible, currentEmail, onClose, onSuccess }: Props) {
+  const { user, requestEmailChange, refreshUser } = useAuth();
   const r = useResponsive();
   const insets = useSafeAreaInsets();
+  const [phase, setPhase] = useState<Phase>('form');
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const passwordRef = useRef('');
+
+  const resetForm = useCallback(() => {
+    setPhase('form');
+    setNewEmail('');
+    setCurrentPassword('');
+    setPendingEmail('');
+    setError(null);
+    setInfo(null);
+    setSaving(false);
+    setChecking(false);
+    passwordRef.current = '';
+  }, []);
 
   useEffect(() => {
     if (visible) {
-      setNewEmail('');
-      setCurrentPassword('');
-      setError(null);
-      setSuccess(false);
-      setSaving(false);
+      resetForm();
     }
-  }, [visible]);
+  }, [visible, resetForm]);
+
+  const finishVerified = useCallback(
+    async (verifiedEmail: string) => {
+      await refreshUser();
+      setPendingEmail(verifiedEmail);
+      setPhase('done');
+      onSuccess?.();
+    },
+    [onSuccess, refreshUser],
+  );
+
+  const checkEmailUpdated = useCallback(async (): Promise<boolean> => {
+    const refreshed = await reloadCurrentUser();
+    const next = refreshed?.email?.trim().toLowerCase() ?? '';
+    const target = pendingEmail.trim().toLowerCase();
+    if (next && target && next === target) {
+      await finishVerified(next);
+      return true;
+    }
+    return false;
+  }, [finishVerified, pendingEmail]);
+
+  useEffect(() => {
+    if (!visible || phase !== 'waiting' || !pendingEmail) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        await checkEmailUpdated();
+      } catch {
+        // Keep waiting; user can tap "I've verified".
+      }
+    };
+
+    void tick();
+    const id = setInterval(() => {
+      void tick();
+    }, POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [visible, phase, pendingEmail, checkEmailUpdated]);
 
   const handleClose = () => {
-    if (saving) return;
+    if (saving || checking) return;
+    // While waiting, allow cancel — verification may still complete later in the inbox.
     onClose();
   };
 
   const handleSubmit = async () => {
     setError(null);
+    setInfo(null);
 
     const trimmed = newEmail.trim().toLowerCase();
     if (!trimmed || !trimmed.includes('@')) {
@@ -85,7 +152,38 @@ export default function ChangeEmailModal({ visible, currentEmail, onClose }: Pro
       return;
     }
 
-    setSuccess(true);
+    passwordRef.current = currentPassword;
+    setPendingEmail(trimmed);
+    setPhase('waiting');
+  };
+
+  const handleCheckVerified = async () => {
+    setChecking(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const ok = await checkEmailUpdated();
+      if (!ok) {
+        setError('Email not updated yet. Open the link in your new inbox, then try again.');
+      }
+    } catch {
+      setError('Could not check verification status. Try again.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setSaving(true);
+    setError(null);
+    setInfo(null);
+    const result = await requestEmailChange(pendingEmail, passwordRef.current || currentPassword);
+    setSaving(false);
+    if (!result.ok) {
+      setError(mapEmailChangeError(result.error, result.code));
+      return;
+    }
+    setInfo('Confirmation email sent again. Check inbox and spam.');
   };
 
   return (
@@ -94,14 +192,25 @@ export default function ChangeEmailModal({ visible, currentEmail, onClose }: Pro
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Pressable style={styles.backdrop} onPress={handleClose}>
+        <Pressable
+          style={[
+            styles.backdrop,
+            {
+              paddingHorizontal: r.horizontalPadding,
+              paddingVertical: r.scale(24),
+            },
+          ]}
+          onPress={phase === 'waiting' ? undefined : handleClose}
+        >
           <Pressable
             style={[
               styles.sheet,
               {
                 borderRadius: r.scale(16),
-                paddingBottom: insets.bottom + r.scale(16),
-                maxWidth: r.contentMaxWidth,
+                paddingBottom: Math.max(insets.bottom, r.scale(12)) + r.scale(8),
+                width: '100%',
+                maxWidth: Math.min(r.contentMaxWidth, r.width - r.horizontalPadding * 2),
+                maxHeight: Math.min(r.height * 0.82, r.scale(560)),
               },
             ]}
             onPress={(e) => e.stopPropagation()}
@@ -110,71 +219,269 @@ export default function ChangeEmailModal({ visible, currentEmail, onClose }: Pro
               style={[
                 styles.header,
                 {
-                  paddingHorizontal: r.scale(18),
-                  paddingTop: r.scale(18),
-                  paddingBottom: r.scale(12),
+                  paddingHorizontal: r.scale(16),
+                  paddingTop: r.scale(16),
+                  paddingBottom: r.scale(10),
                 },
               ]}
             >
-              <Text style={[styles.title, { fontSize: r.scale(18) }]}>Change email</Text>
-              <TouchableOpacity
-                style={[
-                  styles.closeButton,
-                  { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
-                ]}
-                onPress={handleClose}
-                disabled={saving}
-                hitSlop={8}
-                accessibilityLabel="Close"
+              <Text
+                style={[styles.title, { fontSize: r.scale(17), flex: 1, paddingRight: r.scale(8) }]}
+                numberOfLines={1}
               >
-                <Ionicons name="close" size={r.scale(18)} color="#fff" />
-              </TouchableOpacity>
+                {phase === 'waiting'
+                  ? 'Confirm new email'
+                  : phase === 'done'
+                    ? 'Email updated'
+                    : 'Change email'}
+              </Text>
+              {phase !== 'waiting' ? (
+                <TouchableOpacity
+                  style={[
+                    styles.closeButton,
+                    { width: r.scale(32), height: r.scale(32), borderRadius: r.scale(16) },
+                  ]}
+                  onPress={handleClose}
+                  disabled={saving || checking}
+                  hitSlop={8}
+                  accessibilityLabel="Close"
+                >
+                  <Ionicons name="close" size={r.scale(18)} color="#fff" />
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: r.scale(32) }} />
+              )}
             </View>
 
             <ScrollView
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingHorizontal: r.scale(18), paddingBottom: r.scale(8) }}
+              bounces={false}
+              contentContainerStyle={{
+                paddingHorizontal: r.scale(16),
+                paddingBottom: r.scale(12),
+                flexGrow: 1,
+              }}
               showsVerticalScrollIndicator={false}
             >
-              {success ? (
-                <View style={styles.successBlock}>
+              {phase === 'done' ? (
+                <View style={[styles.successBlock, { paddingVertical: r.scale(6) }]}>
                   <View
                     style={[
                       styles.successIconWrap,
-                      { width: r.scale(72), height: r.scale(72), borderRadius: r.scale(36) },
+                      {
+                        width: r.scale(64),
+                        height: r.scale(64),
+                        borderRadius: r.scale(32),
+                      },
                     ]}
                   >
-                    <Ionicons name="mail-outline" size={r.scale(40)} color="#BAE6FD" />
+                    <Ionicons name="checkmark-circle" size={r.scale(40)} color="#BAE6FD" />
                   </View>
-                  <Text style={[styles.successTitle, { fontSize: r.scale(20), marginTop: r.scale(20) }]}>
-                    Check your inbox
+                  <Text
+                    style={[
+                      styles.successTitle,
+                      { fontSize: r.scale(18), marginTop: r.scale(16) },
+                    ]}
+                  >
+                    Email updated
                   </Text>
-                  <Text style={[styles.successBody, { fontSize: r.scale(15), marginTop: r.scale(10) }]}>
-                    We sent a confirmation link to {newEmail.trim().toLowerCase()}. Your email
-                    updates after you verify that address.
+                  <Text
+                    style={[
+                      styles.successBody,
+                      {
+                        fontSize: r.scale(14),
+                        lineHeight: r.scale(20),
+                        marginTop: r.scale(8),
+                      },
+                    ]}
+                  >
+                    Your account email is now {pendingEmail}.
                   </Text>
                   <TouchableOpacity
                     style={[
                       styles.primaryButton,
                       styles.successButton,
-                      { borderRadius: r.scale(14), marginTop: r.scale(28) },
+                      {
+                        borderRadius: r.scale(12),
+                        marginTop: r.scale(20),
+                        minHeight: r.scale(48),
+                        paddingVertical: r.scale(12),
+                      },
                     ]}
                     onPress={handleClose}
                     activeOpacity={0.85}
                   >
-                    <Text style={[styles.primaryText, { fontSize: r.scale(16) }]}>Done</Text>
+                    <Text style={[styles.primaryText, { fontSize: r.scale(15) }]}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : phase === 'waiting' ? (
+                <View style={[styles.waitingBlock, { paddingVertical: r.scale(4) }]}>
+                  <ActivityIndicator color="#BAE6FD" size="small" />
+                  <Text
+                    style={[
+                      styles.waitingTitle,
+                      { fontSize: r.scale(16), marginTop: r.scale(14) },
+                    ]}
+                  >
+                    Waiting for verification
+                  </Text>
+                  <Text
+                    style={[
+                      styles.hint,
+                      {
+                        fontSize: r.scale(13),
+                        lineHeight: r.scale(19),
+                        marginTop: r.scale(8),
+                      },
+                    ]}
+                  >
+                    We sent a confirmation link to{' '}
+                    <Text style={styles.emailHighlight}>{pendingEmail}</Text>. Stay on this screen
+                    until you open that link. We’ll detect it automatically.
+                  </Text>
+
+                  <View
+                    style={[
+                      styles.warningBox,
+                      {
+                        marginTop: r.scale(14),
+                        paddingVertical: r.scale(10),
+                        paddingHorizontal: r.scale(12),
+                        borderRadius: r.scale(12),
+                        gap: r.scale(8),
+                      },
+                    ]}
+                  >
+                    <Ionicons name="information-circle-outline" size={r.scale(18)} color="#FCD34D" />
+                    <Text
+                      style={[
+                        styles.warningText,
+                        { fontSize: r.scale(12), lineHeight: r.scale(17), flex: 1 },
+                      ]}
+                    >
+                      After you verify, you may be signed out and returned to the login screen. Sign
+                      in again with your new email and the same password.
+                    </Text>
+                  </View>
+
+                  {info ? (
+                    <Text
+                      style={[
+                        styles.infoText,
+                        {
+                          fontSize: r.scale(12),
+                          lineHeight: r.scale(17),
+                          marginTop: r.scale(10),
+                        },
+                      ]}
+                    >
+                      {info}
+                    </Text>
+                  ) : null}
+                  {error ? (
+                    <Text
+                      style={[
+                        styles.errorText,
+                        {
+                          fontSize: r.scale(12),
+                          lineHeight: r.scale(17),
+                          marginTop: r.scale(10),
+                        },
+                      ]}
+                    >
+                      {error}
+                    </Text>
+                  ) : null}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.primaryButton,
+                      {
+                        borderRadius: r.scale(12),
+                        marginTop: r.scale(18),
+                        minHeight: r.scale(46),
+                        paddingVertical: r.scale(11),
+                        alignSelf: 'stretch',
+                      },
+                      (checking || saving) && styles.buttonDisabled,
+                    ]}
+                    onPress={() => void handleCheckVerified()}
+                    disabled={checking || saving}
+                    activeOpacity={0.85}
+                  >
+                    {checking ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={[styles.primaryText, { fontSize: r.scale(14) }]}>
+                        I've verified
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.secondaryButton,
+                      {
+                        borderRadius: r.scale(12),
+                        marginTop: r.scale(8),
+                        minHeight: r.scale(46),
+                        paddingVertical: r.scale(11),
+                        alignSelf: 'stretch',
+                      },
+                      (checking || saving) && styles.buttonDisabled,
+                    ]}
+                    onPress={() => void handleResend()}
+                    disabled={checking || saving}
+                    activeOpacity={0.85}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={[styles.secondaryText, { fontSize: r.scale(14) }]}>
+                        Resend email
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.cancelLink, { marginTop: r.scale(12), paddingVertical: r.scale(8) }]}
+                    onPress={handleClose}
+                    disabled={checking || saving}
+                    hitSlop={8}
+                  >
+                    <Text style={[styles.cancelLinkText, { fontSize: r.scale(13) }]}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <>
-                  <Text style={[styles.hint, { fontSize: r.scale(14), marginBottom: r.scale(16) }]}>
-                    Current email: {currentEmail || '—'}. Enter a new address and confirm with your
-                    password.
+                  <Text
+                    style={[
+                      styles.hint,
+                      {
+                        fontSize: r.scale(13),
+                        lineHeight: r.scale(19),
+                        marginBottom: r.scale(14),
+                        textAlign: 'left',
+                      },
+                    ]}
+                  >
+                    Current email: {currentEmail || '—'}. After you continue, you’ll stay on a waiting
+                    screen until the new address is verified. Verifying may sign you out — you’ll
+                    need to log in again with the new email.
                   </Text>
 
-                  <Text style={styles.fieldLabel}>New email</Text>
+                  <Text style={[styles.fieldLabel, { fontSize: r.scale(11) }]}>New email</Text>
                   <TextInput
-                    style={[styles.input, { marginTop: r.scale(8), borderRadius: r.scale(12) }]}
+                    style={[
+                      styles.input,
+                      {
+                        marginTop: r.scale(8),
+                        borderRadius: r.scale(12),
+                        fontSize: r.scale(15),
+                        paddingHorizontal: r.scale(14),
+                        paddingVertical: r.scale(12),
+                      },
+                    ]}
                     placeholder="new@email.com"
                     placeholderTextColor="rgba(255,255,255,0.45)"
                     value={newEmail}
@@ -189,9 +496,20 @@ export default function ChangeEmailModal({ visible, currentEmail, onClose }: Pro
                     autoComplete="email"
                   />
 
-                  <Text style={[styles.fieldLabel, { marginTop: r.scale(16) }]}>Current password</Text>
+                  <Text style={[styles.fieldLabel, { fontSize: r.scale(11), marginTop: r.scale(14) }]}>
+                    Current password
+                  </Text>
                   <TextInput
-                    style={[styles.input, { marginTop: r.scale(8), borderRadius: r.scale(12) }]}
+                    style={[
+                      styles.input,
+                      {
+                        marginTop: r.scale(8),
+                        borderRadius: r.scale(12),
+                        fontSize: r.scale(15),
+                        paddingHorizontal: r.scale(14),
+                        paddingVertical: r.scale(12),
+                      },
+                    ]}
                     placeholder="Current password"
                     placeholderTextColor="rgba(255,255,255,0.45)"
                     secureTextEntry
@@ -205,7 +523,16 @@ export default function ChangeEmailModal({ visible, currentEmail, onClose }: Pro
                   />
 
                   {error ? (
-                    <Text style={[styles.errorText, { fontSize: r.scale(13), marginTop: r.scale(12) }]}>
+                    <Text
+                      style={[
+                        styles.errorText,
+                        {
+                          fontSize: r.scale(12),
+                          lineHeight: r.scale(17),
+                          marginTop: r.scale(10),
+                        },
+                      ]}
+                    >
                       {error}
                     </Text>
                   ) : null}
@@ -213,7 +540,12 @@ export default function ChangeEmailModal({ visible, currentEmail, onClose }: Pro
                   <TouchableOpacity
                     style={[
                       styles.primaryButton,
-                      { borderRadius: r.scale(12), marginTop: r.scale(20) },
+                      {
+                        borderRadius: r.scale(12),
+                        marginTop: r.scale(18),
+                        minHeight: r.scale(48),
+                        paddingVertical: r.scale(12),
+                      },
                       saving && styles.buttonDisabled,
                     ]}
                     onPress={() => void handleSubmit()}
@@ -223,9 +555,7 @@ export default function ChangeEmailModal({ visible, currentEmail, onClose }: Pro
                     {saving ? (
                       <ActivityIndicator color="#fff" />
                     ) : (
-                      <Text style={[styles.primaryText, { fontSize: r.scale(15) }]}>
-                        Send confirmation
-                      </Text>
+                      <Text style={[styles.primaryText, { fontSize: r.scale(15) }]}>Continue</Text>
                     )}
                   </TouchableOpacity>
                 </>
@@ -245,14 +575,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
   sheet: {
-    width: '100%',
     backgroundColor: 'rgba(15,23,42,0.96)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
-    maxHeight: '90%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -273,50 +601,91 @@ const styles = StyleSheet.create({
   },
   hint: {
     color: 'rgba(255,255,255,0.55)',
-    lineHeight: 20,
+    textAlign: 'center',
+  },
+  emailHighlight: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  warningBox: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(252, 211, 77, 0.1)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(252, 211, 77, 0.35)',
+  },
+  warningText: {
+    color: 'rgba(255, 236, 179, 0.92)',
+    fontWeight: '500',
   },
   fieldLabel: {
     color: 'rgba(255,255,255,0.5)',
-    fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.2,
     textTransform: 'uppercase',
   },
   input: {
     color: '#fff',
-    fontSize: 15,
     fontWeight: '500',
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
   },
   errorText: {
     color: '#FFB4B4',
     fontWeight: '500',
     textAlign: 'center',
   },
+  infoText: {
+    color: '#BAE6FD',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   primaryButton: {
     backgroundColor: SUBMIT_BG,
-    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
   },
+  secondaryButton: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
   primaryText: {
     color: '#fff',
     fontWeight: '700',
   },
+  secondaryText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+  },
   buttonDisabled: {
     opacity: 0.75,
+  },
+  waitingBlock: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  waitingTitle: {
+    color: '#fff',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  cancelLink: {
+    alignItems: 'center',
+  },
+  cancelLinkText: {
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '600',
   },
   successBlock: {
     width: '100%',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
   },
   successIconWrap: {
     alignItems: 'center',
@@ -328,7 +697,6 @@ const styles = StyleSheet.create({
   successButton: {
     alignSelf: 'stretch',
     width: '100%',
-    minHeight: 52,
   },
   successTitle: {
     color: '#fff',
@@ -338,7 +706,6 @@ const styles = StyleSheet.create({
   successBody: {
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
-    lineHeight: 22,
     paddingHorizontal: 8,
   },
 });
