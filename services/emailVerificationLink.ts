@@ -33,7 +33,12 @@ export function parseAuthActionLink(url: string): AuthActionLink | null {
 
 export async function completeEmailVerificationFromLink(url: string): Promise<boolean> {
   const action = parseAuthActionLink(url);
-  if (!action || action.mode !== 'verifyEmail') {
+  // verifyEmail: signup verification
+  // verifyAndChangeEmail: verifyBeforeUpdateEmail (change email)
+  if (
+    !action ||
+    (action.mode !== 'verifyEmail' && action.mode !== 'verifyAndChangeEmail')
+  ) {
     return false;
   }
 

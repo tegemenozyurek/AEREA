@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import GlassCard from './GlassCard';
 import { useResponsive } from '../utils/responsive';
 
 type Props = {
@@ -21,9 +22,10 @@ export default function SettingsSection({
   children,
 }: Props) {
   const r = useResponsive();
-  const gap = r.scale(12);
+  const gap = r.scale(10);
   const items = React.Children.toArray(children);
   const showHeader = Boolean(title || onEditPress || headerAction);
+  const cardRadius = r.scale(14);
 
   const editButton = onEditPress ? (
     <TouchableOpacity
@@ -41,20 +43,34 @@ export default function SettingsSection({
     </TouchableOpacity>
   ) : null;
 
+  const renderGroup = (content: ReactNode, key?: number) => (
+    <GlassCard
+      key={key}
+      style={[
+        styles.group,
+        {
+          borderRadius: cardRadius,
+        },
+      ]}
+    >
+      {content}
+    </GlassCard>
+  );
+
   return (
-    <View style={{ marginTop, marginBottom: r.scale(12) }}>
+    <View style={{ marginTop, marginBottom: r.scale(14) }}>
       {showHeader ? (
         <View
           style={[
             styles.headerRow,
             {
               marginBottom: r.scale(8),
-              paddingHorizontal: r.scale(2),
+              paddingHorizontal: r.scale(4),
             },
           ]}
         >
           {title ? (
-            <Text style={[styles.title, { fontSize: r.scale(12) }]}>{title}</Text>
+            <Text style={[styles.title, { fontSize: r.scale(11) }]}>{title}</Text>
           ) : (
             <View />
           )}
@@ -62,32 +78,9 @@ export default function SettingsSection({
         </View>
       ) : null}
       {separated ? (
-        <View style={{ gap }}>
-          {items.map((child, index) => (
-            <View
-              key={index}
-              style={[
-                styles.group,
-                {
-                  borderRadius: r.scale(12),
-                },
-              ]}
-            >
-              {child}
-            </View>
-          ))}
-        </View>
+        <View style={{ gap }}>{items.map((child, index) => renderGroup(child, index))}</View>
       ) : (
-        <View
-          style={[
-            styles.group,
-            {
-              borderRadius: r.scale(12),
-            },
-          ]}
-        >
-          {children}
-        </View>
+        renderGroup(children)
       )}
     </View>
   );
@@ -100,22 +93,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '600',
-    letterSpacing: 0.4,
+    color: 'rgba(255,255,255,0.42)',
+    fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   editButton: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   group: {
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
   },
 });

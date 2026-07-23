@@ -8,17 +8,21 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { MOCK_OWN_BIO } from '../data/mockUsers';
-import { updateUserDisplayName } from '../services/auth';
+import {
+  BIO_MAX,
+  claimUsername,
+  getUserDocument,
+  isUsernameTaken,
+  updateUserBio,
+  UsernameTakenError,
+  validateUsernameFormat,
+} from '../services/users';
 import { getProfileUsername } from '../utils/profile';
 import { useAuth } from './AuthContext';
 
 const PROFILE_STORAGE_PREFIX = '@aerea/profile/';
-const USERNAME_MAX = 30;
-const BIO_MAX = 300;
 
 type StoredProfile = {
-  bio: string;
   localPhotoUri: string | null;
 };
 
@@ -48,15 +52,14 @@ async function loadStoredProfile(uid: string): Promise<StoredProfile> {
   try {
     const raw = await AsyncStorage.getItem(storageKey(uid));
     if (!raw) {
-      return { bio: MOCK_OWN_BIO, localPhotoUri: null };
+      return { localPhotoUri: null };
     }
-    const parsed = JSON.parse(raw) as Partial<StoredProfile>;
+    const parsed = JSON.parse(raw) as Partial<StoredProfile & { bio?: string }>;
     return {
-      bio: typeof parsed.bio === 'string' ? parsed.bio : MOCK_OWN_BIO,
       localPhotoUri: typeof parsed.localPhotoUri === 'string' ? parsed.localPhotoUri : null,
     };
   } catch {
-    return { bio: MOCK_OWN_BIO, localPhotoUri: null };
+    return { localPhotoUri: null };
   }
 }
 
@@ -65,29 +68,35 @@ async function saveStoredProfile(uid: string, profile: StoredProfile): Promise<v
 }
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [bio, setBio] = useState(MOCK_OWN_BIO);
+  const { user, firestoreUsername, setFirestoreUsername } = useAuth();
+  const [bio, setBio] = useState('');
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [localUsername, setLocalUsername] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       if (!user?.uid) {
-        setBio(MOCK_OWN_BIO);
+        setBio('');
         setLocalPhotoUri(null);
+        setLocalUsername(null);
         setIsReady(true);
         return;
       }
 
       setIsReady(false);
-      const stored = await loadStoredProfile(user.uid);
+      const [stored, firestoreUser] = await Promise.all([
+        loadStoredProfile(user.uid),
+        getUserDocument(user.uid).catch(() => null),
+      ]);
       if (cancelled) {
         return;
       }
-      setBio(stored.bio);
+      setBio(firestoreUser?.bio ?? '');
       setLocalPhotoUri(stored.localPhotoUri);
+      setLocalUsername(null);
       setIsReady(true);
     };
 
@@ -98,10 +107,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.uid]);
 
-  const username = useMemo(
-    () => getProfileUsername(user?.email, user?.displayName),
-    [user?.displayName, user?.email],
-  );
+  const username = useMemo(() => {
+    if (localUsername) {
+      return localUsername;
+    }
+    if (firestoreUsername) {
+      return firestoreUsername;
+    }
+    return getProfileUsername(user?.email, user?.displayName);
+  }, [firestoreUsername, localUsername, user?.displayName, user?.email]);
 
   const photoUrl = localPhotoUri ?? user?.photoURL ?? null;
 
@@ -114,11 +128,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       const trimmedUsername = input.username.trim();
       const trimmedBio = input.bio.trim();
 
-      if (!trimmedUsername) {
-        return { ok: false, error: 'Username is required.' };
-      }
-      if (trimmedUsername.length > USERNAME_MAX) {
-        return { ok: false, error: `Username must be ${USERNAME_MAX} characters or less.` };
+      const formatError = validateUsernameFormat(trimmedUsername);
+      if (formatError) {
+        return { ok: false, error: formatError };
       }
       if (trimmedBio.length > BIO_MAX) {
         return { ok: false, error: `Bio must be ${BIO_MAX} characters or less.` };
@@ -126,25 +138,38 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
       try {
         if (trimmedUsername !== username) {
-          await updateUserDisplayName(trimmedUsername);
+          const taken = await isUsernameTaken(trimmedUsername, user.uid);
+          if (taken) {
+            return { ok: false, error: new UsernameTakenError().message };
+          }
+          const savedUsername = await claimUsername(user.uid, trimmedUsername);
+          setLocalUsername(savedUsername);
+          setFirestoreUsername(savedUsername);
         }
+
+        const savedBio = await updateUserBio(user.uid, trimmedBio);
+        setBio(savedBio ?? '');
 
         const nextPhotoUri =
           input.photoUri === undefined ? localPhotoUri : input.photoUri;
 
         await saveStoredProfile(user.uid, {
-          bio: trimmedBio,
           localPhotoUri: nextPhotoUri,
         });
-
-        setBio(trimmedBio);
         setLocalPhotoUri(nextPhotoUri);
+
         return { ok: true };
-      } catch {
+      } catch (e) {
+        if (e instanceof UsernameTakenError) {
+          return { ok: false, error: e.message };
+        }
+        if (e instanceof Error && e.message) {
+          return { ok: false, error: e.message };
+        }
         return { ok: false, error: 'Could not save profile. Please try again.' };
       }
     },
-    [localPhotoUri, user?.uid, username],
+    [localPhotoUri, setFirestoreUsername, user?.uid, username],
   );
 
   const value = useMemo<ProfileContextValue>(

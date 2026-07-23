@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1070126863207",
+    "project_id": "aerea-39995",
+    "storage_bucket": "aerea-39995.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1070126863207:android:b3ae28e6b3a89b7d2995c2",
+        "android_client_info": {
+          "package_name": "com.aerea.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1070126863207-ts2ta37re1dg5um07be4fds3ulqu3goi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aerea.app",
+            "certificate_hash": "8e2b4e7863855f552b95842e289a00da2699fd88"
+          }
+        },
+        {
+          "client_id": "1070126863207-h9jd2jmajhmpii46kh55orc40lnb6j7t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKbfjhFIuOhK8QMJ29hrO7jB8JQCOa4gE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1070126863207-h9jd2jmajhmpii46kh55orc40lnb6j7t.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1070126863207-ror80dbor9lvdhhgkhumc8jcor0ufdae.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.aerea.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

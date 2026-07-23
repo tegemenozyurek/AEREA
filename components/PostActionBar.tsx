@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import LikeControls from './LikeControls';
+import { FORUM } from './communityPostShared';
 
 type PostActionBarProps = {
   likeCount: number;
@@ -11,7 +11,11 @@ type PostActionBarProps = {
   onOpenComments: () => void;
 };
 
-const ICON_SIZE = 24;
+const ICON_SIZE = 22;
+const SLOT = 24;
+
+const formatNumber = (value: number) =>
+  value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
 export default function PostActionBar({
   likeCount,
@@ -22,38 +26,49 @@ export default function PostActionBar({
 }: PostActionBarProps) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.iconRow}>
-        <LikeControls
-          likeCount={likeCount}
-          liked={liked}
-          onToggleLike={onToggleLike}
-          iconOnly
-        />
-        <View style={styles.inlineGroup}>
-          <TouchableOpacity
-            style={styles.iconHit}
-            onPress={onOpenComments}
-            activeOpacity={0.7}
-            hitSlop={4}
-            accessibilityRole="button"
-            accessibilityLabel={`${commentCount} comments`}
-          >
-            <Ionicons
-              name="chatbubble-outline"
-              size={ICON_SIZE}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
-          <Text style={styles.iconCount}>{commentCount}</Text>
-        </View>
+      <View style={styles.row}>
         <TouchableOpacity
-          style={styles.iconHit}
+          style={styles.action}
+          onPress={onToggleLike}
           activeOpacity={0.7}
-          hitSlop={4}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={liked ? 'Unlike post' : 'Like post'}
+        >
+          <View style={styles.iconSlot}>
+            <Ionicons
+              name={liked ? 'heart' : 'heart-outline'}
+              size={ICON_SIZE}
+              color={liked ? FORUM.heart : '#FFFFFF'}
+            />
+          </View>
+          <Text style={styles.count}>{formatNumber(likeCount)}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.action}
+          onPress={onOpenComments}
+          activeOpacity={0.7}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={`${commentCount} comments`}
+        >
+          <View style={styles.iconSlot}>
+            <Ionicons name="chatbubble-outline" size={ICON_SIZE} color="#FFFFFF" />
+          </View>
+          <Text style={styles.count}>{formatNumber(commentCount)}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.action}
+          activeOpacity={0.7}
+          hitSlop={6}
           accessibilityRole="button"
           accessibilityLabel="Share"
         >
-          <Ionicons name="paper-plane-outline" size={ICON_SIZE} color="#FFFFFF" />
+          <View style={styles.iconSlot}>
+            <Ionicons name="share-outline" size={ICON_SIZE} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -63,30 +78,31 @@ export default function PostActionBar({
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: 14,
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
-  iconRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 14,
+    gap: 18,
   },
-  inlineGroup: {
+  action: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    minHeight: SLOT,
   },
-  iconHit: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
+  iconSlot: {
+    width: SLOT,
+    height: SLOT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCount: {
+  count: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: ICON_SIZE,
+    lineHeight: 16,
+    includeFontPadding: false,
   },
 });

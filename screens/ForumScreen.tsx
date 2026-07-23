@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
   RefreshControl,
   SectionList,
   StyleSheet,
@@ -50,10 +49,6 @@ export default function ForumScreen() {
     [activePosts, feedTab],
   );
 
-  const handleSearch = () => {
-    Alert.alert('Search', 'Search for users, topics, and posts — coming soon.');
-  };
-
   const renderItem = useCallback(
     ({ item }: { item: SectionItem }) => (
       <View style={[styles.postWrap, { width: screenWidth }]}>
@@ -71,41 +66,33 @@ export default function ForumScreen() {
         <View style={styles.toolbar}>
           <View style={styles.sortRow}>
             <TouchableOpacity
-              style={[styles.sortChip, feedTab === 'hot' && styles.sortChipActive]}
+              style={[styles.sortChip, feedTab === 'hot' && styles.sortChipHot]}
               onPress={() => setFeedTab('hot')}
             >
               <Ionicons
                 name="flame"
                 size={15}
-                color={feedTab === 'hot' ? '#fff' : 'rgba(255,255,255,0.6)'}
+                color={feedTab === 'hot' ? '#7A2E2E' : 'rgba(255,255,255,0.6)'}
               />
-              <Text style={[styles.sortText, feedTab === 'hot' && styles.sortTextActive]}>
+              <Text style={[styles.sortText, feedTab === 'hot' && styles.sortTextHot]}>
                 Hot
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.sortChip, feedTab === 'new' && styles.sortChipActive]}
+              style={[styles.sortChip, feedTab === 'new' && styles.sortChipNew]}
               onPress={() => setFeedTab('new')}
             >
               <Ionicons
                 name="time-outline"
                 size={15}
-                color={feedTab === 'new' ? '#fff' : 'rgba(255,255,255,0.6)'}
+                color={feedTab === 'new' ? '#6B5420' : 'rgba(255,255,255,0.6)'}
               />
-              <Text style={[styles.sortText, feedTab === 'new' && styles.sortTextActive]}>
+              <Text style={[styles.sortText, feedTab === 'new' && styles.sortTextNew]}>
                 New
               </Text>
             </TouchableOpacity>
           </View>
           <View style={styles.toolbarActions}>
-            <TouchableOpacity
-              style={styles.toolbarButton}
-              onPress={handleSearch}
-              hitSlop={8}
-              accessibilityLabel="Search forum"
-            >
-              <Ionicons name="search" size={18} color="#fff" />
-            </TouchableOpacity>
             <TouchableOpacity
               style={styles.toolbarButton}
               onPress={() => setCreateVisible(true)}
@@ -207,17 +194,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  sortChipActive: {
-    backgroundColor: '#008D41',
-    borderColor: '#008D41',
+  sortChipHot: {
+    backgroundColor: '#F2B4B4',
+    borderColor: '#ECA0A0',
+  },
+  sortChipNew: {
+    backgroundColor: '#F0DC96',
+    borderColor: '#E5CF7A',
   },
   sortText: {
     color: 'rgba(255,255,255,0.65)',
     fontSize: 13,
     fontWeight: '600',
   },
-  sortTextActive: {
-    color: '#fff',
+  sortTextHot: {
+    color: '#7A2E2E',
+  },
+  sortTextNew: {
+    color: '#6B5420',
   },
   toolbarActions: {
     flexDirection: 'row',

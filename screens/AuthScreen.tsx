@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -16,8 +18,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinkableText from '../components/LinkableText';
 import AuthSocialOptions from '../components/AuthSocialOptions';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  GOOGLE_ANDROID_CLIENT_ID,
+  GOOGLE_IOS_CLIENT_ID,
+  GOOGLE_WEB_CLIENT_ID,
+} from '../lib/googleAuth';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
 import { useResponsive } from '../utils/responsive';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type AuthScreenProps = {
   linkMessage?: string | null;
@@ -51,10 +60,19 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
   const [info, setInfo] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const handledGoogleResponse = useRef<string | null>(null);
 
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
   const r = useResponsive();
   const isLogin = mode === 'login';
+
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    selectAccount: true,
+  });
 
   useEffect(() => {
     if (linkMessage) {
@@ -63,6 +81,38 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
     }
   }, [linkMessage, onClearLinkMessage]);
 
+  useEffect(() => {
+    if (!googleResponse) return;
+
+    const responseKey = `${googleResponse.type}:${JSON.stringify(googleResponse)}`;
+    if (handledGoogleResponse.current === responseKey) return;
+    handledGoogleResponse.current = responseKey;
+
+    if (googleResponse.type === 'success') {
+      const idToken = googleResponse.params.id_token;
+      if (!idToken) {
+        setGoogleLoading(false);
+        setError('Google sign-in failed. Missing ID token.');
+        return;
+      }
+
+      setGoogleLoading(true);
+      void (async () => {
+        const result = await loginWithGoogle(idToken);
+        setGoogleLoading(false);
+        if (!result.ok) {
+          setError(result.error);
+        }
+      })();
+      return;
+    }
+
+    setGoogleLoading(false);
+    if (googleResponse.type === 'error') {
+      setError(googleResponse.error?.message || 'Google sign-in failed.');
+    }
+  }, [googleResponse, loginWithGoogle]);
+
   const openEmailApp = () => {
     void Linking.openURL(Platform.OS === 'ios' ? 'message://' : 'mailto:');
   };
@@ -70,6 +120,21 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
   const clearFeedback = () => {
     setError(null);
     setInfo(null);
+  };
+
+  const handleGooglePress = async () => {
+    clearFeedback();
+    if (!googleRequest) {
+      setError('Google sign-in is not ready yet. Try again in a moment.');
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      await promptGoogleAsync();
+    } catch (e) {
+      setGoogleLoading(false);
+      setError(e instanceof Error ? e.message : 'Google sign-in failed.');
+    }
   };
 
   const handleModeChange = (next: AuthMode) => {
@@ -284,7 +349,11 @@ export default function AuthScreen({ linkMessage, onClearLinkMessage }: AuthScre
                   )}
                 </TouchableOpacity>
 
-                <AuthSocialOptions />
+                <AuthSocialOptions
+                  onGooglePress={() => void handleGooglePress()}
+                  loading={googleLoading}
+                  disabled={loading || !googleRequest}
+                />
               </View>
             </View>
           </ScrollView>

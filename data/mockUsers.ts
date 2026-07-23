@@ -1,7 +1,5 @@
 import type { UserProfile } from '../types/userProfile';
 
-export const MOCK_OWN_BIO = 'Full time potato farmer :D';
-
 export const MOCK_USERS: UserProfile[] = [
   {
     id: 'user-anna',

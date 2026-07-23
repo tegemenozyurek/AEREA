@@ -1,6 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import {
+  Alert,
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CommunitySubTabs from '../components/CommunitySubTabs';
 import { useChat } from '../contexts/ChatContext';
@@ -29,6 +37,10 @@ export default function CommunityScreen() {
     setSubTab(tab);
   };
 
+  const handleSearch = () => {
+    Alert.alert('Search', 'Search for users, topics, and posts — coming soon.');
+  };
+
   if (chatView === 'conversation' && activeConversationId) {
     return (
       <ChatScreen conversationId={activeConversationId} onBack={() => openInbox()} />
@@ -43,23 +55,35 @@ export default function CommunityScreen() {
     <SafeAreaView style={[styles.safeArea, { width: screenWidth }]} edges={['top']}>
       <View style={[styles.header, { width: screenWidth }]}>
         <Text style={styles.headerTitle}>Community</Text>
-        <TouchableOpacity
-          style={styles.headerButton}
-          activeOpacity={0.7}
-          onPress={openInbox}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Messages"
-        >
-          <Ionicons name="chatbubble-outline" size={20} color="#fff" />
-          {totalUnread > 0 && (
-            <View style={styles.unreadDot}>
-              <Text style={styles.unreadDotText}>
-                {totalUnread > 9 ? '9+' : totalUnread}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            onPress={handleSearch}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+          >
+            <Ionicons name="search" size={18} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            onPress={openInbox}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Messages"
+          >
+            <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+            {totalUnread > 0 && (
+              <View style={styles.unreadDot}>
+                <Text style={styles.unreadDotText}>
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Animated.View style={animatedContainerStyle}>
@@ -85,7 +109,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   header: {
-    paddingVertical: 18,
+    paddingTop: 14,
+    paddingBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',
@@ -96,16 +121,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.4,
   },
-  headerButton: {
+  headerActions: {
     position: 'absolute',
+    right: 12,
     top: 0,
     bottom: 0,
-    right: 12,
-    width: 36,
-    height: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerButton: {
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(255,255,255,0.08)',

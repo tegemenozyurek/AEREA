@@ -29,7 +29,9 @@ export default function SettingsChoiceRow<T extends string>({
   isLast = false,
 }: Props<T>) {
   const r = useResponsive();
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? value;
+  const selected = options.find((option) => option.value === value);
+  const selectedLabel = selected?.label ?? value;
+  const valueMaxWidth = Math.max(r.scale(96), r.width * 0.32);
 
   const handleSelect = (next: T) => {
     onChange(next);
@@ -41,7 +43,11 @@ export default function SettingsChoiceRow<T extends string>({
       <TouchableOpacity
         style={[
           styles.row,
-          { paddingVertical: r.scale(15), paddingHorizontal: r.scale(14) },
+          {
+            paddingVertical: r.scale(13),
+            paddingHorizontal: r.scale(14),
+            minHeight: r.scale(52),
+          },
           expanded && styles.rowExpanded,
         ]}
         activeOpacity={0.65}
@@ -50,11 +56,31 @@ export default function SettingsChoiceRow<T extends string>({
         accessibilityLabel={label}
         accessibilityState={{ expanded }}
       >
+        <View
+          style={[
+            styles.iconWrap,
+            {
+              width: r.scale(32),
+              height: r.scale(32),
+              borderRadius: r.scale(10),
+              marginRight: r.scale(10),
+            },
+          ]}
+        >
+          <Ionicons
+            name={selected?.icon ?? 'options-outline'}
+            size={r.scale(17)}
+            color="rgba(255,255,255,0.55)"
+          />
+        </View>
         <Text style={[styles.label, { fontSize: r.scale(15) }]} numberOfLines={1}>
           {label}
         </Text>
         <View style={styles.right}>
-          <Text style={[styles.value, { fontSize: r.scale(13), maxWidth: r.scale(170) }]} numberOfLines={1}>
+          <Text
+            style={[styles.value, { fontSize: r.scale(13), maxWidth: valueMaxWidth }]}
+            numberOfLines={1}
+          >
             {selectedLabel}
           </Text>
           <Ionicons
@@ -70,14 +96,14 @@ export default function SettingsChoiceRow<T extends string>({
           style={[
             styles.options,
             {
-              paddingBottom: r.scale(6),
-              paddingHorizontal: r.scale(8),
+              paddingBottom: r.scale(8),
+              paddingHorizontal: r.scale(10),
             },
             !isLast && styles.optionsBorder,
           ]}
         >
           {options.map((option) => {
-            const selected = option.value === value;
+            const isSelected = option.value === value;
             return (
               <TouchableOpacity
                 key={option.value}
@@ -89,31 +115,31 @@ export default function SettingsChoiceRow<T extends string>({
                     borderRadius: r.scale(10),
                     gap: r.scale(10),
                   },
-                  selected && styles.optionSelected,
+                  isSelected && styles.optionSelected,
                 ]}
                 activeOpacity={0.7}
                 onPress={() => handleSelect(option.value)}
                 accessibilityRole="button"
-                accessibilityState={{ selected }}
+                accessibilityState={{ selected: isSelected }}
                 accessibilityLabel={option.label}
               >
                 {option.icon ? (
                   <Ionicons
                     name={option.icon}
                     size={r.scale(18)}
-                    color={selected ? '#93C5FD' : 'rgba(255,255,255,0.55)'}
+                    color={isSelected ? '#93C5FD' : 'rgba(255,255,255,0.55)'}
                   />
                 ) : null}
                 <Text
                   style={[
                     styles.optionLabel,
                     { fontSize: r.scale(15) },
-                    selected && styles.optionLabelSelected,
+                    isSelected && styles.optionLabelSelected,
                   ]}
                 >
                   {option.label}
                 </Text>
-                {selected ? (
+                {isSelected ? (
                   <Ionicons name="checkmark" size={r.scale(18)} color="#60A5FA" />
                 ) : (
                   <View style={{ width: r.scale(18) }} />
@@ -131,30 +157,38 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
   },
   rowExpanded: {
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  iconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+    flexShrink: 0,
   },
   label: {
     flex: 1,
     color: '#fff',
     fontWeight: '500',
     letterSpacing: 0.1,
+    minWidth: 0,
   },
   right: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     flexShrink: 1,
+    marginLeft: 8,
   },
   value: {
-    color: 'rgba(255,255,255,0.42)',
+    color: 'rgba(255,255,255,0.45)',
     fontWeight: '400',
     textAlign: 'right',
   },

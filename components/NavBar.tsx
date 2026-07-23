@@ -1,12 +1,12 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useRef } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '../contexts/ChatContext';
 import { useHomeNotifications } from '../contexts/HomeNotificationsContext';
 import { useMachinesAlerts } from '../contexts/MachinesAlertsContext';
-import { AppRoute, useNavigation } from '../contexts/NavigationContext';
+import { AppRoute, isRouteLocked, useNavigation } from '../contexts/NavigationContext';
 import { useResponsive } from '../utils/responsive';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -57,13 +57,76 @@ function formatBadgeCount(count: number): string {
   return String(count);
 }
 
+const TOAST_VISIBLE_MS = 1200;
+const TOAST_FADE_MS = 180;
+const MARKET_TAB_INDEX = NAV_ITEMS.findIndex((item) => item.route === 'market');
+
 export default function NavBar() {
   const { route, navigate } = useNavigation();
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const r = useResponsive();
   const { unreadCount: homeUnreadCount } = useHomeNotifications();
   const { totalUnread: communityUnreadCount } = useChat();
   const { alertCount: machinesAlertCount } = useMachinesAlerts();
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastScale = useRef(new Animated.Value(0.92)).current;
+  const toastTranslateY = useRef(new Animated.Value(8)).current;
+  const toastAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const showComingSoonToast = useCallback(() => {
+    toastAnimRef.current?.stop();
+
+    toastOpacity.setValue(0);
+    toastScale.setValue(0.92);
+    toastTranslateY.setValue(8);
+    toastAnimRef.current = Animated.sequence([
+      Animated.parallel([
+        Animated.timing(toastOpacity, {
+          toValue: 1,
+          duration: TOAST_FADE_MS,
+          useNativeDriver: true,
+        }),
+        Animated.spring(toastScale, {
+          toValue: 1,
+          damping: 16,
+          stiffness: 220,
+          mass: 0.7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toastTranslateY, {
+          toValue: 0,
+          duration: TOAST_FADE_MS,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(TOAST_VISIBLE_MS),
+      Animated.parallel([
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: TOAST_FADE_MS + 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toastTranslateY, {
+          toValue: 4,
+          duration: TOAST_FADE_MS + 40,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]);
+    toastAnimRef.current.start();
+  }, [toastOpacity, toastScale, toastTranslateY]);
+
+  const handleTabPress = useCallback(
+    (itemRoute: AppRoute, locked: boolean) => {
+      if (locked) {
+        showComingSoonToast();
+        return;
+      }
+      navigate(itemRoute);
+    },
+    [navigate, showComingSoonToast],
+  );
 
   const badgeByRoute = useMemo<Partial<Record<AppRoute, number>>>(
     () => ({
@@ -76,16 +139,61 @@ export default function NavBar() {
 
   const iconSize = r.isTablet ? 24 : 22;
   const labelSize = r.isTablet ? 11 : 10;
+  const toastWidth = r.scale(88);
+  const navWidth = r.isTablet ? Math.min(screenWidth, 560) : screenWidth;
+  const navLeft = r.isTablet ? (screenWidth - navWidth) / 2 : 0;
+  const toastLeft =
+    navLeft + (navWidth / NAV_ITEMS.length) * (MARKET_TAB_INDEX + 0.5) - toastWidth / 2;
 
   return (
-    <View
-      style={[
-        styles.wrap,
-        {
-          paddingBottom: Math.max(insets.bottom, 8),
-        },
-      ]}
-    >
+    <View style={styles.navRoot}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.toastWrap,
+          {
+            opacity: toastOpacity,
+            left: toastLeft,
+            width: toastWidth,
+            bottom: Math.max(insets.bottom, 8) + r.scale(52),
+            transform: [{ scale: toastScale }, { translateY: toastTranslateY }],
+          },
+        ]}
+      >
+        <View style={[styles.toastShell, { borderRadius: r.scale(12) }]}>
+          <BlurView
+            intensity={Platform.OS === 'android' ? 72 : 58}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+            experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+          />
+          <View style={[StyleSheet.absoluteFill, styles.toastTint]} />
+          <View
+            style={[
+              styles.toastContent,
+              {
+                paddingVertical: r.scale(7),
+                paddingHorizontal: r.scale(10),
+              },
+            ]}
+          >
+            <Text style={[styles.toastKicker, { fontSize: r.scale(9) }]}>MARKET</Text>
+            <Text style={[styles.toastText, { fontSize: r.scale(12), marginTop: r.scale(1) }]}>
+              Yakında
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.toastCaret, { borderTopColor: 'rgba(255,255,255,0.14)' }]} />
+      </Animated.View>
+
+      <View
+        style={[
+          styles.wrap,
+          {
+            paddingBottom: Math.max(insets.bottom, 8),
+          },
+        ]}
+      >
       <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, styles.tint]} />
       <View style={styles.borderTop} />
@@ -100,17 +208,22 @@ export default function NavBar() {
         ]}
       >
         {NAV_ITEMS.map((item) => {
+          const locked = isRouteLocked(item.route);
           const active = route === item.route;
-          const color = active ? '#fff' : 'rgba(255,255,255,0.55)';
-          const badgeCount = badgeByRoute[item.route] ?? 0;
+          const color = locked
+            ? 'rgba(255,255,255,0.35)'
+            : active
+              ? '#fff'
+              : 'rgba(255,255,255,0.55)';
+          const badgeCount = locked ? 0 : (badgeByRoute[item.route] ?? 0);
           return (
             <Pressable
               key={item.route}
-              onPress={() => navigate(item.route)}
+              onPress={() => handleTabPress(item.route, locked)}
               style={styles.tab}
               accessibilityRole="button"
-              accessibilityLabel={item.label}
-              accessibilityState={{ selected: active }}
+              accessibilityLabel={locked ? `${item.label}, Yakında` : item.label}
+              accessibilityState={{ selected: active, disabled: locked }}
               hitSlop={6}
             >
               <View style={styles.iconWrap}>
@@ -127,23 +240,65 @@ export default function NavBar() {
                   {
                     color,
                     fontSize: labelSize,
-                    fontWeight: active ? '700' : '500',
+                    fontWeight: active && !locked ? '700' : '500',
                   },
                 ]}
                 numberOfLines={1}
               >
                 {item.label}
               </Text>
-              {active ? <View style={styles.activeDot} /> : null}
+              {active && !locked ? <View style={styles.activeDot} /> : null}
             </Pressable>
           );
         })}
+      </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  navRoot: {
+    position: 'relative',
+  },
+  toastWrap: {
+    position: 'absolute',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  toastShell: {
+    width: '100%',
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(10, 12, 20, 0.35)',
+  },
+  toastTint: {
+    backgroundColor: 'rgba(10, 12, 20, 0.42)',
+  },
+  toastContent: {
+    alignItems: 'center',
+  },
+  toastKicker: {
+    color: 'rgba(255,255,255,0.38)',
+    fontWeight: '600',
+    letterSpacing: 1.1,
+  },
+  toastText: {
+    color: 'rgba(255,255,255,0.88)',
+    fontWeight: '600',
+    letterSpacing: 0.15,
+  },
+  toastCaret: {
+    width: 10,
+    height: 10,
+    marginTop: -5,
+    backgroundColor: 'rgba(10, 12, 20, 0.72)',
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.14)',
+    transform: [{ rotate: '45deg' }],
+  },
   wrap: {
     paddingTop: 8,
     overflow: 'hidden',
