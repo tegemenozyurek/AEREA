@@ -206,7 +206,7 @@ export default function ProfileHeader({
             styles.bio,
             {
               fontSize: r.scale(14),
-              marginTop: r.scale(10),
+              marginTop: r.scale(18),
               lineHeight: r.scale(20),
             },
           ]}

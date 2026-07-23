@@ -48,7 +48,8 @@
           "photosPermission": "Allow AEREA to access your photos for community posts."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ]
   }
 }
