@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 
 /** Approximate height of CommunitySubTabs (chip row + padding + border). */
-export const COMMUNITY_SUB_TABS_HEIGHT = 52;
+export const COMMUNITY_SUB_TABS_HEIGHT = 44;
 
 const SCROLL_THRESHOLD = 12;
 const ANIM_MS = 220;

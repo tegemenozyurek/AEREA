@@ -69,8 +69,8 @@ export default function CommunitySubTabs({ active, onChange }: CommunitySubTabsP
           {
             paddingLeft: Math.max(r.scale(12), r.horizontalPadding - 12),
             paddingRight: r.horizontalPadding,
-            paddingVertical: r.scale(10),
-            gap: r.scale(8),
+            paddingVertical: r.scale(8),
+            gap: r.scale(6),
           },
         ]}
       >
@@ -82,10 +82,10 @@ export default function CommunitySubTabs({ active, onChange }: CommunitySubTabsP
               style={[
                 styles.chip,
                 {
-                  gap: r.scale(6),
-                  paddingHorizontal: r.scale(14),
-                  paddingVertical: r.scale(9),
-                  borderRadius: r.scale(20),
+                  gap: r.scale(4),
+                  paddingHorizontal: r.scale(10),
+                  paddingVertical: r.scale(6),
+                  borderRadius: r.scale(16),
                 },
                 isActive && styles.chipActive,
               ]}
@@ -102,10 +102,10 @@ export default function CommunitySubTabs({ active, onChange }: CommunitySubTabsP
                     ? ACTIVE_ICONS[tab.key]
                     : (tab.icon as keyof typeof Ionicons.glyphMap)
                 }
-                size={r.scale(15)}
+                size={r.scale(13)}
                 color={isActive ? '#fff' : 'rgba(255,255,255,0.6)'}
               />
-              <Text style={[styles.chipText, { fontSize: r.scale(13) }, isActive && styles.chipTextActive]}>
+              <Text style={[styles.chipText, { fontSize: r.scale(11) }, isActive && styles.chipTextActive]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
