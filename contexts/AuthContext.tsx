@@ -15,6 +15,7 @@ import {
   isEmailVerifiedForAccess,
   isEmailVerificationRequired,
   reloadCurrentUser,
+  requestEmailChange,
   sendPasswordReset,
   sendUserVerificationEmail,
   signInWithEmail,
@@ -51,9 +52,11 @@ type AuthContextValue = {
   resendVerificationEmail: () => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
+  requestEmailChange: (newEmail: string, currentPassword: string) => Promise<AuthResult>;
   refreshEmailVerification: () => Promise<AuthResult>;
   cancelVerification: () => Promise<AuthResult>;
   completeUsernameSetup: (username: string) => Promise<AuthResult>;
+  setFirestoreUsername: (username: string) => void;
   logout: () => Promise<void>;
 };
 
@@ -103,25 +106,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authTick, setAuthTick] = useState(0);
   const [userDocReady, setUserDocReady] = useState(false);
   const [needsUsernameSetup, setNeedsUsernameSetup] = useState(false);
-  const [firestoreUsername, setFirestoreUsername] = useState<string | null>(null);
+  const [firestoreUsername, setFirestoreUsernameState] = useState<string | null>(null);
 
   const resetUserDocState = useCallback(() => {
     setUserDocReady(false);
     setNeedsUsernameSetup(false);
-    setFirestoreUsername(null);
+    setFirestoreUsernameState(null);
   }, []);
 
   const syncUserDocument = useCallback(async (firebaseUser: User) => {
     setUserDocReady(false);
     try {
       const doc = await ensureUserDocument(firebaseUser);
-      setFirestoreUsername(doc.username);
+      setFirestoreUsernameState(doc.username);
       setNeedsUsernameSetup(!doc.username);
       setUserDocReady(true);
     } catch {
       // Fail closed: keep the user on a setup/retry path rather than entering the app
       // without a users/{uid} document.
-      setFirestoreUsername(null);
+      setFirestoreUsernameState(null);
       setNeedsUsernameSetup(true);
       setUserDocReady(true);
     }
@@ -263,6 +266,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const requestEmailChangeHandler = useCallback(
+    async (newEmail: string, currentPassword: string): Promise<AuthResult> => {
+      try {
+        await requestEmailChange(newEmail, currentPassword);
+        return { ok: true };
+      } catch (e) {
+        return toAuthError(e);
+      }
+    },
+    [],
+  );
+
+  const setFirestoreUsername = useCallback((username: string) => {
+    setFirestoreUsernameState(username);
+    setNeedsUsernameSetup(!username);
+  }, []);
+
   const refreshEmailVerification = useCallback(async (): Promise<AuthResult> => {
     try {
       const refreshed = await reloadCurrentUser();
@@ -345,9 +365,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resendVerificationEmail,
       resetPassword,
       changePassword: changePasswordHandler,
+      requestEmailChange: requestEmailChangeHandler,
       refreshEmailVerification,
       cancelVerification,
       completeUsernameSetup,
+      setFirestoreUsername,
       logout,
     }),
     [
@@ -366,9 +388,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resendVerificationEmail,
       resetPassword,
       changePasswordHandler,
+      requestEmailChangeHandler,
       refreshEmailVerification,
       cancelVerification,
       completeUsernameSetup,
+      setFirestoreUsername,
       logout,
     ],
   );

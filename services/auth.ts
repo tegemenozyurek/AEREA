@@ -13,6 +13,7 @@ import {
   signOut,
   updatePassword,
   updateProfile,
+  verifyBeforeUpdateEmail,
   type ActionCodeSettings,
   type User,
 } from 'firebase/auth';
@@ -162,6 +163,39 @@ export async function changePassword(
   const credential = EmailAuthProvider.credential(user.email, currentPassword);
   await reauthenticateWithCredential(user, credential);
   await updatePassword(user, newPassword);
+}
+
+/**
+ * Re-authenticate then either apply the email change immediately (updateEmail)
+ * or send a verification link to the new address (verifyBeforeUpdateEmail).
+ * Uses verifyBeforeUpdateEmail; Firestore email is updated after the user confirms.
+ */
+export async function requestEmailChange(
+  newEmail: string,
+  currentPassword: string,
+): Promise<'verification-sent'> {
+  const user = firebaseAuth.currentUser;
+  if (!user?.email) {
+    throw new Error('Not signed in.');
+  }
+
+  if (!hasEmailPasswordProvider(user)) {
+    throw new Error('Email change is only available for email sign-in accounts.');
+  }
+
+  const trimmed = newEmail.trim().toLowerCase();
+  if (!trimmed || !trimmed.includes('@')) {
+    throw new Error('Enter a valid email address.');
+  }
+
+  if (trimmed === user.email.toLowerCase()) {
+    throw new Error('New email must be different from your current email.');
+  }
+
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await verifyBeforeUpdateEmail(user, trimmed, getAuthActionCodeSettings());
+  return 'verification-sent';
 }
 
 export async function reloadCurrentUser(): Promise<User | null> {

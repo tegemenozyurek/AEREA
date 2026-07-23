@@ -12,7 +12,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ChangeEmailModal from '../components/ChangeEmailModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import ChangeUsernameModal from '../components/ChangeUsernameModal';
 import EditProfileModal from '../components/EditProfileModal';
 import SettingsChoiceRow from '../components/SettingsChoiceRow';
 import SettingsProfileCard from '../components/SettingsProfileCard';
@@ -62,26 +64,44 @@ export default function SettingsScreen() {
   const [language, setLanguage] = useState<LanguageOption>('English');
   const [expandedPicker, setExpandedPicker] = useState<ExpandedPicker>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [changeUsernameOpen, setChangeUsernameOpen] = useState(false);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const togglePicker = (picker: Exclude<ExpandedPicker, null>) => {
     setExpandedPicker((current) => (current === picker ? null : picker));
   };
 
-  const handleChangePasswordPress = () => {
+  const requireEmailPasswordAccount = (feature: string) => {
     if (!user) {
-      Alert.alert('Change password', 'Sign in to change your password.');
-      return;
+      Alert.alert(feature, 'Sign in to continue.');
+      return false;
     }
-
     if (!hasEmailPasswordProvider(user)) {
       Alert.alert(
-        'Change password',
-        'This account uses social sign-in. Use Forgot password on the sign-in screen if you need to set an email password.',
+        feature,
+        'This account uses social sign-in. Manage email and password from your Google account, or use Forgot password on the sign-in screen if you need an email password.',
       );
+      return false;
+    }
+    return true;
+  };
+
+  const handleChangeUsernamePress = () => {
+    if (!user) {
+      Alert.alert('Change username', 'Sign in to change your username.');
       return;
     }
+    setChangeUsernameOpen(true);
+  };
 
+  const handleChangeEmailPress = () => {
+    if (!requireEmailPasswordAccount('Change email')) return;
+    setChangeEmailOpen(true);
+  };
+
+  const handleChangePasswordPress = () => {
+    if (!requireEmailPasswordAccount('Change password')) return;
     setChangePasswordOpen(true);
   };
 
@@ -204,6 +224,18 @@ export default function SettingsScreen() {
             valueEllipsize="middle"
           />
           <SettingsRow
+            label="Change username"
+            icon="person-outline"
+            showChevron
+            onPress={handleChangeUsernamePress}
+          />
+          <SettingsRow
+            label="Change email"
+            icon="mail-outline"
+            showChevron
+            onPress={handleChangeEmailPress}
+          />
+          <SettingsRow
             label="Change password"
             icon="key-outline"
             showChevron
@@ -314,6 +346,18 @@ export default function SettingsScreen() {
         photoUrl={photoUrl}
         onClose={() => setEditProfileOpen(false)}
         onSave={updateProfile}
+      />
+
+      <ChangeUsernameModal
+        visible={changeUsernameOpen}
+        currentUsername={username}
+        onClose={() => setChangeUsernameOpen(false)}
+      />
+
+      <ChangeEmailModal
+        visible={changeEmailOpen}
+        currentEmail={displayEmail === '—' ? '' : displayEmail}
+        onClose={() => setChangeEmailOpen(false)}
       />
 
       <ChangePasswordModal
