@@ -8,10 +8,12 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { MOCK_OWN_BIO } from '../data/mockUsers';
 import {
+  BIO_MAX,
   claimUsername,
+  getUserDocument,
   isUsernameTaken,
+  updateUserBio,
   UsernameTakenError,
   validateUsernameFormat,
 } from '../services/users';
@@ -19,10 +21,8 @@ import { getProfileUsername } from '../utils/profile';
 import { useAuth } from './AuthContext';
 
 const PROFILE_STORAGE_PREFIX = '@aerea/profile/';
-const BIO_MAX = 300;
 
 type StoredProfile = {
-  bio: string;
   localPhotoUri: string | null;
 };
 
@@ -52,15 +52,14 @@ async function loadStoredProfile(uid: string): Promise<StoredProfile> {
   try {
     const raw = await AsyncStorage.getItem(storageKey(uid));
     if (!raw) {
-      return { bio: MOCK_OWN_BIO, localPhotoUri: null };
+      return { localPhotoUri: null };
     }
-    const parsed = JSON.parse(raw) as Partial<StoredProfile>;
+    const parsed = JSON.parse(raw) as Partial<StoredProfile & { bio?: string }>;
     return {
-      bio: typeof parsed.bio === 'string' ? parsed.bio : MOCK_OWN_BIO,
       localPhotoUri: typeof parsed.localPhotoUri === 'string' ? parsed.localPhotoUri : null,
     };
   } catch {
-    return { bio: MOCK_OWN_BIO, localPhotoUri: null };
+    return { localPhotoUri: null };
   }
 }
 
@@ -69,8 +68,8 @@ async function saveStoredProfile(uid: string, profile: StoredProfile): Promise<v
 }
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const { user, firestoreUsername } = useAuth();
-  const [bio, setBio] = useState(MOCK_OWN_BIO);
+  const { user, firestoreUsername, setFirestoreUsername } = useAuth();
+  const [bio, setBio] = useState('');
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [localUsername, setLocalUsername] = useState<string | null>(null);
@@ -80,7 +79,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     const load = async () => {
       if (!user?.uid) {
-        setBio(MOCK_OWN_BIO);
+        setBio('');
         setLocalPhotoUri(null);
         setLocalUsername(null);
         setIsReady(true);
@@ -88,11 +87,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       }
 
       setIsReady(false);
-      const stored = await loadStoredProfile(user.uid);
+      const [stored, firestoreUser] = await Promise.all([
+        loadStoredProfile(user.uid),
+        getUserDocument(user.uid).catch(() => null),
+      ]);
       if (cancelled) {
         return;
       }
-      setBio(stored.bio);
+      setBio(firestoreUser?.bio ?? '');
       setLocalPhotoUri(stored.localPhotoUri);
       setLocalUsername(null);
       setIsReady(true);
@@ -140,29 +142,34 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           if (taken) {
             return { ok: false, error: new UsernameTakenError().message };
           }
-          await claimUsername(user.uid, trimmedUsername);
-          setLocalUsername(trimmedUsername);
+          const savedUsername = await claimUsername(user.uid, trimmedUsername);
+          setLocalUsername(savedUsername);
+          setFirestoreUsername(savedUsername);
         }
+
+        const savedBio = await updateUserBio(user.uid, trimmedBio);
+        setBio(savedBio ?? '');
 
         const nextPhotoUri =
           input.photoUri === undefined ? localPhotoUri : input.photoUri;
 
         await saveStoredProfile(user.uid, {
-          bio: trimmedBio,
           localPhotoUri: nextPhotoUri,
         });
-
-        setBio(trimmedBio);
         setLocalPhotoUri(nextPhotoUri);
+
         return { ok: true };
       } catch (e) {
         if (e instanceof UsernameTakenError) {
           return { ok: false, error: e.message };
         }
+        if (e instanceof Error && e.message) {
+          return { ok: false, error: e.message };
+        }
         return { ok: false, error: 'Could not save profile. Please try again.' };
       }
     },
-    [localPhotoUri, user?.uid, username],
+    [localPhotoUri, setFirestoreUsername, user?.uid, username],
   );
 
   const value = useMemo<ProfileContextValue>(

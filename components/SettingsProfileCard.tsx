@@ -99,7 +99,7 @@ export default function SettingsProfileCard({ username, bio, photoUrl, onEditPre
             },
           ]}
         >
-          Add a short bio so others can get to know you.
+          Add bio
         </Text>
       )}
     </View>

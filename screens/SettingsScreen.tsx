@@ -14,7 +14,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ChangeEmailModal from '../components/ChangeEmailModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
-import ChangeUsernameModal from '../components/ChangeUsernameModal';
 import ConfirmActionModal from '../components/ConfirmActionModal';
 import EditProfileModal from '../components/EditProfileModal';
 import SettingsToast from '../components/SettingsToast';
@@ -66,7 +65,6 @@ export default function SettingsScreen() {
   const [language, setLanguage] = useState<LanguageOption>('English');
   const [expandedPicker, setExpandedPicker] = useState<ExpandedPicker>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [changeUsernameOpen, setChangeUsernameOpen] = useState(false);
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'signOut' | 'deleteAccount' | null>(null);
@@ -94,14 +92,6 @@ export default function SettingsScreen() {
       return false;
     }
     return true;
-  };
-
-  const handleChangeUsernamePress = () => {
-    if (!user) {
-      Alert.alert('Change username', 'Sign in to change your username.');
-      return;
-    }
-    setChangeUsernameOpen(true);
   };
 
   const handleChangeEmailPress = () => {
@@ -221,12 +211,6 @@ export default function SettingsScreen() {
             icon="finger-print-outline"
             iconOnly
             valueEllipsize="middle"
-          />
-          <SettingsRow
-            label="Change username"
-            icon="person-outline"
-            showChevron
-            onPress={handleChangeUsernamePress}
             isLast={!canChangeEmail && !canChangePassword}
           />
           {canChangeEmail ? (
@@ -356,16 +340,6 @@ export default function SettingsScreen() {
             showToast('Profile updated');
           }
           return result;
-        }}
-      />
-
-      <ChangeUsernameModal
-        visible={changeUsernameOpen}
-        currentUsername={username}
-        onClose={() => setChangeUsernameOpen(false)}
-        onSuccess={() => {
-          setChangeUsernameOpen(false);
-          showToast('Username updated');
         }}
       />
 

@@ -21,10 +21,13 @@ export const USERNAME_MAX = 20;
 /** Lowercase Latin letters and underscore only — no spaces, digits, uppercase, or Turkish chars. */
 export const USERNAME_PATTERN = /^[a-z_]+$/;
 
+export const BIO_MAX = 300;
+
 export type FirestoreUser = {
   uid: string;
   email: string | null;
   username: string | null;
+  bio: string | null;
   photoURL: string | null;
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
@@ -69,11 +72,13 @@ function userRef(uid: string) {
 
 function parseUserDoc(uid: string, data: Record<string, unknown>): FirestoreUser {
   const username = typeof data.username === 'string' ? data.username.trim() : null;
+  const bio = typeof data.bio === 'string' ? data.bio.trim() : null;
 
   return {
     uid,
     email: typeof data.email === 'string' ? data.email : null,
     username: username || null,
+    bio: bio || null,
     photoURL: typeof data.photoURL === 'string' ? data.photoURL : null,
     createdAt: (data.createdAt as Timestamp | undefined) ?? null,
     updatedAt: (data.updatedAt as Timestamp | undefined) ?? null,
@@ -117,6 +122,7 @@ export async function ensureUserDocument(user: User): Promise<FirestoreUser> {
     uid: user.uid,
     email: user.email ?? null,
     username: null,
+    bio: null,
     photoURL: user.photoURL ?? null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -128,6 +134,7 @@ export async function ensureUserDocument(user: User): Promise<FirestoreUser> {
     uid: user.uid,
     email: user.email ?? null,
     username: null,
+    bio: null,
     photoURL: user.photoURL ?? null,
   };
 }
@@ -212,4 +219,23 @@ export async function claimUsername(uid: string, rawUsername: string): Promise<s
 
   await updateUserDisplayName(username);
   return username;
+}
+
+/** Save bio on users/{uid}. Empty string clears the field to null. */
+export async function updateUserBio(uid: string, rawBio: string): Promise<string | null> {
+  const bio = rawBio.trim();
+  if (bio.length > BIO_MAX) {
+    throw new Error(`Bio must be ${BIO_MAX} characters or less.`);
+  }
+
+  const value = bio.length > 0 ? bio : null;
+  await setDoc(
+    userRef(uid),
+    {
+      bio: value,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+  return value;
 }

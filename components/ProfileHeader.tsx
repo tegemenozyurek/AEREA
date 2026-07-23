@@ -213,6 +213,19 @@ export default function ProfileHeader({
         >
           {bio}
         </Text>
+      ) : showSettings ? (
+        <Text
+          style={[
+            styles.bioPlaceholder,
+            {
+              fontSize: r.scale(14),
+              marginTop: r.scale(18),
+              lineHeight: r.scale(20),
+            },
+          ]}
+        >
+          Add bio
+        </Text>
       ) : null}
 
       <View
@@ -311,6 +324,12 @@ const styles = StyleSheet.create({
   bio: {
     color: 'rgba(255,255,255,0.62)',
     fontWeight: '500',
+    letterSpacing: 0.15,
+  },
+  bioPlaceholder: {
+    color: 'rgba(255,255,255,0.38)',
+    fontWeight: '500',
+    fontStyle: 'italic',
     letterSpacing: 0.15,
   },
   statsRow: {
