@@ -15,6 +15,12 @@ export type AppRoute =
   | 'account'
   | 'settings';
 
+export const LOCKED_ROUTES: ReadonlySet<AppRoute> = new Set(['market']);
+
+export function isRouteLocked(route: AppRoute): boolean {
+  return LOCKED_ROUTES.has(route);
+}
+
 type NavigationContextValue = {
   route: AppRoute;
   navigate: (route: AppRoute) => void;
@@ -26,7 +32,10 @@ const NavigationContext = createContext<NavigationContextValue | null>(null);
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [route, setRoute] = useState<AppRoute>('home');
 
-  const navigate = useCallback((next: AppRoute) => setRoute(next), []);
+  const navigate = useCallback((next: AppRoute) => {
+    if (isRouteLocked(next)) return;
+    setRoute(next);
+  }, []);
   const goHome = useCallback(() => setRoute('home'), []);
 
   const value = useMemo<NavigationContextValue>(
