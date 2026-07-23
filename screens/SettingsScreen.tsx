@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -111,33 +113,53 @@ export default function SettingsScreen() {
     );
   };
 
+  const displayEmail = user?.email ?? '—';
+  const displayId = user?.uid ?? '—';
+  const headerHeight = insets.top + r.scale(52);
+
   return (
     <View style={styles.root}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + r.scale(8),
-            paddingHorizontal: r.horizontalPadding,
-            paddingBottom: r.scale(12),
-          },
-        ]}
-      >
-        <TouchableOpacity
+      <View style={[styles.headerShell, { paddingTop: insets.top }]}>
+        <BlurView
+          intensity={Platform.OS === 'android' ? 72 : 58}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+          experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+        />
+        <View style={[StyleSheet.absoluteFill, styles.headerTint]} />
+        <View
           style={[
-            styles.backButton,
-            { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
+            styles.header,
+            {
+              paddingHorizontal: r.horizontalPadding,
+              minHeight: r.scale(52),
+              maxWidth: r.contentMaxWidth,
+              alignSelf: 'center',
+              width: '100%',
+            },
           ]}
-          activeOpacity={0.7}
-          onPress={() => navigate('account')}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Back to profile"
         >
-          <Ionicons name="chevron-back" size={r.scale(24)} color="#fff" />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { fontSize: r.scale(18) }]}>Settings</Text>
-        <View style={{ width: r.scale(36) }} />
+          <TouchableOpacity
+            style={[
+              styles.backButton,
+              { width: r.scale(36), height: r.scale(36), borderRadius: r.scale(18) },
+            ]}
+            activeOpacity={0.7}
+            onPress={() => navigate('account')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back to profile"
+          >
+            <Ionicons name="chevron-back" size={r.scale(22)} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { fontSize: r.scale(18) }]}>Settings</Text>
+            <Text style={[styles.headerSubtitle, { fontSize: r.scale(11), marginTop: r.scale(2) }]}>
+              Account & preferences
+            </Text>
+          </View>
+          <View style={{ width: r.scale(36) }} />
+        </View>
       </View>
 
       <ScrollView
@@ -149,11 +171,13 @@ export default function SettingsScreen() {
             maxWidth: r.contentMaxWidth,
             alignSelf: 'center',
             width: '100%',
-            paddingTop: r.scale(16),
-            paddingBottom: r.scale(32),
+            paddingTop: r.scale(18),
+            paddingBottom: Math.max(insets.bottom, r.scale(24)) + r.scale(24),
+            minHeight: r.height - headerHeight,
           },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <SettingsSection title="Profile">
           <SettingsProfileCard
@@ -165,17 +189,30 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="Account">
-          <SettingsRow label="Mail" value={user?.email ?? '—'} stacked />
-          <SettingsRow label="ID" value={user?.uid ?? '—'} stacked />
+          <SettingsRow
+            label="Mail"
+            value={displayEmail}
+            icon="mail-outline"
+            iconOnly
+            valueEllipsize="middle"
+          />
+          <SettingsRow
+            label="ID"
+            value={displayId}
+            icon="finger-print-outline"
+            iconOnly
+            valueEllipsize="middle"
+          />
           <SettingsRow
             label="Change password"
+            icon="key-outline"
             showChevron
             onPress={handleChangePasswordPress}
             isLast
           />
         </SettingsSection>
 
-        <SettingsSection title="Settings">
+        <SettingsSection title="Preferences">
           <SettingsChoiceRow
             label="Theme"
             value={theme}
@@ -198,6 +235,7 @@ export default function SettingsScreen() {
         <SettingsSection title="Notifications">
           <SettingsRow
             label="Push notifications"
+            icon="notifications-outline"
             rightElement={
               <Switch
                 value={pushEnabled}
@@ -210,6 +248,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label="Product updates"
+            icon="mail-unread-outline"
             rightElement={
               <Switch
                 value={emailUpdates}
@@ -224,31 +263,48 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="About">
-          <SettingsRow label="Help" showChevron onPress={() => comingSoon('Help')} />
-          <SettingsRow label="Privacy" showChevron onPress={() => comingSoon('Privacy')} />
-          <SettingsRow label="Terms" showChevron onPress={() => comingSoon('Terms')} isLast />
+          <SettingsRow
+            label="Help"
+            icon="help-circle-outline"
+            showChevron
+            onPress={() => comingSoon('Help')}
+          />
+          <SettingsRow
+            label="Privacy"
+            icon="shield-outline"
+            showChevron
+            onPress={() => comingSoon('Privacy')}
+          />
+          <SettingsRow
+            label="Terms"
+            icon="document-text-outline"
+            showChevron
+            onPress={() => comingSoon('Terms')}
+            isLast
+          />
         </SettingsSection>
 
         <SettingsSection title="Security" separated>
           <SettingsRow
             label="Sign out"
+            icon="log-out-outline"
             destructive
             centered
             onPress={handleSignOut}
-            isLast
           />
           <SettingsRow
             label="Delete account"
+            icon="trash-outline"
             destructive
             centered
             onPress={handleDeleteAccount}
-            isLast
           />
         </SettingsSection>
 
-        <Text style={[styles.version, { fontSize: r.scale(12), marginTop: r.scale(4) }]}>
-          AEREA · v{APP_VERSION}
-        </Text>
+        <View style={[styles.versionWrap, { marginTop: r.scale(8), gap: r.scale(4) }]}>
+          <Text style={[styles.versionBrand, { fontSize: r.scale(13) }]}>AEREA</Text>
+          <Text style={[styles.version, { fontSize: r.scale(12) }]}>Version {APP_VERSION}</Text>
+        </View>
       </ScrollView>
 
       <EditProfileModal
@@ -273,26 +329,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
+  headerShell: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  headerTint: {
+    backgroundColor: 'rgba(10, 12, 20, 0.42)',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   backButton: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     color: '#fff',
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+  },
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.38)',
+    fontWeight: '500',
   },
   scroll: {
     flex: 1,
@@ -300,10 +368,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  versionWrap: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  versionBrand: {
+    color: 'rgba(255,255,255,0.35)',
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
   version: {
-    color: 'rgba(255,255,255,0.28)',
+    color: 'rgba(255,255,255,0.24)',
     fontWeight: '500',
-    textAlign: 'center',
-    letterSpacing: 0.2,
   },
 });

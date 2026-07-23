@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getProfileInitials } from '../utils/profile';
@@ -13,7 +14,7 @@ type Props = {
 export default function SettingsProfileCard({ username, bio, photoUrl, onEditPress }: Props) {
   const r = useResponsive();
   const initials = getProfileInitials(username);
-  const avatarSize = r.scale(56);
+  const avatarSize = r.isTablet ? r.scale(64) : r.scale(56);
 
   const avatar = photoUrl ? (
     <Image
@@ -43,32 +44,64 @@ export default function SettingsProfileCard({ username, bio, photoUrl, onEditPre
   );
 
   return (
-    <View style={[styles.card, { padding: r.scale(16), gap: r.scale(14) }]}>
-      {onEditPress ? (
-        <TouchableOpacity
-          style={[styles.editButton, { top: r.scale(12), right: r.scale(14) }]}
-          activeOpacity={0.7}
-          onPress={onEditPress}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Edit profile"
-        >
-          <Text style={[styles.editText, { fontSize: r.scale(14) }]}>Edit</Text>
-        </TouchableOpacity>
-      ) : null}
-
-      <View style={[styles.topRow, { gap: r.scale(14), paddingRight: onEditPress ? r.scale(44) : 0 }]}>
+    <View style={[styles.card, { padding: r.scale(16) }]}>
+      <View style={[styles.topRow, { gap: r.scale(14) }]}>
         {avatar}
         <View style={styles.textCol}>
           <Text style={[styles.username, { fontSize: r.scale(18) }]} numberOfLines={1}>
             {username}
           </Text>
         </View>
+        {onEditPress ? (
+          <TouchableOpacity
+            style={[
+              styles.editButton,
+              {
+                paddingVertical: r.scale(8),
+                paddingHorizontal: r.scale(12),
+                borderRadius: r.scale(20),
+                gap: r.scale(4),
+              },
+            ]}
+            activeOpacity={0.7}
+            onPress={onEditPress}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
+          >
+            <Ionicons name="pencil-outline" size={r.scale(14)} color="#93C5FD" />
+            <Text style={[styles.editText, { fontSize: r.scale(13) }]}>Edit</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {bio ? (
-        <Text style={[styles.bio, { fontSize: r.scale(14), lineHeight: r.scale(20) }]}>{bio}</Text>
-      ) : null}
+        <Text
+          style={[
+            styles.bio,
+            {
+              fontSize: r.scale(14),
+              lineHeight: r.scale(21),
+              marginTop: r.scale(18),
+            },
+          ]}
+        >
+          {bio}
+        </Text>
+      ) : (
+        <Text
+          style={[
+            styles.bioPlaceholder,
+            {
+              fontSize: r.scale(13),
+              lineHeight: r.scale(19),
+              marginTop: r.scale(18),
+            },
+          ]}
+        >
+          Add a short bio so others can get to know you.
+        </Text>
+      )}
     </View>
   );
 }
@@ -76,16 +109,6 @@ export default function SettingsProfileCard({ username, bio, photoUrl, onEditPre
 const styles = StyleSheet.create({
   card: {
     alignItems: 'stretch',
-    position: 'relative',
-  },
-  editButton: {
-    position: 'absolute',
-    zIndex: 1,
-  },
-  editText: {
-    color: '#60A5FA',
-    fontWeight: '600',
-    letterSpacing: 0.2,
   },
   topRow: {
     flexDirection: 'row',
@@ -93,7 +116,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255,255,255,0.22)',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   avatarFallback: {
@@ -117,8 +140,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(96,165,250,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(96,165,250,0.28)',
+    flexShrink: 0,
+  },
+  editText: {
+    color: '#93C5FD',
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
   bio: {
     color: 'rgba(255,255,255,0.62)',
     fontWeight: '400',
+  },
+  bioPlaceholder: {
+    color: 'rgba(255,255,255,0.32)',
+    fontWeight: '400',
+    fontStyle: 'italic',
   },
 });
